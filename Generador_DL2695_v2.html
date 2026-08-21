@@ -201,6 +201,8 @@
   .of-paper-content p.of-right{text-align:right;}
   .of-paper-content p.of-bold{font-weight:700;}
   .of-paper-content p.of-empty{margin:0 0 4px 0;min-height:8px;}
+  /* ---- equivalencia m² ↔ hectáreas bajo los campos de superficie ---- */
+  .sup-eq{margin:3px 0 0;min-height:13px;font-variant-numeric:tabular-nums;color:#5a7a52;font-weight:600;}
   /* ---- barra de guardado automático ---- */
   .save-bar{
     display:flex;align-items:center;gap:10px;margin-top:8px;
@@ -388,8 +390,15 @@
         </div>
         <div class="grid2">
           <div class="field">
-            <label>Superficie aprox. (m²)</label>
-            <input type="text" id="superficie" placeholder="180,9">
+            <label>Superficie aproximada</label>
+            <div style="display:flex;gap:6px">
+              <input type="text" inputmode="decimal" id="superficie" placeholder="180,9" data-fmt="sup" style="flex:1">
+              <select id="supUnidad" style="max-width:118px" onchange="onSupUnidadChange()">
+                <option value="m2">m²</option>
+                <option value="ha">hectáreas</option>
+              </select>
+            </div>
+            <p class="hint sup-eq" id="supEquivalencia">&nbsp;</p>
           </div>
           <div class="field">
             <label>Tipo de bien</label>
@@ -447,11 +456,11 @@
         <div class="grid2">
           <div class="field">
             <label>Avalúo Fiscal Total ($)</label>
-            <input type="text" inputmode="numeric" id="avaluoTotal" placeholder="14.519.551" data-fmt="money">
+            <input type="text" inputmode="numeric" id="avaluoTotal" placeholder="$14.519.551" data-fmt="money">
           </div>
           <div class="field">
             <label>Avalúo Fiscal Proporcional ($)</label>
-            <input type="text" inputmode="numeric" id="avaluoProporcional" placeholder="6.409.532" data-fmt="money">
+            <input type="text" inputmode="numeric" id="avaluoProporcional" placeholder="$6.409.532" data-fmt="money">
           </div>
         </div>
         <details class="calc-inline" open>
@@ -460,15 +469,27 @@
             <div>
               <div class="field">
                 <label>Avalúo Fiscal Total del rol ($)</label>
-                <input type="text" inputmode="numeric" id="calcAvaluoTotal" placeholder="14.519.551" data-fmt="money" oninput="calcular()">
+                <input type="text" inputmode="numeric" id="calcAvaluoTotal" placeholder="$14.519.551" data-fmt="money" oninput="calcular()">
               </div>
               <div class="field">
-                <label>Superficie total del rol (m²)</label>
-                <input type="number" id="calcM2Totales" placeholder="4900" oninput="calcular()">
+                <label>Unidad de superficie</label>
+                <select id="calcUnidad" onchange="onCalcUnidadChange()">
+                  <option value="m2">Metros cuadrados (m²)</option>
+                  <option value="ha">Hectáreas (ha)</option>
+                </select>
+                <p class="hint" style="margin:4px 0 0">
+                  Al cambiar la unidad los valores se convierten solos (1 ha = 10.000 m²).
+                </p>
               </div>
               <div class="field">
-                <label>Superficie que se pretende regularizar (m²)</label>
-                <input type="number" id="calcM2Reg" placeholder="180.9" oninput="calcular()">
+                <label>Superficie total del rol (<span class="uni-sup">m²</span>)</label>
+                <input type="text" inputmode="decimal" id="calcSupTotales" placeholder="4.900" data-fmt="sup" oninput="onCalcSupInput('calcSupTotales','totales')">
+                <p class="hint sup-eq" id="calcEqTotales">&nbsp;</p>
+              </div>
+              <div class="field">
+                <label>Superficie que se pretende regularizar (<span class="uni-sup">m²</span>)</label>
+                <input type="text" inputmode="decimal" id="calcSupReg" placeholder="180,9" data-fmt="sup" oninput="onCalcSupInput('calcSupReg','reg')">
+                <p class="hint sup-eq" id="calcEqReg">&nbsp;</p>
               </div>
               <div class="grid2">
                 <div class="field">
@@ -480,7 +501,7 @@
                 </div>
                 <div class="field">
                   <label>Valor UTM vigente ($)</label>
-                  <input type="text" inputmode="numeric" id="calcUTM" value="71.649" data-fmt="money" oninput="calcular()">
+                  <input type="text" inputmode="numeric" id="calcUTM" value="$71.649" data-fmt="money" oninput="calcular()">
                 </div>
               </div>
               <p class="hint">UTM de referencia: agosto 2026 = $71.649. Verifica el valor vigente en sii.cl.</p>
@@ -661,7 +682,7 @@
               <div class="lbl">Exceso de avalúo fiscal (límite legal Art. 1° D.L. 2695/79)</div>
               <div class="sub">
                 <label>Tope legal en pesos (déjalo vacío para usar el de la calculadora)</label>
-                <input type="text" id="mo-avaluo-tope" placeholder="$25.006.951">
+                <input type="text" id="mo-avaluo-tope" placeholder="$25.006.951" data-fmt="money">
               </div>
             </div>
           </div>
@@ -955,7 +976,7 @@
           <div class="field"><label>Provincia</label><input type="text" id="ofProvincia" readonly></div>
         </div>
         <div class="grid2">
-          <div class="field"><label>Superficie (m²)</label><input type="text" id="ofSuperficie" placeholder="500"></div>
+          <div class="field"><label>Superficie (m²)</label><input type="text" inputmode="decimal" id="ofSuperficie" placeholder="500" data-fmt="sup"></div>
           <div class="field"><label>Modo de adquisición</label>
             <select id="ofModoAdq">
               <option value="comite">Compraventa de derechos a comité / loteo</option>
@@ -1073,6 +1094,11 @@ const state = {
   lastPartes: null,
   /* --- expedientes del OFICIO MASIVO (una fila de la tabla por expediente) --- */
   masivoFilas: [],
+  /* --- superficies de la calculadora, SIEMPRE en m² (la unidad elegida solo
+         cambia cómo se muestran, así no se pierde precisión al convertir) --- */
+  calcSup: { totales: null, reg: null },
+  /* --- unidad que tenía el campo de superficie antes del último cambio --- */
+  supUnidadAnterior: 'm2',
   /* --- true si al abrir la página se recuperaron datos guardados --- */
   borradorRestaurado: false
 };
@@ -1188,9 +1214,10 @@ function sincronizarCbrSelect(selectId, inputId){
 /* ============================================================
    FORMATO AUTOMÁTICO DE NÚMEROS
    data-fmt="rut"    -> 12.790.288-7
-   data-fmt="money"  -> 14.519.551
+   data-fmt="money"  -> $14.519.551
    data-fmt="digits" -> solo dígitos
    data-fmt="rol"    -> 537-251
+   data-fmt="sup"    -> 4.900 · 180,9 · 0,0181   (superficies)
    ============================================================ */
 function parseNum(v){
   if(v===null||v===undefined) return NaN;
@@ -1212,9 +1239,12 @@ function formatRutValue(v){
   return miles(cuerpo) + '-' + dv;
 }
 
+/* Pesos: se muestran con signo y separador de miles ($14.519.551) para que se
+   distingan a simple vista de los campos de superficie. parseNum() ignora el
+   signo, así que los cálculos y los documentos no se ven afectados. */
 function formatMoneyValue(v){
   const s = String(v).replace(/[^0-9]/g,'').replace(/^0+(?=\d)/,'');
-  return s === '' ? '' : miles(s);
+  return s === '' ? '' : '$' + miles(s);
 }
 
 function formatDigitsValue(v){
@@ -1229,11 +1259,65 @@ function formatRolValue(v){
   return s;
 }
 
+/* Superficies: formato chileno, punto para los miles y coma para los decimales
+   (4.900 · 180,9 · 0,4900). Se aceptan hasta 4 decimales, que en hectáreas
+   equivalen a 1 m² de precisión.
+   Como el usuario puede escribir el separador decimal con punto o con coma, se
+   toma el ÚLTIMO separador: si detrás tiene 4 dígitos o menos es decimal; si
+   tiene más, era un separador de miles. */
+function formatSupValue(v){
+  let s = String(v).replace(/[^0-9.,]/g,'');
+  if(s === '') return '';
+
+  let corte = -1;   // posición del separador decimal, -1 si el número es entero
+
+  if(s.indexOf(',') >= 0){
+    // La coma es siempre el separador decimal (convención chilena).
+    corte = s.lastIndexOf(',');
+  } else {
+    /* Sin coma, el punto es ambiguo. Se toma como decimal sólo cuando es un
+       único punto y el número no puede leerse como separador de miles:
+       "1.5" y "0.001" son decimales; "4.900" y "10.000" son miles. */
+    const puntos = (s.match(/\./g) || []).length;
+    if(puntos === 1){
+      const pos = s.indexOf('.');
+      const enteroPrevio = s.slice(0, pos);
+      const cola = s.slice(pos + 1);
+      if(cola.length <= 2 || enteroPrevio === '0') corte = pos;
+    }
+  }
+
+  let entero, decimales = null;
+  if(corte >= 0){
+    entero = s.slice(0, corte).replace(/[.,]/g,'');
+    decimales = s.slice(corte + 1).replace(/[.,]/g,'').slice(0, 4);
+  } else {
+    entero = s.replace(/[.,]/g,'');
+  }
+
+  entero = entero.replace(/^0+(?=\d)/,'');
+  if(entero === '' && decimales === null) return '';
+  const parteEntera = miles(entero === '' ? '0' : entero);
+  return decimales === null ? parteEntera : parteEntera + ',' + decimales;
+}
+
+/* Número → texto chileno, sin ceros decimales sobrantes: 4900 → "4.900",
+   0.49 → "0,49", 0.01809 → "0,0181". */
+function numeroALocal(n, maxDecimales){
+  if(n === null || n === undefined || isNaN(n)) return '';
+  const dec = (maxDecimales === undefined) ? 4 : maxDecimales;
+  let s = Number(n).toFixed(dec);
+  if(s.indexOf('.') >= 0) s = s.replace(/0+$/,'').replace(/\.$/,'');
+  const partes = s.split('.');
+  return miles(partes[0]) + (partes[1] ? ',' + partes[1] : '');
+}
+
 const FORMATEADORES = {
   rut: formatRutValue,
   money: formatMoneyValue,
   digits: formatDigitsValue,
-  rol: formatRolValue
+  rol: formatRolValue,
+  sup: formatSupValue
 };
 
 /* Mientras se escribe un RUT corto no conviene poner el guion todavía
@@ -1794,6 +1878,10 @@ function encabezadoComun(){
     provincia: val('provincia') || '____________',
     ubicacion: val('ubicacion') || '____________________',
     superficie: val('superficie') || '____',
+    /* Superficie ya redactada con su unidad. Si se ingresó en hectáreas se
+       agrega entre paréntesis el equivalente en m², para que el documento no
+       quede ambiguo. */
+    superficieTexto: superficieRedactada(),
     tipoBien: val('tipoBien') || 'Rural',
     calidadBien: val('calidadBien') || 'Personal',
     rolAvaluo: val('rolAvaluo') || '______',
@@ -1832,7 +1920,7 @@ function partesInforme(){
 
 2.- ${g('El solicitante es don','La solicitante es doña')} ${upper(d.nombre)}, C.I. N° ${d.rut}.
 
-3.- Según se ha comprobado con las diligencias e Informe Técnico, la solicitud de regularización se refiere a un inmueble ${d.calidadBien}, ${d.tipoBien}, ubicado en ${d.ubicacion}, Comuna de ${d.comuna}, Provincia de ${d.provincia}, Región ${d.region}, con una superficie aproximada de ${d.superficie} mt2.
+3.- Según se ha comprobado con las diligencias e Informe Técnico, la solicitud de regularización se refiere a un inmueble ${d.calidadBien}, ${d.tipoBien}, ubicado en ${d.ubicacion}, Comuna de ${d.comuna}, Provincia de ${d.provincia}, Región ${d.region}, con una superficie aproximada de ${d.superficieTexto}.
 
 - El Título de dominio que ampara el inmueble rola a Fojas ${d.fojas}, Nº ${d.numInsc} del año ${d.anioInsc} del Registro de Propiedad del Conservador de Bienes Raíces de ${d.cbr}.
 
@@ -1870,7 +1958,7 @@ Luego, de acuerdo a lo expuesto con anterioridad, procede, en un principio, la r
 
 2.- ${g('El solicitante es don','La solicitante es doña')} ${upper(d.nombre)}, C.I. N° ${d.rut}.
 
-3.- La solicitud de regularización se refiere a un inmueble ${d.calidadBien.toLowerCase()} ${d.tipoBien} ubicado en ${d.ubicacion}, Comuna de ${d.comuna}, Provincia de ${d.provincia}, Región ${d.region}, con una superficie aproximada de ${d.superficie} mt2.
+3.- La solicitud de regularización se refiere a un inmueble ${d.calidadBien.toLowerCase()} ${d.tipoBien} ubicado en ${d.ubicacion}, Comuna de ${d.comuna}, Provincia de ${d.provincia}, Región ${d.region}, con una superficie aproximada de ${d.superficieTexto}.
 
 - El Título de dominio que ampara el inmueble rola a Fojas ${d.fojas}, Nº ${d.numInsc} del año ${d.anioInsc} del Registro de Propiedad del Conservador de Bienes Raíces de ${d.cbr}.
 
@@ -2208,10 +2296,133 @@ function descargar(){
 /* ============================================================
    CALCULADORA DE AVALÚO PROPORCIONAL
    ============================================================ */
+const M2_POR_HA = 10000;
+
+/* ---------- superficie del formulario principal ---------- */
+
+function unidadSup(){ return val('supUnidad') === 'ha' ? 'ha' : 'm2'; }
+
+/* Superficie del formulario expresada en m², sea que se haya escrito en m² o
+   en hectáreas. */
+function superficieEnM2(){
+  const n = parseNum(val('superficie'));
+  if(isNaN(n)) return null;
+  return unidadSup() === 'ha' ? n * M2_POR_HA : n;
+}
+
+/* Texto que se imprime en el documento: "180,9 m²" o, si se ingresó en
+   hectáreas, "1,5 hectáreas (15.000 m²)". */
+function superficieRedactada(){
+  const texto = val('superficie');
+  if(!texto) return '____ m²';
+  const n = parseNum(texto);
+  if(isNaN(n)) return texto;
+  if(unidadSup() !== 'ha') return numeroALocal(n) + ' m²';
+  return numeroALocal(n) + ' ' + nombreUnidad('ha', n)
+       + ' (' + numeroALocal(n * M2_POR_HA, 2) + ' m²)';
+}
+
+/* Bajo el campo se muestra el equivalente en la otra unidad. */
+function actualizarEquivalenciaSup(){
+  const el = q('supEquivalencia');
+  if(!el) return;
+  const m2 = superficieEnM2();
+  if(m2 === null || !m2){ el.innerHTML = '&nbsp;'; return; }
+  el.textContent = (unidadSup() === 'ha')
+    ? '= ' + numeroALocal(m2, 2) + ' m²'
+    : '= ' + numeroALocal(m2 / M2_POR_HA) + ' ha';
+}
+
+/* Al cambiar la unidad del formulario se convierte el valor escrito. */
+function onSupUnidadChange(){
+  const nueva = unidadSup();
+  const anterior = (state.supUnidadAnterior === 'ha') ? 'ha' : 'm2';
+  if(nueva !== anterior){
+    const n = parseNum(val('superficie'));
+    if(!isNaN(n) && n){
+      const enM2 = (anterior === 'ha') ? n * M2_POR_HA : n;
+      q('superficie').value = numeroALocal(nueva === 'ha' ? enM2 / M2_POR_HA : enM2);
+    }
+  }
+  state.supUnidadAnterior = nueva;
+  actualizarEquivalenciaSup();
+  generar();
+}
+
+/* Deja las etiquetas, los ejemplos y las equivalencias acordes a la unidad
+   elegida, y rescata las superficies de borradores guardados antes de que
+   existiera la conversión. */
+function initSuperficies(){
+  [['calcSupTotales','totales'], ['calcSupReg','reg']].forEach(([id, clave])=>{
+    if(state.calcSup[clave] === null || state.calcSup[clave] === undefined){
+      const n = parseNum(val(id));
+      if(!isNaN(n)) state.calcSup[clave] = (unidadCalc() === 'ha') ? n * M2_POR_HA : n;
+    }
+  });
+  state.supUnidadAnterior = unidadSup();
+
+  const u = unidadCalc();
+  document.querySelectorAll('.uni-sup').forEach(sp=>{ sp.textContent = etiquetaUnidad(u); });
+  q('calcSupTotales').placeholder = (u === 'ha') ? '0,49'   : '4.900';
+  q('calcSupReg').placeholder     = (u === 'ha') ? '0,0181' : '180,9';
+
+  q('superficie').addEventListener('input', actualizarEquivalenciaSup);
+  actualizarEquivalenciaSup();
+}
+
+/* ---------- superficie de la calculadora ---------- */
+
+function unidadCalc(){ return val('calcUnidad') === 'ha' ? 'ha' : 'm2'; }
+function etiquetaUnidad(u){ return u === 'ha' ? 'ha' : 'm²'; }
+function nombreUnidad(u, n){
+  if(u !== 'ha') return 'm²';
+  return (Math.abs(n) === 1) ? 'hectárea' : 'hectáreas';
+}
+
+/* Las superficies se guardan SIEMPRE en m² (state.calcSup). Así, al cambiar
+   de unidad, se vuelve a mostrar el valor convertido sin perder precisión por
+   los redondeos de pantalla. */
+function onCalcSupInput(id, clave){
+  const n = parseNum(val(id));
+  state.calcSup[clave] = isNaN(n) ? null : (unidadCalc() === 'ha' ? n * M2_POR_HA : n);
+  calcular();
+}
+
+function onCalcUnidadChange(){
+  const u = unidadCalc();
+  [['calcSupTotales','totales'], ['calcSupReg','reg']].forEach(([id, clave])=>{
+    const m2 = state.calcSup[clave];
+    q(id).value = (m2 === null || m2 === undefined)
+      ? ''
+      : numeroALocal(u === 'ha' ? m2 / M2_POR_HA : m2);
+  });
+
+  // etiquetas y textos de ayuda siguen a la unidad elegida
+  document.querySelectorAll('.uni-sup').forEach(sp=>{ sp.textContent = etiquetaUnidad(u); });
+  q('calcSupTotales').placeholder = (u === 'ha') ? '0,49' : '4.900';
+  q('calcSupReg').placeholder     = (u === 'ha') ? '0,0181' : '180,9';
+
+  calcular();
+}
+
+/* Muestra bajo cada campo el mismo valor en la otra unidad. */
+function actualizarEquivalencias(){
+  const u = unidadCalc();
+  [['calcEqTotales','totales'], ['calcEqReg','reg']].forEach(([idTexto, clave])=>{
+    const el = q(idTexto);
+    if(!el) return;
+    const m2 = state.calcSup[clave];
+    if(m2 === null || m2 === undefined || !m2){ el.innerHTML = '&nbsp;'; return; }
+    el.textContent = (u === 'ha')
+      ? '= ' + numeroALocal(m2, 2) + ' m²'
+      : '= ' + numeroALocal(m2 / M2_POR_HA) + ' ha';
+  });
+}
+
 function calcular(){
   const avaluoTotal = parseNum(val('calcAvaluoTotal'))||0;
-  const m2Totales = Number(val('calcM2Totales'))||0;
-  const m2Reg = Number(val('calcM2Reg'))||0;
+  const m2Totales = state.calcSup.totales || 0;
+  const m2Reg = state.calcSup.reg || 0;
   const utm = parseNum(val('calcUTM'))||0;
   const tipo = val('calcTipo');
   const factor = tipo==='urbano' ? 380 : 800;
@@ -2222,8 +2433,14 @@ function calcular(){
   }
   window.__ultimoProporcional = proporcional;
 
+  actualizarEquivalencias();
+
+  /* La fórmula se muestra en la unidad elegida; el cálculo se hace en m². */
+  const u = unidadCalc();
+  const mostrar = (m2)=> numeroALocal(u === 'ha' ? m2 / M2_POR_HA : m2) + ' ' + etiquetaUnidad(u);
+
   q('calcResultado').textContent = money(proporcional) || '$0';
-  q('calcFormula').textContent = `(${m2Reg||0} m² × ${money(avaluoTotal)||'$0'}) ÷ ${m2Totales||0} m² = ${money(proporcional)||'$0'}`;
+  q('calcFormula').textContent = `(${mostrar(m2Reg)} × ${money(avaluoTotal)||'$0'}) ÷ ${mostrar(m2Totales)} = ${money(proporcional)||'$0'}`;
 
   const tope = utm * factor;
   window.__ultimoTope = money(tope);
@@ -2244,10 +2461,18 @@ function calcular(){
 
 function usarEnFormulario(){
   const avaluoTotal = val('calcAvaluoTotal');
-  const m2Reg = val('calcM2Reg');
   if(avaluoTotal) q('avaluoTotal').value = formatMoneyValue(avaluoTotal);
   if(window.__ultimoProporcional) q('avaluoProporcional').value = formatMoneyValue(Math.round(window.__ultimoProporcional));
-  if(m2Reg) q('superficie').value = m2Reg;
+
+  /* La superficie a regularizar pasa al formulario con la misma unidad que se
+     usó en la calculadora. */
+  const m2Reg = state.calcSup.reg;
+  if(m2Reg !== null && m2Reg !== undefined && m2Reg){
+    const u = unidadCalc();
+    q('supUnidad').value = u;
+    q('superficie').value = numeroALocal(u === 'ha' ? m2Reg / M2_POR_HA : m2Reg);
+  }
+
   if(val('calcTipo')==='urbano') q('tipoBien').value = 'Urbano'; else q('tipoBien').value = 'Rural';
   flashStatus('Valores aplicados al formulario del documento ✓');
   generar();
@@ -2597,7 +2822,10 @@ function autocompletarOficios(){
     q('ofComunaDom').value = comuna;
     onOfComunaChange();
   }
-  q('ofSuperficie').value = val('superficie');
+  /* La plantilla Word del oficio dice "m²", así que si la superficie se
+     ingresó en hectáreas se convierte automáticamente. */
+  const supM2 = superficieEnM2();
+  q('ofSuperficie').value = (supM2 === null) ? '' : numeroALocal(supM2, 2);
   q('ofModoAdq').value = val('modoAdq') || 'compraventa';
   q('ofFojas').value = val('fojas');
   q('ofNumInsc').value = val('numInsc');
@@ -2932,6 +3160,8 @@ function guardarAhora(){
         esFiscal: state.esFiscal,
         tipoResolucion: state.tipoResolucion,
         tipoNotificacion: state.tipoNotificacion,
+        calcSup: state.calcSup,
+        supUnidadAnterior: state.supUnidadAnterior,
         presuntos: state.presuntos,
         presuntosTipo: state.presuntosTipo,
         motivosOrden: state.motivosOrden,
@@ -2981,6 +3211,8 @@ function restaurarTodo(){
     if(typeof est.esFiscal === 'boolean') state.esFiscal = est.esFiscal;
     if(est.tipoResolucion) state.tipoResolucion = est.tipoResolucion;
     if(est.tipoNotificacion) state.tipoNotificacion = est.tipoNotificacion;
+    if(est.calcSup) state.calcSup = est.calcSup;
+    if(est.supUnidadAnterior) state.supUnidadAnterior = est.supUnidadAnterior;
     if(Array.isArray(est.presuntos)) state.presuntos = est.presuntos;
     if(est.presuntosTipo) state.presuntosTipo = est.presuntosTipo;
     if(Array.isArray(est.motivosOrden)) state.motivosOrden = est.motivosOrden;
@@ -3033,6 +3265,10 @@ function restaurarTodo(){
 
     // 4) los presuntos dueños se dibujan desde el estado (no tienen id propio)
     renderPresuntos();
+
+    // las etiquetas y equivalencias de superficie siguen a la unidad guardada
+    document.querySelectorAll('.uni-sup').forEach(sp=>{ sp.textContent = etiquetaUnidad(unidadCalc()); });
+    actualizarEquivalenciaSup();
 
     // 5) los conservadores usan desplegable + campo libre
     sincronizarCbrSelect('cbrSelect','cbr');
@@ -3114,6 +3350,7 @@ renderPresuntos();
 const habiaBorrador = restaurarTodo();
 
 renderOrdenMotivos();
+initSuperficies();
 calcular();
 generar();
 
