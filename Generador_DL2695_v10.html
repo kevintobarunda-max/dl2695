@@ -298,7 +298,7 @@
   .mas-fila .mas-acc button:hover{background:#eef2f7;}
   .mas-fila .mas-acc button.del:hover{background:#fde8e8;border-color:#e88;}
   .mas-fila label{display:block;font-size:10.5px;color:#5a6a7d;margin:4px 0 2px;}
-  .mas-fila input{
+  .mas-fila input, .mas-fila select{
     width:100%;box-sizing:border-box;font-size:12px;padding:4px 6px;
     border:1px solid var(--linea,#d8dee7);border-radius:5px;background:#fff;
   }
@@ -1441,13 +1441,15 @@
           <div class="grid2">
             <div class="field">
               <label>Expediente</label>
-              <input type="text" id="bitExp" placeholder="" data-fmt="digits" list="padronLista">
+              <input type="text" id="bitExp" placeholder="" data-fmt="digits" list="padronLista"
+                     oninput="bitacoraExpMostrar(this.value)" onchange="bitacoraExpMostrar(this.value)">
             </div>
             <div class="field">
               <label>Fecha</label>
               <input type="date" id="bitFecha">
             </div>
           </div>
+          <p class="hint" id="bitExpAviso" style="margin:2px 0 8px;display:none"></p>
           <div class="grid2">
             <div class="field">
               <label>Tarea / documento</label>
@@ -1724,6 +1726,7 @@
         <button class="btn btn-outline btn-sm" onclick="generarOficioPreview()">↻ Actualizar vista previa</button>
         <button class="btn btn-primary btn-sm" onclick="descargarOficio()">⬇ Descargar Oficio (Word)</button>
         <button class="btn btn-red btn-sm" onclick="descargarTrioOficios()" title="Con los mismos datos genera los tres oficios y los entrega en un ZIP">⬇ Los 3 a la vez (DOM · MINVU · SERVIU)</button>
+        <button class="btn btn-red btn-sm" id="btnOficiosDomPorComuna" style="display:none" onclick="descargarOficiosDomPorComuna()" title="Agrupa los expedientes del oficio masivo por comuna y genera un Oficio DOM independiente por cada una">⬇ Oficios DOM por comuna</button>
       </div>
     </div>
     <div class="paper-wrap">
@@ -5557,6 +5560,10 @@ function renderOficioTipo(){
   /* Los N° de ordinario por institución sólo sirven para el despacho de los
      tres juntos, que no aplica al Conservador. */
   q('ofFieldTrioNums').style.display       = (tipo === 'conservador') ? 'none' : 'block';
+  /* El botón de oficios DOM por comuna sólo tiene sentido en el oficio masivo,
+     que es donde puede haber expedientes de varias comunas a la vez. */
+  const btnPorComuna = q('btnOficiosDomPorComuna');
+  if(btnPorComuna) btnPorComuna.style.display = masivo ? 'inline-block' : 'none';
   // el campo de fecha queda siempre oculto: los oficios se emiten sin fecha
 
   renderOficioPadron();
@@ -5577,7 +5584,11 @@ const MASIVO_CAMPOS = [
   {k:'solicitante', etiqueta:'SOLICITANTE', ph:''},
   {k:'ubicacion',   etiqueta:'UBICACIÓN',   ph:''},
   {k:'rol',         etiqueta:'ROL',         ph:''},
-  {k:'inscripcion', etiqueta:'INSCRIPCIÓN', ph:''}
+  {k:'inscripcion', etiqueta:'INSCRIPCIÓN', ph:''},
+  /* No se imprime en la tabla del oficio (el destinatario ya la nombra), pero
+     es la que permite agrupar las filas por comuna al emitir un DOM por
+     comuna: cada expediente puede ser de una comuna distinta. */
+  {k:'comuna',      etiqueta:'COMUNA (Dirección de Obras)', ph:'', select:true}
 ];
 
 function masivoFilaVacia(){
@@ -5648,6 +5659,24 @@ function renderMasivoFilas(){
 
   cont.innerHTML = filas.map((f,i)=>{
     const campo = (c)=>{
+      if(c.select){
+        // El campo comuna es un <select> con las comunas de la Región del
+        // Maule agrupadas por provincia, igual que el resto del generador.
+        // La comparación ignora tildes y mayúsculas (por ej. si la comuna
+        // llegó pegada desde Excel con otro formato), igual que calzarOpcion.
+        const actual = sinAcentos(f[c.k] || '').toLowerCase().trim();
+        let opciones = '<option value="">— sin comuna —</option>';
+        Object.keys(COMUNAS_MAULE).forEach(prov=>{
+          opciones += `<optgroup label="Provincia de ${prov}">`;
+          COMUNAS_MAULE[prov].forEach(com=>{
+            const coincide = sinAcentos(com).toLowerCase() === actual;
+            opciones += `<option value="${com}"${coincide?' selected':''}>${com}</option>`;
+          });
+          opciones += '</optgroup>';
+        });
+        return `<label>${c.etiqueta}</label>`
+             + `<select data-mas-idx="${i}" data-mas-campo="${c.k}">${opciones}</select>`;
+      }
       const fmt = c.fmt ? ` data-fmt="${c.fmt}"` : '';
       const v = (f[c.k]||'').replace(/"/g,'&quot;');
       return `<label>${c.etiqueta}</label>`
@@ -5675,6 +5704,7 @@ function renderMasivoFilas(){
         <div>${c.rol}</div>
         <div>${c.inscripcion}</div>
       </div>
+      ${c.comuna}
     </div>`;
   }).join('');
 
@@ -5692,6 +5722,15 @@ function renderMasivoFilas(){
     };
     el.addEventListener('input', ()=>sync(false));
     el.addEventListener('blur',  ()=>sync(true));
+  });
+  cont.querySelectorAll('select[data-mas-campo]').forEach(el=>{
+    const i = Number(el.dataset.masIdx);
+    const k = el.dataset.masCampo;
+    el.addEventListener('change', ()=>{
+      if(state.masivoFilas[i]) state.masivoFilas[i][k] = el.value;
+      guardarTodo();
+      previewOficioDiferido();
+    });
   });
 }
 
@@ -5757,7 +5796,8 @@ function masivoAgregarDesdeInforme(){
     solicitante: upper(val('nombre')),
     ubicacion: upper(val('ubicacion')) + (comunaMay ? (val('ubicacion') ? ', ' : '') + comunaMay + '.' : ''),
     rol: rol ? ('ROL N°' + rol + (comunaMay ? ', ' + comunaMay : '') + '.') : '',
-    inscripcion: inscripcion
+    inscripcion: inscripcion,
+    comuna: comuna
   });
 
   /* Se sugiere la comuna del expediente: sirve tanto si este oficio va a la DOM
@@ -5778,7 +5818,7 @@ function masivoPegar(){
   const txt = prompt(
     'Pega aquí las filas copiadas desde Excel.\n' +
     'Una línea por expediente, columnas en este orden:\n' +
-    'EXP.  RUT  SOLICITANTE  UBICACIÓN  ROL  INSCRIPCIÓN'
+    'EXP.  RUT  SOLICITANTE  UBICACIÓN  ROL  INSCRIPCIÓN  COMUNA (opcional, para «Oficios DOM por comuna»)'
   );
   if(!txt) return;
   let n = 0;
@@ -5797,10 +5837,14 @@ function masivoPegar(){
 }
 
 // Datos con los que se rellena la plantilla del oficio masivo.
-function datosOficioMasivo(){
-  const filas = state.masivoFilas.length
-    ? state.masivoFilas
-    : [masivoFilaVacia()];
+// filasPropias / destinatarioPropio: permiten reutilizar esta misma función
+// para armar un oficio con sólo un subconjunto de expedientes y un
+// destinatario distinto al elegido en el formulario (lo usa la generación de
+// un Oficio DOM por cada comuna).
+function datosOficioMasivo(filasPropias, destinatarioPropio){
+  const filas = (filasPropias && filasPropias.length)
+    ? filasPropias
+    : (state.masivoFilas.length ? state.masivoFilas : [masivoFilaVacia()]);
   const varios = filas.length > 1;
 
   /* Concordancia de género y número de la frase de apertura. Con un solo
@@ -5819,7 +5863,7 @@ function datosOficioMasivo(){
   return {
     ord_n: blank(val('ofOrdN'),'______'),
     ord_anio: blank(val('ofOrdAnio'),'____'),
-    destinatario: destinatarioMasivo(),
+    destinatario: destinatarioPropio || destinatarioMasivo(),
     intro_frase: intro,
     ref_solicitante: varios ? 'los solicitantes' : 'el solicitante',
     iniciales: val('ofIniciales') || inicialesDistribucion(),
@@ -5949,7 +5993,8 @@ function masivoAgregarDesdePadron(){
       ? upper(extra.ubicacion) + (comunaMay ? ', ' + comunaMay + '.' : '')
       : '',
     rol: rol ? ('ROL N°' + rol + (comunaMay ? ', ' + comunaMay : '') + '.') : '',
-    inscripcion: inscripcionTexto(extra)
+    inscripcion: inscripcionTexto(extra),
+    comuna: r.comuna || extra.comuna || ''
   });
   if(r.comuna && !val('ofMasComuna')) calzarOpcion('ofMasComuna', r.comuna);
   q('ofMasExpPadron').value = '';
@@ -6620,6 +6665,97 @@ async function descargarTrioOficios(){
   }
 }
 
+/* ============================================================
+   OFICIOS DOM POR COMUNA — un .docx por cada comuna del oficio masivo
+
+   El oficio masivo agrupa varios expedientes en un solo documento, pero la
+   Dirección de Obras Municipal es de cada comuna: si los expedientes son de
+   comunas distintas, no corresponde mandarles a todas el mismo oficio con
+   todos los expedientes mezclados. Esta función agrupa las filas del oficio
+   masivo por la comuna que se haya indicado en cada una, y genera un Oficio a
+   la DOM independiente por cada comuna, dirigido sólo a esa Municipalidad y
+   con sólo los expedientes que le corresponden.
+
+   Los archivos se entregan juntos en un .zip, igual que "Los 3 a la vez".
+   ============================================================ */
+/* Devuelve el nombre "oficial" de la comuna (tal como está en COMUNAS_MAULE),
+   comparando sin tildes ni mayúsculas. Si no calza con ninguna (por ejemplo un
+   texto pegado desde Excel con otro formato), se deja el texto tal cual llegó,
+   recortado, para no perder el dato aunque no se pueda normalizar. */
+function comunaCanonica(texto){
+  const t = (texto || '').trim();
+  if(!t) return '';
+  const buscado = sinAcentos(t).toLowerCase();
+  for(const prov in COMUNAS_MAULE){
+    const encontrada = COMUNAS_MAULE[prov].find(c => sinAcentos(c).toLowerCase() === buscado);
+    if(encontrada) return encontrada;
+  }
+  return t;
+}
+
+function masivoAgruparPorComuna(){
+  const grupos = new Map();
+  state.masivoFilas.forEach(f=>{
+    const comuna = comunaCanonica(f.comuna);
+    const clave = comuna || '(sin comuna)';
+    if(!grupos.has(clave)) grupos.set(clave, []);
+    grupos.get(clave).push(f);
+  });
+  return grupos;
+}
+
+async function descargarOficiosDomPorComuna(){
+  if(!soportaZip()){
+    q('ofStatus').textContent = AVISO_NAVEGADOR;
+    return;
+  }
+  if(!state.masivoFilas.length){
+    q('ofStatus').textContent = 'Agrega al menos un expediente a la lista antes de generar los oficios DOM por comuna.';
+    return;
+  }
+
+  const grupos = masivoAgruparPorComuna();
+  const sinComuna = grupos.get('(sin comuna)');
+  if(sinComuna && sinComuna.length){
+    q('ofStatus').textContent = 'Hay ' + sinComuna.length + ' expediente(s) sin comuna asignada: '
+      + 'indícala en el desplegable «COMUNA (Dirección de Obras)» de cada fila del oficio masivo antes de continuar.';
+    return;
+  }
+
+  q('ofStatus').textContent = 'Generando un oficio DOM por cada comuna…';
+
+  try{
+    const archivos = [];
+    const generados = [];
+
+    for(const [comuna, filas] of grupos){
+      const datos = datosOficioMasivo(filas, destinatarioInstitucion('dom', comuna));
+      const blob = await blobOficio('masivo', datos);
+      const nombre = 'Oficio_DOM_' + limpiarNombreArchivo(comuna) + '_' + filas.length + '_expedientes.docx';
+      archivos.push(await zipEntradaBlob(nombre, blob));
+      generados.push(nombre);
+    }
+
+    const zipBlob = await zipEscribir(archivos, 'application/zip');
+    const nombreZip = 'Oficios_DOM_por_comuna_' + grupos.size + '_comuna(s).zip';
+
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombreZip;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+
+    q('ofStatus').textContent = '✓ Se generó un Oficio DOM por cada comuna en ' + nombreZip
+      + ' — ' + generados.join(' · ');
+  } catch(err){
+    console.error(err);
+    q('ofStatus').textContent = 'Ocurrió un error generando los oficios DOM por comuna: ' + err.message;
+  }
+}
+
 function irAOficios(){
   document.querySelector('#mainTabs button[data-tab="oficios"]').click();
   setTimeout(autocompletarOficios, 50);
@@ -6958,7 +7094,7 @@ function padronAplicar(exp){
   const sel = q('padronSelect');
   if(sel) sel.value = '';
   const bitExp = q('bitExp');
-  if(bitExp && !bitExp.value) bitExp.value = r.exp;
+  if(bitExp && !bitExp.value){ bitExp.value = r.exp; bitacoraExpMostrar(r.exp); }
 
   /* El resumen se deja a la vista en la propia ficha, sin ventanas que
      interrumpan: lo que falta por completar se lee de un vistazo. */
@@ -7014,9 +7150,11 @@ const BITACORA_DESDE_TAB = {
    se anota una tarea nueva se guardan con ella. Después, al hacer el oficio del
    mismo expediente, se recuperan solos.
 
-   Sólo se guardan en las tareas nuevas: las que vienen de importar el padrón no
-   tienen de dónde sacarlos. */
-const BITACORA_DATOS_CAMPOS = ['ubicacion','fojas','numInsc','anioInsc','cbr','rolAvaluo'];
+   Se agregaron también comuna, superficie, nombre, rut y modoAdq: así, al
+   agregar una tarea, queda guardado TODO lo que el formulario tenía escrito de
+   ese expediente, no sólo lo que cita el oficio. */
+const BITACORA_DATOS_CAMPOS = ['ubicacion','fojas','numInsc','anioInsc','cbr','rolAvaluo',
+  'comuna','superficie','nombre','rut','modoAdq'];
 
 function bitacoraCapturarDatos(){
   const datos = {};
@@ -7037,6 +7175,71 @@ function bitacoraDatosDe(exp){
     BITACORA_DATOS_CAMPOS.forEach(k=>{ if(t.datos[k]) salida[k] = t.datos[k]; });
   });
   return salida;
+}
+
+/* ---------- Toda la información disponible de un expediente ----------
+   Al agregar una tarea a la bitácora (sea desde un documento abierto o
+   escribiendo el N° a mano), se guarda con ella TODO lo que ya se sabe de ese
+   expediente, combinando tres fuentes, de la más general a la más fresca:
+
+     1) el padrón          — lo que trae la tabla de la unidad (comuna, rol,
+                              solicitante, RUT, superficie, modo de adquisición)
+     2) tareas anteriores  — lo que ya se había guardado en otra tarea de este
+                              mismo expediente (dirección, inscripción, etc.)
+     3) el formulario      — si el expediente que se está anotando es el mismo
+                              que está abierto en el panel del documento, lo que
+                              esté escrito ahí, que es siempre el dato más nuevo
+
+   Cada fuente puede completar lo que a la anterior le falte, así la tarea que
+   se guarda no depende de que todo esté escrito en un solo lugar. */
+function bitacoraDatosCompletos(exp){
+  const clave = String(exp == null ? '' : exp).trim();
+  if(!clave) return null;
+  const salida = {};
+
+  const r = padronBuscar(clave);
+  if(r){
+    if(r.comuna) salida.comuna = r.comuna;
+    if(r.rol) salida.rolAvaluo = r.rol;
+    if(r.solicitante) salida.nombre = r.solicitante;
+    if(r.rut) salida.rut = r.rut;
+    if(r.superficie != null) salida.superficie = numeroALocal(r.superficie, 2);
+    if(r.modo) salida.modoAdq = r.modo;
+  }
+
+  Object.assign(salida, bitacoraDatosDe(clave));
+
+  if(clave === val('expN')){
+    Object.assign(salida, bitacoraCapturarDatos() || {});
+  }
+
+  return Object.keys(salida).length ? salida : null;
+}
+
+/* Muestra, junto al campo de expediente de la bitácora, lo que ya se conoce de
+   él (padrón + tareas anteriores), para saber de antemano qué quedará guardado
+   con la tarea que se está a punto de agregar. */
+function bitacoraExpMostrar(exp){
+  const aviso = q('bitExpAviso');
+  if(!aviso) return;
+  const clave = String(exp || '').trim();
+  if(!clave){ aviso.style.display = 'none'; return; }
+
+  const datos = bitacoraDatosCompletos(clave);
+  const previas = state.bitacora.filter(t => t.exp === clave).length;
+  if(!datos && !previas){ aviso.style.display = 'none'; return; }
+
+  const piezas = [];
+  if(datos){
+    if(datos.nombre) piezas.push(escaparHtml(datos.nombre));
+    if(datos.comuna) piezas.push('Comuna ' + escaparHtml(datos.comuna));
+    if(datos.rolAvaluo) piezas.push('Rol ' + escaparHtml(datos.rolAvaluo));
+    if(datos.ubicacion) piezas.push(escaparHtml(datos.ubicacion));
+  }
+
+  aviso.style.display = 'block';
+  aviso.innerHTML = (piezas.length ? 'Se conoce: ' + piezas.join(' · ') : 'Sin datos guardados aún para este expediente.')
+    + (previas ? ' · ' + previas + ' tarea(s) ya registrada(s)' : '');
 }
 
 /* Texto de la inscripción como la escribe la unidad en la tabla del oficio. */
@@ -7081,9 +7284,12 @@ function bitacoraAgregarDesdeDocumento(){
     return;
   }
 
-  /* Se guardan con la tarea la dirección y la inscripción conservatoria que
-     estén escritas, para que el oficio de este expediente las tenga después. */
-  const datos = bitacoraCapturarDatos();
+  /* Se guarda con la tarea toda la información disponible del expediente: lo
+     que está escrito ahora en el formulario (dirección, inscripción, etc.) y
+     lo que ya trajera el padrón (comuna, rol, solicitante, RUT, superficie,
+     modo de adquisición), para que el oficio de este expediente lo tenga
+     completo después, sin depender de que se haya cargado todo a mano. */
+  const datos = bitacoraDatosCompletos(exp);
   state.bitacora.push({
     exp: exp,
     fecha: new Date().toISOString().slice(0,10),
@@ -7107,6 +7313,7 @@ function initBitacora(){
   }
   if(q('bitFecha') && !val('bitFecha')) q('bitFecha').value = new Date().toISOString().slice(0,10);
   if(q('bitExp') && !val('bitExp') && val('expN')) q('bitExp').value = val('expN');
+  if(q('bitExp') && val('bitExp')) bitacoraExpMostrar(val('bitExp'));
   renderPadronSelect();
   if(state.padronTabla){
     renderPadronMapeo();
@@ -7131,7 +7338,7 @@ function bitacoraDesdeFormulario(){
   const tarea = bitacoraTareaDeTab(state.ultimaTabDoc || 'informe');
   if(!tarea){ q('bitStatus').textContent = 'No hay un documento reciente del cual tomar los datos.'; return; }
 
-  if(val('expN')) q('bitExp').value = val('expN');
+  if(val('expN')){ q('bitExp').value = val('expN'); bitacoraExpMostrar(val('expN')); }
   q('bitFecha').value = new Date().toISOString().slice(0,10);
   q('bitNombre').value = tarea.nombre;
   q('bitNumero').value = tarea.numero;
@@ -7233,10 +7440,14 @@ function bitacoraAgregar(){
   const nombre = val('bitNombre');
   if(!nombre){ q('bitStatus').textContent = 'Elige la tarea o documento realizado.'; return; }
 
-  /* Los datos del formulario se guardan SÓLO si la tarea es de ese mismo
-     expediente: si se está anotando otro, pertenecen a un expediente distinto. */
+  /* Se guarda con la tarea TODA la información disponible de ese expediente:
+     lo que ya tenga el padrón, lo que se hubiera anotado en tareas anteriores,
+     y —si es el mismo expediente que está abierto en el panel del documento—
+     también lo que esté escrito ahí en este momento. Así no hace falta que el
+     usuario tenga el formulario abierto en el expediente correcto para que la
+     bitácora quede completa. */
   const mismoExp = exp === val('expN');
-  const datos = mismoExp ? bitacoraCapturarDatos() : null;
+  const datos = bitacoraDatosCompletos(exp);
 
   state.bitacora.push({
     exp: exp,
@@ -7251,9 +7462,9 @@ function bitacoraAgregar(){
   q('bitNota').value = '';
   renderBitacora();
   guardarTodo();
+  const guardados = datos ? Object.keys(datos).length : 0;
   q('bitStatus').textContent = '✓ Tarea agregada al expediente ' + exp + '.'
-    + (datos ? ' Se guardaron los datos del expediente para los oficios.' : '')
-    + (!mismoExp && val('expN') ? ' No se guardaron los datos del formulario: son del expediente ' + val('expN') + '.' : '');
+    + (guardados ? ' Se guardaron ' + guardados + ' dato(s) del expediente (padrón' + (mismoExp ? ' + formulario' : '') + ').' : '');
 }
 
 function bitacoraEliminar(i){
