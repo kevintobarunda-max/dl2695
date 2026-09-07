@@ -159,11 +159,12 @@
   .bit-red p{margin:0 0 4px;text-align:justify;}
   .bit-tbl-ancha td:nth-child(6){min-width:300px;}
 
-  /* ---- Impresión: sólo sale la bitácora ---- */
-  #bitacoraImpresion{display:none;}
+  /* ---- Impresión: sólo sale la bitácora o el oficio, según cuál se pidió ---- */
+  #bitacoraImpresion, #oficioImpresion{display:none;}
   @media print{
     body > *{display:none !important;}
     body > #bitacoraImpresion{display:block !important;}
+    body > #oficioImpresion{display:block !important;}
     #bitacoraImpresion h1{font-size:13pt;text-align:center;margin:0 0 8pt;}
     #bitacoraImpresion table{width:100%;border-collapse:collapse;font-size:8pt;}
     #bitacoraImpresion th,#bitacoraImpresion td{border:1px solid #666;padding:2pt 3pt;
@@ -174,6 +175,36 @@
     #bitacoraImpresion tr{page-break-inside:avoid;}
     #bitacoraImpresion .bit-pie{font-size:7.5pt;margin-top:8pt;}
     @page{size:A4 landscape;margin:10mm;}
+
+    /* El oficio se imprime en tamaño Oficio (12240x18720 twips = 21,6x33 cm),
+       igual que la plantilla Word original, para que la paginación del PDF
+       coincida con la del .docx. */
+    #oficioImpresion{font-family:var(--serif);font-size:13.5pt;line-height:1.55;color:#000;}
+    #oficioImpresion .of-header-logo{
+      display:flex;align-items:center;gap:10pt;margin-bottom:14pt;padding-bottom:10pt;
+      border-bottom:2pt solid #1e3a63;
+    }
+    #oficioImpresion .of-header-logo .mark{
+      width:34pt;height:34pt;border-radius:5pt;flex:none;
+      background:#1e3a63;color:#fff;display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:11pt;
+    }
+    #oficioImpresion .of-header-logo .txt{font-size:8pt;line-height:1.4;}
+    #oficioImpresion .of-header-logo .txt b{display:block;font-size:9pt;}
+    #oficioImpresion p{margin:0 0 8pt 0;white-space:pre-wrap;}
+    #oficioImpresion p.of-center{text-align:center;}
+    #oficioImpresion p.of-right{text-align:right;}
+    #oficioImpresion p.of-bold{font-weight:700;}
+    #oficioImpresion p.of-empty{margin:0 0 3pt 0;min-height:6pt;}
+    #oficioImpresion table.of-tbl{border-collapse:collapse;width:100%;margin:0 0 8pt 0;font-size:9pt;}
+    #oficioImpresion table.of-tbl td{border:1pt solid #333;padding:2pt 4pt;vertical-align:top;}
+    #oficioImpresion table.of-tbl tr:first-child td{font-weight:700;background:#f2f4f7;}
+    /* Cuando se exportan varios oficios juntos (Los 3 a la vez, DOM por
+       comuna), cada uno queda envuelto en su propio .of-doc y empieza en una
+       página nueva, salvo el primero. */
+    #oficioImpresion .of-doc + .of-doc{page-break-before:always;}
+    @page oficio{size:216mm 330mm;margin:15mm;}
+    #oficioImpresion{page:oficio;}
   }
   .gender-toggle{display:flex;gap:8px;}
   .gender-toggle button{
@@ -1510,6 +1541,11 @@
      PDF. -->
 <div id="bitacoraImpresion"></div>
 
+<!-- Igual que el de la bitácora, pero para exportar un oficio a PDF: se
+     rellena con el mismo HTML de la vista previa del oficio y las reglas de
+     @media print hacen que sea lo único visible al imprimir. -->
+<div id="oficioImpresion"></div>
+
 <div class="layout" id="oficiosView" style="display:none">
   <aside class="panel">
     <div class="panel-head">
@@ -1725,8 +1761,11 @@
       <div class="btn-row" style="margin-top:0">
         <button class="btn btn-outline btn-sm" onclick="generarOficioPreview()">↻ Actualizar vista previa</button>
         <button class="btn btn-primary btn-sm" onclick="descargarOficio()">⬇ Descargar Oficio (Word)</button>
-        <button class="btn btn-red btn-sm" onclick="descargarTrioOficios()" title="Con los mismos datos genera los tres oficios y los entrega en un ZIP">⬇ Los 3 a la vez (DOM · MINVU · SERVIU)</button>
-        <button class="btn btn-red btn-sm" id="btnOficiosDomPorComuna" style="display:none" onclick="descargarOficiosDomPorComuna()" title="Agrupa los expedientes del oficio masivo por comuna y genera un Oficio DOM independiente por cada una">⬇ Oficios DOM por comuna</button>
+        <button class="btn btn-outline btn-sm" onclick="exportarOficioPdf()" title="Abre el diálogo de impresión con este oficio: elige «Guardar como PDF» como destino">⬇ Descargar Oficio (PDF)</button>
+        <button class="btn btn-red btn-sm" onclick="descargarTrioOficios()" title="Con los mismos datos genera los tres oficios y los entrega en un ZIP">⬇ Los 3 a la vez (DOM · MINVU · SERVIU · Word)</button>
+        <button class="btn btn-outline btn-sm" onclick="exportarTrioOficiosPdf()" title="Abre el diálogo de impresión con los tres oficios, cada uno en su página: elige «Guardar como PDF»">⬇ Los 3 a la vez (PDF)</button>
+        <button class="btn btn-red btn-sm" id="btnOficiosDomPorComuna" style="display:none" onclick="descargarOficiosDomPorComuna()" title="Agrupa los expedientes del oficio masivo por comuna y genera un Oficio DOM independiente por cada una">⬇ Oficios DOM por comuna (Word)</button>
+        <button class="btn btn-outline btn-sm" id="btnOficiosDomPorComunaPdf" style="display:none" onclick="exportarOficiosDomPorComunaPdf()" title="Abre el diálogo de impresión con un Oficio DOM por cada comuna, cada uno en su página: elige «Guardar como PDF»">⬇ Oficios DOM por comuna (PDF)</button>
       </div>
     </div>
     <div class="paper-wrap">
@@ -5564,6 +5603,8 @@ function renderOficioTipo(){
      que es donde puede haber expedientes de varias comunas a la vez. */
   const btnPorComuna = q('btnOficiosDomPorComuna');
   if(btnPorComuna) btnPorComuna.style.display = masivo ? 'inline-block' : 'none';
+  const btnPorComunaPdf = q('btnOficiosDomPorComunaPdf');
+  if(btnPorComunaPdf) btnPorComunaPdf.style.display = masivo ? 'inline-block' : 'none';
   // el campo de fecha queda siempre oculto: los oficios se emiten sin fecha
 
   renderOficioPadron();
@@ -6393,13 +6434,11 @@ function repetirFilasTabla(xml, filas){
   return xml.slice(0, inicio) + generadas + xml.slice(fin);
 }
 
-// Extrae el texto de cada párrafo (w:p) del XML de Word y lo renderiza en el
-// panel de vista previa, respetando alineación centrada/derecha y negrita,
-// para que se vea tal cual quedará en el documento final.
-function renderOficioXmlEnPreview(xml){
-  const contenedor = q('ofPreview');
-  if(!contenedor) return;
-  try{
+// Extrae el texto de cada párrafo (w:p) del XML de Word y devuelve el HTML
+// del cuerpo del oficio, respetando alineación centrada/derecha y negrita,
+// para que se vea tal cual quedará en el documento final. Se usa tanto para
+// la vista previa en pantalla como para armar el PDF de impresión.
+function xmlOficioACuerpoHtml(xml){
     const doc = new DOMParser().parseFromString(xml, 'application/xml');
     const parseError = doc.querySelector('parsererror');
     if(parseError) throw new Error('No se pudo interpretar el documento.');
@@ -6466,7 +6505,15 @@ function renderOficioXmlEnPreview(xml){
       }
     });
 
-    contenedor.innerHTML = html || '<p class="of-empty">&nbsp;</p>';
+    return html || '<p class="of-empty">&nbsp;</p>';
+}
+
+// Muestra el oficio en el panel de vista previa de la pantalla.
+function renderOficioXmlEnPreview(xml){
+  const contenedor = q('ofPreview');
+  if(!contenedor) return;
+  try{
+    contenedor.innerHTML = xmlOficioACuerpoHtml(xml);
   } catch(err){
     console.error(err);
     contenedor.innerHTML = '<p class="of-empty">No se pudo generar la vista previa.</p>';
@@ -6536,7 +6583,7 @@ async function descargarOficio(){
       minvu: 'Oficio_SEREMI_MINVU',
       serviu: 'Oficio_SERVIU',
       conservador: 'Oficio_Conservador_' + (val('ofCbr')||'CBR'),
-      masivo: 'Oficio_Masivo_' + destinoMasivo + '_' + state.masivoFilas.length + '_expedientes'
+      masivo: 'Oficio_Masivo_' + destinoMasivo
     }[tipo].replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_') + '.docx';
 
     const url = URL.createObjectURL(blob);
@@ -6630,9 +6677,7 @@ async function descargarTrioOficios(){
 
       const blob = await blobOficio(masivo ? 'masivo' : inst, datos);
 
-      const sufijo = masivo
-        ? '_' + state.masivoFilas.length + '_expedientes'
-        : '_' + limpiarNombreArchivo(val('ofExpediente') || 'sn');
+      const sufijo = masivo ? '' : '_' + limpiarNombreArchivo(val('ofExpediente') || 'sn');
       const nombre = (masivo ? 'Oficio_Masivo_' : 'Oficio_')
         + etiqueta
         + (inst === 'dom' ? '_' + limpiarNombreArchivo(comunaDom) : '')
@@ -6645,7 +6690,7 @@ async function descargarTrioOficios(){
     const zipBlob = await zipEscribir(archivos, 'application/zip');
 
     const nombreZip = (masivo
-      ? 'Oficios_Masivos_' + state.masivoFilas.length + '_expedientes'
+      ? 'Oficios_Masivos'
       : 'Oficios_Exp_' + limpiarNombreArchivo(val('ofExpediente') || 'sn'))
       + '_DOM-MINVU-SERVIU.zip';
 
@@ -6731,13 +6776,13 @@ async function descargarOficiosDomPorComuna(){
     for(const [comuna, filas] of grupos){
       const datos = datosOficioMasivo(filas, destinatarioInstitucion('dom', comuna));
       const blob = await blobOficio('masivo', datos);
-      const nombre = 'Oficio_DOM_' + limpiarNombreArchivo(comuna) + '_' + filas.length + '_expedientes.docx';
+      const nombre = 'Oficio_DOM_' + limpiarNombreArchivo(comuna) + '.docx';
       archivos.push(await zipEntradaBlob(nombre, blob));
       generados.push(nombre);
     }
 
     const zipBlob = await zipEscribir(archivos, 'application/zip');
-    const nombreZip = 'Oficios_DOM_por_comuna_' + grupos.size + '_comuna(s).zip';
+    const nombreZip = 'Oficios_DOM_por_comuna.zip';
 
     const url = URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
@@ -6753,6 +6798,179 @@ async function descargarOficiosDomPorComuna(){
   } catch(err){
     console.error(err);
     q('ofStatus').textContent = 'Ocurrió un error generando los oficios DOM por comuna: ' + err.message;
+  }
+}
+
+/* ============================================================
+   OFICIOS EN PDF
+   El mismo mecanismo que usa la Bitácora: se rellena un contenedor oculto con
+   el HTML del oficio y se dispara el diálogo de impresión del navegador, en el
+   que se elige «Guardar como PDF» como destino. Así no se necesita ninguna
+   librería externa y el PDF sale con el mismo aspecto que la vista previa
+   (logo, negritas, alineaciones y la tabla de expedientes del oficio masivo).
+
+   Cuando se exportan VARIOS oficios a la vez (Los 3 a la vez, DOM por comuna),
+   no se puede generar un .zip de PDFs sin una librería de PDF: el navegador
+   sólo entrega un PDF por cada vez que se usa "Guardar como PDF". En esos
+   casos se arman todos los oficios como páginas sucesivas de UN MISMO PDF
+   (cada oficio empieza en una página nueva), que es lo que se obtiene con una
+   sola pasada por el diálogo de impresión.
+   ============================================================ */
+
+/* Vacía el contenedor de impresión, para empezar a acumular uno o varios
+   oficios antes de imprimir. */
+function iniciarImpresionOficios(){
+  const cont = q('oficioImpresion');
+  if(cont) cont.innerHTML = '';
+}
+
+/* Agrega un oficio más al contenedor de impresión. Si ya había uno, éste
+   empieza en una página nueva (ver CSS de #oficioImpresion .of-doc + .of-doc). */
+function agregarOficioAImpresion(xml){
+  const cont = q('oficioImpresion');
+  if(!cont) return;
+  const doc = document.createElement('div');
+  doc.className = 'of-doc';
+  doc.innerHTML = `<div class="of-header-logo">
+      <div class="mark">2695</div>
+      <div class="txt"><b>MINISTERIO DE BIENES NACIONALES</b>Subsecretaría de Bienes Nacionales · SEREMI Región del Maule</div>
+    </div>` + xmlOficioACuerpoHtml(xml);
+  cont.appendChild(doc);
+}
+
+/* El navegador sugiere el título del documento como nombre del PDF al guardar.
+   Se cambia temporalmente (sin mencionar cuántos expedientes lleva, según se
+   pidió), se imprime, y se restaura el título original apenas se cierra el
+   diálogo, para no dejar la pestaña con un título distinto al de siempre. */
+function imprimirConTitulo(nombreSugerido){
+  const original = document.title;
+  document.title = nombreSugerido;
+  window.print();
+  setTimeout(()=>{ document.title = original; }, 500);
+}
+
+/* Exporta a PDF el oficio que se está viendo ahora mismo en pantalla (el que
+   corresponda según "Institución destinataria": DOM, MINVU, SERVIU,
+   Conservador o el oficio masivo con sus filas actuales). */
+async function exportarOficioPdf(){
+  if(!soportaZip()){
+    q('ofStatus').textContent = AVISO_NAVEGADOR;
+    return;
+  }
+  const tipo = val('ofTipo');
+  if(tipo === 'masivo' && !state.masivoFilas.length){
+    q('ofStatus').textContent = 'Agrega al menos un expediente a la lista antes de exportar el oficio masivo a PDF.';
+    return;
+  }
+
+  q('ofStatus').textContent = 'Generando el PDF…';
+  try{
+    const datos = (tipo === 'masivo') ? datosOficioMasivo() : datosOficioActuales();
+    const {xml} = await construirOficioXml(tipo, datos);
+    iniciarImpresionOficios();
+    agregarOficioAImpresion(xml);
+
+    const nombreArchivo = {
+      dom: 'Oficio_DOM_' + (val('ofComunaDom')||val('ofComuna')||'comuna'),
+      minvu: 'Oficio_SEREMI_MINVU',
+      serviu: 'Oficio_SERVIU',
+      conservador: 'Oficio_Conservador_' + (val('ofCbr')||'CBR'),
+      masivo: 'Oficio_Masivo'
+    }[tipo].replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_');
+
+    q('ofStatus').textContent = 'Se abrió el diálogo de impresión: elige «Guardar como PDF» como destino.';
+    imprimirConTitulo(nombreArchivo);
+  } catch(err){
+    console.error(err);
+    q('ofStatus').textContent = 'Ocurrió un error generando el PDF: ' + err.message;
+  }
+}
+
+/* Los tres oficios (DOM · MINVU · SERVIU) juntos en un solo PDF, cada uno en su
+   propia página. Usa los mismos datos que "Los 3 a la vez (Word)". */
+async function exportarTrioOficiosPdf(){
+  if(!soportaZip()){
+    q('ofStatus').textContent = AVISO_NAVEGADOR;
+    return;
+  }
+
+  const masivo = (val('ofTipo') === 'masivo');
+  if(masivo && !state.masivoFilas.length){
+    q('ofStatus').textContent = 'Agrega al menos un expediente a la lista antes de exportar los tres oficios masivos a PDF.';
+    return;
+  }
+
+  const comunaDom = masivo
+    ? (val('ofMasComuna') || val('ofComunaDom') || val('ofComuna'))
+    : (val('ofComunaDom') || val('ofComuna'));
+  if(!comunaDom){
+    q('ofStatus').textContent = 'Indica la comuna de la Dirección de Obras: es el destinatario del oficio a la DOM.';
+    return;
+  }
+
+  q('ofStatus').textContent = 'Generando el PDF con los tres oficios…';
+
+  try{
+    iniciarImpresionOficios();
+
+    for(const {inst, campoOrd} of TRIO_INSTITUCIONES){
+      const datos = masivo ? datosOficioMasivo() : datosOficioActuales();
+      datos.ord_n = ordinarioDe(campoOrd);
+      if(masivo){
+        datos.destinatario = destinatarioInstitucion(inst, comunaDom);
+      } else if(inst === 'dom'){
+        datos.comuna_mayus = upper(comunaDom);
+      }
+      const {xml} = await construirOficioXml(masivo ? 'masivo' : inst, datos);
+      agregarOficioAImpresion(xml);
+    }
+
+    const nombreArchivo = (masivo ? 'Oficios_Masivos' : 'Oficios_Exp_' + limpiarNombreArchivo(val('ofExpediente') || 'sn'))
+      + '_DOM-MINVU-SERVIU';
+
+    q('ofStatus').textContent = 'Se abrió el diálogo de impresión con los 3 oficios: elige «Guardar como PDF».';
+    imprimirConTitulo(nombreArchivo);
+  } catch(err){
+    console.error(err);
+    q('ofStatus').textContent = 'Ocurrió un error generando el PDF de los tres oficios: ' + err.message;
+  }
+}
+
+/* Un Oficio DOM por comuna, todos juntos en un solo PDF, cada comuna en su
+   propia página. Usa la misma agrupación que "Oficios DOM por comuna (Word)". */
+async function exportarOficiosDomPorComunaPdf(){
+  if(!soportaZip()){
+    q('ofStatus').textContent = AVISO_NAVEGADOR;
+    return;
+  }
+  if(!state.masivoFilas.length){
+    q('ofStatus').textContent = 'Agrega al menos un expediente a la lista antes de exportar los oficios DOM por comuna a PDF.';
+    return;
+  }
+
+  const grupos = masivoAgruparPorComuna();
+  const sinComuna = grupos.get('(sin comuna)');
+  if(sinComuna && sinComuna.length){
+    q('ofStatus').textContent = 'Hay ' + sinComuna.length + ' expediente(s) sin comuna asignada: '
+      + 'indícala en el desplegable «COMUNA (Dirección de Obras)» de cada fila del oficio masivo antes de continuar.';
+    return;
+  }
+
+  q('ofStatus').textContent = 'Generando el PDF con un oficio DOM por cada comuna…';
+
+  try{
+    iniciarImpresionOficios();
+    for(const [comuna, filas] of grupos){
+      const datos = datosOficioMasivo(filas, destinatarioInstitucion('dom', comuna));
+      const {xml} = await construirOficioXml('masivo', datos);
+      agregarOficioAImpresion(xml);
+    }
+
+    q('ofStatus').textContent = 'Se abrió el diálogo de impresión con un oficio por comuna: elige «Guardar como PDF».';
+    imprimirConTitulo('Oficios_DOM_por_comuna');
+  } catch(err){
+    console.error(err);
+    q('ofStatus').textContent = 'Ocurrió un error generando el PDF de los oficios DOM por comuna: ' + err.message;
   }
 }
 
