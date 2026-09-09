@@ -194,6 +194,7 @@
     #oficioImpresion p{margin:0 0 8pt 0;white-space:pre-wrap;}
     #oficioImpresion p.of-center{text-align:center;}
     #oficioImpresion p.of-right{text-align:right;}
+    #oficioImpresion p.of-justify{text-align:justify;}
     #oficioImpresion p.of-bold{font-weight:700;}
     #oficioImpresion p.of-empty{margin:0 0 3pt 0;min-height:6pt;}
     #oficioImpresion table.of-tbl{border-collapse:collapse;width:100%;margin:0 0 8pt 0;font-size:9pt;}
@@ -287,6 +288,7 @@
   .of-paper-content p{margin:0 0 10px 0;white-space:pre-wrap;}
   .of-paper-content p.of-center{text-align:center;}
   .of-paper-content p.of-right{text-align:right;}
+  .of-paper-content p.of-justify{text-align:justify;}
   .of-paper-content p.of-bold{font-weight:700;}
   .of-paper-content p.of-empty{margin:0 0 4px 0;min-height:8px;}
   /* ---- equivalencia mt2 ↔ hectáreas bajo los campos de superficie ---- */
@@ -6491,6 +6493,9 @@ function repetirFilasTabla(xml, filas){
    HTML a partir de estos bloques) como el generador de PDF real
    (construirPdfOficios, que los dibuja como texto en el PDF) parten de aquí,
    para que ambos muestren siempre exactamente lo mismo. */
+/* 1 twip = 1/20 pt (unidad que usa Word para las medidas de w:ind/w:tab). */
+const twipsAPt = (twips)=> Number(twips || 0) / 20;
+
 function xmlOficioABloques(xml){
     const doc = new DOMParser().parseFromString(xml, 'application/xml');
     const parseError = doc.querySelector('parsererror');
@@ -6499,20 +6504,29 @@ function xmlOficioABloques(xml){
     const body = doc.getElementsByTagNameNS('*','body')[0];
     if(!body) throw new Error('El documento no tiene cuerpo.');
 
-    // Devuelve el texto de un párrafo y si lleva negrita.
-    const leerParrafo = (p)=>{
+    /* Devuelve los "runs" (tramos) de un párrafo, cada uno con su propio
+       texto y negrita: en los renglones de encabezado ("ANT.:", "MAT.:",
+       "DE:", "A:") sólo la etiqueta va en negrita y el resto del párrafo va
+       en texto normal, así que no basta con un booleano por párrafo. Los
+       <w:tab/> se conservan como \t dentro del run (sin marca de negrita
+       propia) para resolverse más adelante según la sangría del párrafo. */
+    const leerRuns = (p)=>{
       const runs = Array.from(p.getElementsByTagNameNS('*','r'));
-      let texto = '';
-      let esNegrita = false;
+      const out = [];
       runs.forEach(r=>{
         const rPr = r.getElementsByTagNameNS('*','rPr')[0];
-        if(rPr && rPr.getElementsByTagNameNS('*','b').length) esNegrita = true;
+        const negrita = !!(rPr && rPr.getElementsByTagNameNS('*','b').length);
+        let texto = '';
         Array.from(r.getElementsByTagNameNS('*','t')).forEach(t=>{ texto += t.textContent; });
         if(r.getElementsByTagNameNS('*','tab').length) texto += '\t';
         if(r.getElementsByTagNameNS('*','br').length) texto += '\n';
+        if(texto) out.push({texto, negrita});
       });
-      return {texto, esNegrita};
+      return out;
     };
+    // Texto plano de un párrafo (para la tabla de expedientes, que siempre va
+    // sin negrita).
+    const textoPlano = (p)=> leerRuns(p).map(r => r.texto).join('');
 
     const bloques = [];
     // Se recorren los hijos directos del cuerpo en orden, para que la tabla de
@@ -6521,15 +6535,30 @@ function xmlOficioABloques(xml){
       if(nodo.nodeType !== 1) return;
 
       if(nodo.localName === 'p'){
-        const {texto, esNegrita} = leerParrafo(nodo);
+        const runs = leerRuns(nodo);
+        const texto = runs.map(r => r.texto).join('');
         const pPr = nodo.getElementsByTagNameNS('*','pPr')[0];
         const jc = pPr ? pPr.getElementsByTagNameNS('*','jc')[0] : null;
         const alineacionXml = jc ? jc.getAttribute('w:val') : null;
         const alineacion = (alineacionXml === 'center') ? 'center'
           : (alineacionXml === 'right' || alineacionXml === 'end') ? 'right'
+          : (alineacionXml === 'both' || alineacionXml === 'distribute') ? 'justify'
           : 'left';
 
-        bloques.push({tipo:'p', texto, alineacion, negrita: esNegrita, vacio: !texto.trim()});
+        // Sangría del párrafo (w:ind), igual que la usa Word: "left" desplaza
+        // todo el párrafo, y "firstLine"/"hanging" ajustan sólo la primera
+        // línea (positivo hacia la derecha, negativo hacia la izquierda).
+        const ind = pPr ? pPr.getElementsByTagNameNS('*','ind')[0] : null;
+        const sangriaIzq = ind ? twipsAPt(ind.getAttribute('w:left')) : 0;
+        const sangriaPrimera = ind
+          ? (ind.getAttribute('w:firstLine') ? twipsAPt(ind.getAttribute('w:firstLine'))
+             : ind.getAttribute('w:hanging') ? -twipsAPt(ind.getAttribute('w:hanging')) : 0)
+          : 0;
+
+        bloques.push({
+          tipo:'p', texto, runs, alineacion, vacio: !texto.trim(),
+          sangriaIzq, sangriaPrimera
+        });
 
       } else if(nodo.localName === 'tbl'){
         const filas = Array.from(nodo.childNodes)
@@ -6537,7 +6566,7 @@ function xmlOficioABloques(xml){
           .map(tr => Array.from(tr.childNodes)
             .filter(n => n.nodeType === 1 && n.localName === 'tc')
             .map(tc => Array.from(tc.getElementsByTagNameNS('*','p'))
-              .map(p => leerParrafo(p).texto).join('\n')));
+              .map(textoPlano).join('\n')));
         bloques.push({tipo:'tabla', filas});
       }
     });
@@ -6561,9 +6590,23 @@ function xmlOficioACuerpoHtml(xml){
         const clases = [];
         if(b.alineacion === 'center') clases.push('of-center');
         if(b.alineacion === 'right') clases.push('of-right');
-        if(b.negrita) clases.push('of-bold');
+        if(b.alineacion === 'justify') clases.push('of-justify');
         if(b.vacio) clases.push('of-empty');
-        html += `<p class="${clases.join(' ')}">${escaparTexto(b.texto) || '&nbsp;'}</p>`;
+        // Misma sangría que Word: "left" desplaza todo el párrafo,
+        // "firstLine"/"hanging" (ya combinados en sangriaPrimera) sólo la
+        // primera línea. Con tabulaciones (\t) dentro del texto, la sangría
+        // izquierda se traduce en padding y el resto se deja a los &emsp;
+        // que ya usa escaparTexto para las tabulaciones.
+        const estilo = (b.sangriaIzq || b.sangriaPrimera)
+          ? ` style="padding-left:${(b.sangriaIzq/1.333).toFixed(1)}px;text-indent:${(b.sangriaPrimera/1.333).toFixed(1)}px;"`
+          : '';
+        // Cada run mantiene su propia negrita (por ejemplo "ANT.:" en negrita
+        // seguido del resto del párrafo en texto normal).
+        const cuerpo = b.runs.map(r=>{
+          const texto = escaparTexto(r.texto);
+          return r.negrita ? `<b>${texto}</b>` : texto;
+        }).join('') || '&nbsp;';
+        html += `<p class="${clases.join(' ')}"${estilo}>${cuerpo}</p>`;
       } else if(b.tipo === 'tabla'){
         let tabla = '<table class="of-tbl"><tbody>';
         b.filas.forEach(celdas=>{
@@ -6595,20 +6638,30 @@ function xmlOficioACuerpoHtml(xml){
    pasar por ningún diálogo.
    ============================================================ */
 
-const OFICIO_PDF_PT_POR_MM = 72 / 25.4;
-const mmAPt = (mm)=> mm * OFICIO_PDF_PT_POR_MM;
-
-/* Tamaño Oficio (216×330 mm) con 15 mm de margen, igual que el CSS de
-   impresión (@page oficio{size:216mm 330mm;margin:15mm;}), para que el PDF
-   real pagine igual que la versión anterior basada en impresión. */
-const OFICIO_PDF_PAGINA = {ancho: mmAPt(216), alto: mmAPt(330), margen: mmAPt(15)};
-const OFICIO_PDF_FUENTE = 13.5;                       // pt, igual que #oficioImpresion
-const OFICIO_PDF_INTERLINEA = OFICIO_PDF_FUENTE * 1.55;
-const OFICIO_PDF_TABLA_FUENTE = 9;                    // pt, igual que table.of-tbl
-const OFICIO_PDF_TABLA_INTERLINEA = OFICIO_PDF_TABLA_FUENTE * 1.3;
-const OFICIO_PDF_TABLA_PAD_X = 4;                     // pt, igual que el padding CSS de la celda
+/* Medidas tomadas directamente de la plantilla Word del oficio masivo (la que
+   usa "Oficios DOM por comuna"), en twips (1 twip = 1/20 pt), para que el PDF
+   real reproduzca la misma página, márgenes, logo y tipografía que el .docx:
+   w:pgSz w:w="12240" w:h="18720" (612×936 pt) y
+   w:pgMar w:top="1417" w:right="1701" w:bottom="2410" w:left="1701". */
+const OFICIO_PDF_PAGINA = {
+  ancho: twipsAPt(12240), alto: twipsAPt(18720),
+  margenSup: twipsAPt(1417), margenDer: twipsAPt(1701),
+  margenInf: twipsAPt(2410), margenIzq: twipsAPt(1701),
+  margen: twipsAPt(1701)   // alias usado por el resto del generador (izq = der)
+};
+const OFICIO_PDF_FUENTE = 10;                         // pt — w:sz="20" (en medios puntos) del cuerpo del oficio
+const OFICIO_PDF_INTERLINEA = OFICIO_PDF_FUENTE * 1.18;   // w:spacing w:line="240" w:lineRule="auto" = interlineado sencillo
+const OFICIO_PDF_TABLA_FUENTE = 9;                    // pt — w:sz="18" de la tabla de expedientes
+const OFICIO_PDF_TABLA_INTERLINEA = OFICIO_PDF_TABLA_FUENTE * 1.18;
+const OFICIO_PDF_TABLA_PAD_X = 3.5;                   // pt — w:tblCellMar w:left/right w:w="70" (twips)
 const OFICIO_PDF_TABLA_PAD_Y = 2;
-const OFICIO_PDF_LOGO_ANCHO = 34;                     // pt, igual que .of-header-logo .mark
+/* Tamaño real del logo en el encabezado del .docx: wp:extent
+   cx="1341765" cy="1219200" (EMU; 1 pt = 12700 EMU). */
+const OFICIO_PDF_LOGO_ANCHO = 1341765 / 12700;
+const OFICIO_PDF_LOGO_ALTO_MAX = 1219200 / 12700;
+/* Ancho de una tabulación por defecto (w:defaultTabStop w:val="708"), para
+   ubicar el texto que sigue a un <w:tab/> (los renglones "DE:" y "A:"). */
+const OFICIO_PDF_TAB_STOP = twipsAPt(708);
 
 /* Anchos (por 1000 unidades de tamaño de fuente) de Helvetica, la fuente base
    del PDF que no hace falta incrustar. Cubre ASCII y los acentos/ñ que usan
@@ -6668,38 +6721,96 @@ function anchoTextoPdf(str, tam, negrita){
   return total * tam / 1000;
 }
 
-/* Corta un texto en líneas que no superen el ancho disponible, cortando por
-   palabras (igual que el "white-space:pre-wrap" que ya usa la vista previa en
-   pantalla, sólo que aquí hay que decidir el corte a mano porque el PDF no
-   tiene motor de texto propio). */
-function envolverTextoPdf(texto, anchoMax, tam, negrita){
-  const tokens = String(texto).split(/(\s+)/).filter(t => t !== '');
-  const lineas = [];
-  let actual = '';
-  let anchoActual = 0;
-  tokens.forEach(tok=>{
-    const esEspacio = /^\s+$/.test(tok);
-    const anchoTok = anchoTextoPdf(tok, tam, negrita);
-    if(actual && !esEspacio && (anchoActual + anchoTok) > anchoMax){
-      lineas.push(actual.replace(/\s+$/,''));
-      actual = tok;
-      anchoActual = anchoTok;
-    } else {
-      actual += tok;
-      anchoActual += anchoTok;
-    }
+/* Convierte los "runs" de un párrafo (cada uno con su propio texto y negrita,
+   ver xmlOficioABloques) en una lista plana de tokens palabra/espacio, cada
+   uno con la negrita del run del que vino. Así una misma línea puede mezclar
+   negrita y texto normal (por ejemplo "ANT.:" en negrita seguido del resto
+   del párrafo en texto normal), y las tabulaciones se resuelven aquí, antes
+   de cortar líneas, saltando a la siguiente marca de OFICIO_PDF_TAB_STOP
+   (medida desde el borde del párrafo, igual que hace Word). */
+function runsATokensPdf(runs, tam){
+  const tokens = [];
+  let x = 0;
+  runs.forEach(run=>{
+    run.texto.split(/(\t|\s+)/).filter(t => t !== '').forEach(parte=>{
+      if(parte === '\t'){
+        const siguienteTab = (Math.floor(x / OFICIO_PDF_TAB_STOP) + 1) * OFICIO_PDF_TAB_STOP;
+        const anchoEspacio = anchoTextoPdf(' ', tam, run.negrita) || 1;
+        const espacios = Math.max(1, Math.round((siguienteTab - x) / anchoEspacio));
+        const texto = ' '.repeat(espacios);
+        tokens.push({texto, negrita: run.negrita, esEspacio: true, ancho: anchoTextoPdf(texto, tam, run.negrita)});
+        x = siguienteTab;
+      } else {
+        const ancho = anchoTextoPdf(parte, tam, run.negrita);
+        tokens.push({texto: parte, negrita: run.negrita, esEspacio: /^\s+$/.test(parte), ancho});
+        x += ancho;
+      }
+    });
   });
-  lineas.push(actual.replace(/\s+$/,''));
-  return lineas.length ? lineas : [''];
+  return tokens;
 }
 
+/* Corta una lista de tokens (ver runsATokensPdf) en líneas que no superen el
+   ancho disponible, cortando por palabras (igual que el "white-space:pre-wrap"
+   que ya usa la vista previa en pantalla, sólo que aquí hay que decidir el
+   corte a mano porque el PDF no tiene motor de texto propio). Cada línea
+   devuelta es a su vez una lista de tokens, para poder dibujarla con su
+   negrita mezclada intacta. */
+function envolverTokensPdf(tokens, anchoMax){
+  const lineas = [];
+  let actual = [];
+  let anchoActual = 0;
+  const cerrarLinea = ()=>{
+    while(actual.length && actual[actual.length - 1].esEspacio) actual.pop();
+    lineas.push(actual);
+    actual = [];
+    anchoActual = 0;
+  };
+  tokens.forEach(tok=>{
+    if(actual.length && !tok.esEspacio && (anchoActual + tok.ancho) > anchoMax) cerrarLinea();
+    actual.push(tok);
+    anchoActual += tok.ancho;
+  });
+  cerrarLinea();
+  return lineas.length ? lineas : [[]];
+}
+
+// Ancho total de una línea (lista de tokens), sumando el de cada uno.
+const anchoLineaPdf = (tokens)=> tokens.reduce((a,t)=>a + t.ancho, 0);
+
 /* Coordenada X de una línea ya cortada, según su alineación (igual que las
-   clases of-center/of-right/of-empty de la vista previa). */
-function xAlineadaPdf(linea, tam, negrita, alineacion, margenIzq, anchoContenido){
-  if(alineacion === 'left') return margenIzq;
-  const ancho = anchoTextoPdf(linea, tam, negrita);
+   clases of-center/of-right/of-justify/of-empty de la vista previa). El
+   justificado se resuelve en dibujarLineaPdf (necesita repartir el espacio
+   entre palabras palabra por palabra, no basta con desplazar el inicio). */
+function xAlineadaPdf(tokens, alineacion, margenIzq, anchoContenido){
+  if(alineacion === 'left' || alineacion === 'justify') return margenIzq;
+  const ancho = anchoLineaPdf(tokens);
   if(alineacion === 'center') return margenIzq + (anchoContenido - ancho) / 2;
   return margenIzq + anchoContenido - ancho; // right
+}
+
+/* Dibuja una línea (lista de tokens, cada uno con su propia negrita) token a
+   token. Cuando el párrafo va justificado (igual que "text-align:justify" en
+   la vista previa) el espacio en blanco que falta para llegar al ancho de la
+   columna se reparte entre los espacios entre palabras; la última línea de
+   un párrafo no se justifica, igual que hace Word/CSS. */
+function dibujarLineaPdf(tokens, x0, yPdf, tam, alineacion, anchoMax, esUltima){
+  const visibles = tokens.filter(t => !t.esEspacio || t.texto.length); // conserva espacios de tabulación
+  let extraPorHueco = 0;
+  if(alineacion === 'justify' && !esUltima){
+    const numEspacios = tokens.filter(t => t.esEspacio).length;
+    if(numEspacios > 0){
+      const sobrante = Math.max(0, anchoMax - anchoLineaPdf(tokens));
+      extraPorHueco = sobrante / numEspacios;
+    }
+  }
+  let ops = '';
+  let x = x0;
+  tokens.forEach(tok=>{
+    if(!tok.esEspacio && tok.texto !== '') ops += opTextoPdf(x, yPdf, tam, tok.negrita, tok.texto);
+    x += tok.ancho + (tok.esEspacio ? extraPorHueco : 0);
+  });
+  return ops;
 }
 
 function pdfEscaparTexto(str){
@@ -6774,47 +6885,78 @@ function binarioABytes(str){
    versión basada en el diálogo de impresión). */
 async function paginasOficioPdf(bloques){
   const logoBytes = await logoOficioBytes();
-  const {ancho: logoAnchoPx, alto: logoAltoPx, componentes: logoComponentes} = leerDimensionesJpeg(logoBytes);
-  const logoAlto = OFICIO_PDF_LOGO_ANCHO * (logoAltoPx / logoAnchoPx);
+  const {componentes: logoComponentes, ancho: logoAnchoPx, alto: logoAltoPx} = leerDimensionesJpeg(logoBytes);
+  // Tamaño de despliegue tomado del propio .docx (wp:extent), no del tamaño
+  // natural del JPEG: es el mismo logo pero mostrado más grande que antes.
+  const logoAlto = OFICIO_PDF_LOGO_ALTO_MAX;
+  const logoAncho = OFICIO_PDF_LOGO_ANCHO;
 
   const P = OFICIO_PDF_PAGINA;
-  const anchoContenido = P.ancho - 2 * P.margen;
+  const anchoContenido = P.ancho - P.margenIzq - P.margenDer;
 
   const paginas = [];
   let ops = '';
-  let topY = P.margen;
+  let topY = P.margenSup;
 
-  const nuevaPagina = ()=>{ paginas.push(ops); ops = ''; topY = P.margen; };
-  const asegurarEspacio = (alto)=>{ if(topY > P.margen && (topY + alto) > (P.alto - P.margen)) nuevaPagina(); };
+  const nuevaPagina = ()=>{ paginas.push(ops); ops = ''; topY = P.margenSup; };
+  const asegurarEspacio = (alto)=>{ if(topY > P.margenSup && (topY + alto) > (P.alto - P.margenInf)) nuevaPagina(); };
 
-  // ---- Encabezado: logo + los mismos tres renglones que la vista previa ----
-  ops += `q ${OFICIO_PDF_LOGO_ANCHO.toFixed(2)} 0 0 ${logoAlto.toFixed(2)} ${P.margen.toFixed(2)} `
+  // ---- Encabezado: logo (tamaño real del .docx) + los mismos tres renglones
+  // que la vista previa, verticalmente centrados junto al logo. ----
+  ops += `q ${logoAncho.toFixed(2)} 0 0 ${logoAlto.toFixed(2)} ${P.margenIzq.toFixed(2)} `
     + `${(P.alto - topY - logoAlto).toFixed(2)} cm /Im1 Do Q\n`;
-  const xTexto = P.margen + OFICIO_PDF_LOGO_ANCHO + 10;
-  let yTexto = topY + 9;
-  ops += opTextoPdf(xTexto, P.alto - yTexto, 9, true, 'MINISTERIO DE BIENES NACIONALES');
-  yTexto += 8 * 1.3;
-  ops += opTextoPdf(xTexto, P.alto - yTexto, 8, false, 'Subsecretaría de Bienes Nacionales · SEREMI Región del Maule');
-  yTexto += 8 * 1.3;
-  ops += opTextoPdf(xTexto, P.alto - yTexto, 8, false, 'Unidad de Regularización');
-  const altoEncabezado = Math.max(logoAlto, yTexto - topY) + 10;
-  ops += opLineaPdf(P.margen, P.alto - (topY + altoEncabezado), P.margen + anchoContenido, P.alto - (topY + altoEncabezado), 1.4);
-  topY += altoEncabezado + 6;
+  const xTexto = P.margenIzq + logoAncho + 12;
+  const lineasTexto = [
+    {tam: 11, negrita: true,  texto: 'MINISTERIO DE BIENES NACIONALES'},
+    {tam: 9,  negrita: false, texto: 'Subsecretaría de Bienes Nacionales · SEREMI Región del Maule'},
+    {tam: 9,  negrita: false, texto: 'Unidad de Regularización'}
+  ];
+  const interlineaTexto = 9 * 1.3;
+  const altoBloqueTexto = lineasTexto.reduce((a,l)=>a + interlineaTexto, 0);
+  let yTexto = topY + Math.max(0, (logoAlto - altoBloqueTexto) / 2) + lineasTexto[0].tam * 0.85;
+  lineasTexto.forEach(l=>{
+    ops += opTextoPdf(xTexto, P.alto - yTexto, l.tam, l.negrita, l.texto);
+    yTexto += interlineaTexto;
+  });
+  const altoEncabezado = Math.max(logoAlto, altoBloqueTexto) + 10;
+  ops += opLineaPdf(P.margenIzq, P.alto - (topY + altoEncabezado), P.margenIzq + anchoContenido, P.alto - (topY + altoEncabezado), 1.4);
+  topY += altoEncabezado + 10;
 
-  // ---- Cuerpo: mismos bloques que arma xmlOficioABloques ----
+  // ---- Cuerpo: mismos bloques que arma xmlOficioABloques, respetando la
+  // sangría (w:ind) y la justificación (w:jc="both") de cada párrafo. ----
   bloques.forEach(b=>{
     if(b.tipo === 'p'){
       if(b.vacio){
-        asegurarEspacio(OFICIO_PDF_INTERLINEA * 0.5);
-        topY += OFICIO_PDF_INTERLINEA * 0.5;
+        asegurarEspacio(OFICIO_PDF_INTERLINEA);
+        topY += OFICIO_PDF_INTERLINEA;
         return;
       }
-      const lineas = envolverTextoPdf(b.texto, anchoContenido, OFICIO_PDF_FUENTE, b.negrita);
-      lineas.forEach(linea=>{
+      const margenParrafo = P.margenIzq + (b.sangriaIzq || 0);
+      const anchoParrafo = anchoContenido - (b.sangriaIzq || 0);
+      const sangriaPrimera = b.sangriaPrimera || 0;
+
+      // Se corta primero con el ancho de la primera línea (que puede llevar
+      // sangría distinta a las siguientes) y, si hay más de una línea, se
+      // vuelve a cortar el resto con el ancho de las líneas normales: el
+      // corte de palabras depende del ancho disponible en cada caso.
+      const tokens = runsATokensPdf(b.runs, OFICIO_PDF_FUENTE);
+      const anchoPrimera = anchoParrafo - Math.max(0, sangriaPrimera);
+      const anchoResto = anchoParrafo - Math.max(0, -sangriaPrimera);
+      let lineas = envolverTokensPdf(tokens, anchoPrimera);
+      if(lineas.length > 1 && anchoResto !== anchoPrimera){
+        const restoTokens = tokens.slice(lineas[0].length);
+        lineas = [lineas[0], ...envolverTokensPdf(restoTokens, anchoResto)];
+      }
+
+      lineas.forEach((lineaTokens, i)=>{
         asegurarEspacio(OFICIO_PDF_INTERLINEA);
-        const x = xAlineadaPdf(linea, OFICIO_PDF_FUENTE, b.negrita, b.alineacion, P.margen, anchoContenido);
+        const esPrimera = (i === 0);
+        const margenLinea = margenParrafo + (esPrimera ? Math.max(0, sangriaPrimera) : Math.max(0, -sangriaPrimera));
+        const anchoLinea = esPrimera ? anchoPrimera : anchoResto;
+        const x = xAlineadaPdf(lineaTokens, b.alineacion, margenLinea, anchoLinea);
         const baseline = topY + OFICIO_PDF_FUENTE * 0.85;
-        ops += opTextoPdf(x, P.alto - baseline, OFICIO_PDF_FUENTE, b.negrita, linea);
+        ops += dibujarLineaPdf(lineaTokens, x, P.alto - baseline, OFICIO_PDF_FUENTE,
+          b.alineacion, anchoLinea, i === lineas.length - 1);
         topY += OFICIO_PDF_INTERLINEA;
       });
     } else if(b.tipo === 'tabla'){
@@ -6827,20 +6969,20 @@ async function paginasOficioPdf(bloques){
         const lineasPorCelda = celdas.map((texto, i)=>{
           const anchoCelda = Math.max((anchosPt[i] || anchoContenido / celdas.length) - OFICIO_PDF_TABLA_PAD_X * 2, 10);
           return String(texto).split('\n').flatMap(linea =>
-            envolverTextoPdf(linea, anchoCelda, OFICIO_PDF_TABLA_FUENTE, esEncabezado));
+            envolverTokensPdf(runsATokensPdf([{texto: linea, negrita:false}], OFICIO_PDF_TABLA_FUENTE), anchoCelda));
         });
         const maxLineas = Math.max(1, ...lineasPorCelda.map(l => l.length));
         const altoFila = maxLineas * OFICIO_PDF_TABLA_INTERLINEA + OFICIO_PDF_TABLA_PAD_Y * 2;
 
         asegurarEspacio(altoFila);
-        if(esEncabezado) ops += opRectDesdeArribaPdf(P.margen, topY, anchoContenido, altoFila, {relleno:'0.949 0.961 0.969'});
+        if(esEncabezado) ops += opRectDesdeArribaPdf(P.margenIzq, topY, anchoContenido, altoFila, {relleno:'0.949 0.961 0.969'});
 
-        let x = P.margen;
+        let x = P.margenIzq;
         anchosPt.forEach((anchoCol, colIdx)=>{
           ops += opRectDesdeArribaPdf(x, topY, anchoCol, altoFila, {borde:true});
-          (lineasPorCelda[colIdx] || []).forEach((linea, li)=>{
+          (lineasPorCelda[colIdx] || []).forEach((lineaTokens, li)=>{
             const baseline = topY + OFICIO_PDF_TABLA_PAD_Y + OFICIO_PDF_TABLA_FUENTE * 0.85 + li * OFICIO_PDF_TABLA_INTERLINEA;
-            ops += opTextoPdf(x + OFICIO_PDF_TABLA_PAD_X, P.alto - baseline, OFICIO_PDF_TABLA_FUENTE, esEncabezado, linea);
+            ops += dibujarLineaPdf(lineaTokens, x + OFICIO_PDF_TABLA_PAD_X, P.alto - baseline, OFICIO_PDF_TABLA_FUENTE, 'left', anchoCol, true);
           });
           x += anchoCol;
         });
