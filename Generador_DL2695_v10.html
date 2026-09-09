@@ -190,6 +190,7 @@
     #oficioImpresion .of-header-logo .mark img{display:block;width:100%;height:auto;}
     #oficioImpresion .of-header-logo .txt{font-size:8pt;line-height:1.4;}
     #oficioImpresion .of-header-logo .txt b{display:block;font-size:9pt;}
+    #oficioImpresion .of-header-logo .txt .of-unidad{display:block;margin-top:1pt;}
     #oficioImpresion p{margin:0 0 8pt 0;white-space:pre-wrap;}
     #oficioImpresion p.of-center{text-align:center;}
     #oficioImpresion p.of-right{text-align:right;}
@@ -352,6 +353,7 @@
   .of-header-logo .mark img{display:block;width:100%;height:auto;border-radius:4px;}
   .of-header-logo .txt{font-size:11px;color:var(--tinta-suave);line-height:1.4;}
   .of-header-logo .txt b{color:var(--azul-900);font-size:12.5px;display:block;}
+  .of-header-logo .txt .of-unidad{display:block;margin-top:2px;}
 
   .badge{
     display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.4px;
@@ -1777,6 +1779,7 @@
           <div class="txt">
             <b>MINISTERIO DE BIENES NACIONALES</b>
             Subsecretaría de Bienes Nacionales · SEREMI Región del Maule
+            <span class="of-unidad">Unidad de Regularización</span>
           </div>
         </div>
         <div id="ofPreview" class="of-paper-content">
@@ -5911,7 +5914,7 @@ function datosOficioMasivo(filasPropias, destinatarioPropio){
   }
 
   return {
-    ord_n: blank(val('ofOrdN'),'______'),
+    ord_n: limpiar(val('ofOrdN')),
     ord_anio: blank(val('ofOrdAnio'),'____'),
     destinatario: destinatarioPropio || destinatarioMasivo(),
     intro_frase: intro,
@@ -6131,7 +6134,7 @@ function datosOficioActuales(){
   const provincia = comunaOpt ? (comunaOpt.dataset.provincia || '') : val('ofProvincia');
 
   return {
-    ord_n: blank(val('ofOrdN'),'______'),
+    ord_n: limpiar(val('ofOrdN')),
     ord_anio: blank(val('ofOrdAnio'),'____'),
     fecha_larga: '',   // los oficios salen sin fecha: la línea queda "TALCA,"
     comuna_mayus: upper(blank(val('ofComunaDom')||val('ofComuna'),'____________')),
@@ -6650,9 +6653,12 @@ const TRIO_INSTITUCIONES = [
   {inst:'serviu', etiqueta:'SERVIU', campoOrd:'ofOrdNServiu'}
 ];
 
-/* N° de Ordinario propio de esa institución; si no se indicó, el N° general. */
+/* N° de Ordinario propio de esa institución; si no se indicó, el N° general.
+   Si tampoco se ha escrito ninguno, queda en blanco (no se rellena con
+   guiones bajos): así "ORD. N°SE07- - 2026." no sale con un "______" de
+   relleno cuando todavía no se conoce el número. */
 function ordinarioDe(campoOrd){
-  return blank(val(campoOrd) || val('ofOrdN'), '______');
+  return limpiar(val(campoOrd) || val('ofOrdN'));
 }
 
 function limpiarNombreArchivo(s){
@@ -6863,7 +6869,7 @@ async function agregarOficioAImpresion(xml){
   doc.className = 'of-doc';
   doc.innerHTML = `<div class="of-header-logo">
       <div class="mark"><img src="${logo}" alt="Ministerio de Bienes Nacionales"></div>
-      <div class="txt"><b>MINISTERIO DE BIENES NACIONALES</b>Subsecretaría de Bienes Nacionales · SEREMI Región del Maule</div>
+      <div class="txt"><b>MINISTERIO DE BIENES NACIONALES</b>Subsecretaría de Bienes Nacionales · SEREMI Región del Maule<span class="of-unidad">Unidad de Regularización</span></div>
     </div>` + xmlOficioACuerpoHtml(xml);
   cont.appendChild(doc);
 }
