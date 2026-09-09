@@ -1768,6 +1768,7 @@
         <button class="btn btn-outline btn-sm" onclick="generarOficioPreview()">↻ Actualizar vista previa</button>
         <button class="btn btn-primary btn-sm" onclick="descargarOficio()">⬇ Descargar Oficio (Word)</button>
         <button class="btn btn-outline btn-sm" onclick="exportarOficioPdf()" title="Abre el diálogo de impresión con este oficio: elige «Guardar como PDF» como destino">⬇ Descargar Oficio (PDF)</button>
+        <button class="btn btn-outline btn-sm" onclick="bitacoraAgregarDesdeOficio()" title="Anota este oficio en la bitácora del expediente. En el oficio masivo, anota la misma tarea en la bitácora de CADA expediente de la lista">➕ Agregar como tarea a la bitácora</button>
         <button class="btn btn-red btn-sm" onclick="descargarTrioOficios()" title="Con los mismos datos genera los tres oficios y los entrega en un ZIP">⬇ Los 3 a la vez (DOM · MINVU · SERVIU · Word)</button>
         <button class="btn btn-outline btn-sm" onclick="exportarTrioOficiosPdf()" title="Abre el diálogo de impresión con los tres oficios, cada uno en su página: elige «Guardar como PDF»">⬇ Los 3 a la vez (PDF)</button>
         <button class="btn btn-red btn-sm" id="btnOficiosDomPorComuna" style="display:none" onclick="descargarOficiosDomPorComuna()" title="Agrupa los expedientes del oficio masivo por comuna y genera un Oficio DOM independiente por cada una">⬇ Oficios DOM por comuna (Word)</button>
@@ -7925,6 +7926,19 @@ const BITACORA_DESDE_TAB = {
   notificacionRep: {nombre:'Notificación Reposición',               num:'repOrdN', signo:'REP'}
 };
 
+/* Qué tarea de la bitácora corresponde a cada institución destinataria del
+   oficio (mismos nombres que ya trae BITACORA_TAREAS). La pestaña Oficios no
+   usa BITACORA_DESDE_TAB porque la tarea no depende de la pestaña sino de la
+   institución elegida, y porque el oficio masivo necesita anotarse en varios
+   expedientes a la vez (ver bitacoraAgregarDesdeOficio). */
+const BITACORA_DESDE_OFICIO = {
+  dom:         'Oficio DOM',
+  minvu:       'Oficio MINVU',
+  serviu:      'Oficio SERVIU',
+  conservador: 'Oficio Conservador',
+  masivo:      'Oficio masivo'
+};
+
 /* ---------- Datos del expediente que el padrón no trae ----------
    La tabla de la unidad no tiene la dirección del inmueble ni la inscripción
    conservatoria, que es justamente lo que el oficio cita. Pero al trabajar un
@@ -8086,6 +8100,84 @@ function bitacoraAgregarDesdeDocumento(){
   const guardados = datos ? Object.keys(datos).length : 0;
   linea.textContent = '✓ «' + tarea.nombre + '» anotado hoy en la bitácora del expediente ' + exp
     + (guardados ? '. Se guardaron ' + guardados + ' dato(s) del expediente para los oficios.' : '.');
+}
+
+/* Botón que vive en la pestaña Oficios: anota el oficio que se está viendo en
+   la bitácora. En los oficios individuales (DOM/MINVU/SERVIU/Conservador) se
+   anota una sola tarea, igual que bitacoraAgregarDesdeDocumento. En el oficio
+   MASIVO se anota la MISMA tarea en la bitácora de CADA expediente de la
+   lista (uno por fila), porque un solo oficio masivo despacha varios
+   expedientes a la vez y cada uno debe quedar con su propio registro. */
+function bitacoraAgregarDesdeOficio(){
+  const tipo = val('ofTipo');
+  const nombre = BITACORA_DESDE_OFICIO[tipo];
+  const linea = q('ofStatus');
+  if(!nombre){ linea.textContent = 'Elige primero la institución destinataria del oficio.'; return; }
+
+  if(tipo !== 'masivo'){
+    const exp = val('ofExpediente');
+    if(!exp){
+      linea.textContent = 'Escribe primero el N° de expediente: la bitácora agrupa las tareas por expediente.';
+      return;
+    }
+    const numero = val('ofOrdN');
+    if(state.bitacora.some(t => t.exp === exp && t.nombre === nombre && (t.numero||'') === (numero||''))){
+      linea.textContent = '«' + nombre + '» ya estaba anotado en la bitácora del expediente ' + exp + '.';
+      return;
+    }
+    state.bitacora.push({
+      exp: exp, fecha: new Date().toISOString().slice(0,10), nombre: nombre,
+      numero: numero, nota: '', origen: 'manual', datos: bitacoraDatosCompletos(exp)
+    });
+    renderBitacora();
+    guardarTodo();
+    linea.textContent = '✓ «' + nombre + '» anotado hoy en la bitácora del expediente ' + exp + '.';
+    return;
+  }
+
+  // ---- Oficio masivo: una tarea por cada expediente de la lista ----
+  if(!state.masivoFilas.length){
+    linea.textContent = 'Agrega al menos un expediente a la lista antes de anotar el oficio masivo en la bitácora.';
+    return;
+  }
+  const numero = val('ofOrdN');
+  const fecha = new Date().toISOString().slice(0,10);
+  let anotados = 0, repetidos = 0, sinExp = 0;
+
+  state.masivoFilas.forEach(fila=>{
+    const exp = limpiar(fila.exp);
+    if(!exp){ sinExp++; return; }
+    if(state.bitacora.some(t => t.exp === exp && t.nombre === nombre && (t.numero||'') === (numero||''))){
+      repetidos++;
+      return;
+    }
+    /* Los datos del expediente se toman de la propia fila del oficio masivo
+       (que ya trae solicitante, RUT, ubicación, rol e inscripción escritos
+       ahí mismo), completados con lo que ya hubiera en el padrón o en tareas
+       anteriores de ese expediente, igual que bitacoraDatosCompletos. */
+    const datosFila = {};
+    if(fila.solicitante) datosFila.nombre = fila.solicitante;
+    if(fila.rut) datosFila.rut = fila.rut;
+    if(fila.ubicacion) datosFila.ubicacion = fila.ubicacion;
+    if(fila.rol) datosFila.rolAvaluo = fila.rol;
+    const datos = Object.assign({}, bitacoraDatosCompletos(exp) || {}, datosFila);
+
+    state.bitacora.push({
+      exp: exp, fecha: fecha, nombre: nombre, numero: numero,
+      nota: '', origen: 'manual', datos: Object.keys(datos).length ? datos : null
+    });
+    anotados++;
+  });
+
+  renderBitacora();
+  guardarTodo();
+
+  let msg = anotados
+    ? '✓ «' + nombre + '» anotado hoy en ' + anotados + ' expediente(s) de la lista.'
+    : 'No se anotó ningún expediente nuevo.';
+  if(repetidos) msg += ' ' + repetidos + ' ya estaba(n) anotado(s).';
+  if(sinExp) msg += ' ' + sinExp + ' fila(s) sin N° de expediente se omitieron.';
+  linea.textContent = msg;
 }
 
 function initBitacora(){
