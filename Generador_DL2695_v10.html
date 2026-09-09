@@ -1769,7 +1769,7 @@
         <button class="btn btn-red btn-sm" onclick="descargarTrioOficios()" title="Con los mismos datos genera los tres oficios y los entrega en un ZIP">⬇ Los 3 a la vez (DOM · MINVU · SERVIU · Word)</button>
         <button class="btn btn-outline btn-sm" onclick="exportarTrioOficiosPdf()" title="Abre el diálogo de impresión con los tres oficios, cada uno en su página: elige «Guardar como PDF»">⬇ Los 3 a la vez (PDF)</button>
         <button class="btn btn-red btn-sm" id="btnOficiosDomPorComuna" style="display:none" onclick="descargarOficiosDomPorComuna()" title="Agrupa los expedientes del oficio masivo por comuna y genera un Oficio DOM independiente por cada una">⬇ Oficios DOM por comuna (Word)</button>
-        <button class="btn btn-outline btn-sm" id="btnOficiosDomPorComunaPdf" style="display:none" onclick="exportarOficiosDomPorComunaPdf()" title="Abre el diálogo de impresión con un Oficio DOM por cada comuna, cada uno en su página: elige «Guardar como PDF»">⬇ Oficios DOM por comuna (PDF)</button>
+        <button class="btn btn-outline btn-sm" id="btnOficiosDomPorComunaPdf" style="display:none" onclick="exportarOficiosDomPorComunaPdf()" title="Genera un archivo .pdf real por cada comuna (sin diálogo de impresión) y los entrega juntos en un ZIP">⬇ Oficios DOM por comuna (PDF)</button>
       </div>
     </div>
     <div class="paper-wrap">
@@ -5644,6 +5644,12 @@ const MASIVO_CAMPOS = [
   {k:'comuna',      etiqueta:'COMUNA (Dirección de Obras)', ph:'', select:true}
 ];
 
+/* Ancho relativo de las 6 columnas de la tabla de expedientes (EXP. · RUT ·
+   SOLICITANTE · UBICACIÓN · ROL · INSCRIPCIÓN), igual a las medidas en dxa de
+   la propia plantilla Word (932, 1574, 1565, 1644, 1573, 1638), para que la
+   tabla del PDF real quede proporcionada igual que en el .docx. */
+const MASIVO_ANCHOS_COLUMNAS_TABLA = [932, 1574, 1565, 1644, 1573, 1638];
+
 function masivoFilaVacia(){
   const f = {};
   MASIVO_CAMPOS.forEach(c=>{ f[c.k] = ''; });
@@ -6374,14 +6380,26 @@ const OFICIO_ERRATAS = [
    —no se duplica la imagen en otro lugar del archivo— y queda en caché en
    esta variable como "data:" URI, para no tener que leer el ZIP cada vez que
    se muestra o se agrega un oficio a la impresión. */
+let OFICIO_LOGO_BYTES = null;
 let OFICIO_LOGO_DATAURI = '';
+
+/* Bytes JPEG crudos del logo (los mismos que trae incrustada la plantilla),
+   en caché para no releer el ZIP cada vez. Los usan tanto la vista previa en
+   pantalla (como "data:" URI) como el generador de PDF real, que necesita el
+   JPEG tal cual para incrustarlo directamente en el archivo, sin volver a
+   comprimirlo. */
+async function logoOficioBytes(){
+  if(OFICIO_LOGO_BYTES) return OFICIO_LOGO_BYTES;
+  const entradas = await zipLeerBase64(OFICIO_TEMPLATES.conservador);
+  const entrada = entradas.find(e => e.nombre === 'word/media/image1.jpeg');
+  if(!entrada) throw new Error('No se encontró el logo en la plantilla.');
+  OFICIO_LOGO_BYTES = (entrada.metodo === 8) ? await inflarRaw(entrada.datos) : entrada.datos;
+  return OFICIO_LOGO_BYTES;
+}
 
 async function logoOficioDataUri(){
   if(OFICIO_LOGO_DATAURI) return OFICIO_LOGO_DATAURI;
-  const entradas = await zipLeerBase64(OFICIO_TEMPLATES.conservador);
-  const entrada = entradas.find(e => e.nombre === 'word/media/image1.jpeg');
-  if(!entrada) return '';
-  const bytes = (entrada.metodo === 8) ? await inflarRaw(entrada.datos) : entrada.datos;
+  const bytes = await logoOficioBytes();
   let binario = '';
   bytes.forEach(b => { binario += String.fromCharCode(b); });
   OFICIO_LOGO_DATAURI = 'data:image/jpeg;base64,' + btoa(binario);
@@ -6466,21 +6484,20 @@ function repetirFilasTabla(xml, filas){
   return xml.slice(0, inicio) + generadas + xml.slice(fin);
 }
 
-// Extrae el texto de cada párrafo (w:p) del XML de Word y devuelve el HTML
-// del cuerpo del oficio, respetando alineación centrada/derecha y negrita,
-// para que se vea tal cual quedará en el documento final. Se usa tanto para
-// la vista previa en pantalla como para armar el PDF de impresión.
-function xmlOficioACuerpoHtml(xml){
+/* Lee el word/document.xml de un oficio ya relleno y devuelve su contenido
+   como una lista de "bloques" neutros (ni HTML ni PDF): párrafos con su
+   alineación y negrita, y tablas con sus filas de celdas. Es la única lectura
+   del XML: tanto la vista previa en pantalla (xmlOficioACuerpoHtml, que arma
+   HTML a partir de estos bloques) como el generador de PDF real
+   (construirPdfOficios, que los dibuja como texto en el PDF) parten de aquí,
+   para que ambos muestren siempre exactamente lo mismo. */
+function xmlOficioABloques(xml){
     const doc = new DOMParser().parseFromString(xml, 'application/xml');
     const parseError = doc.querySelector('parsererror');
     if(parseError) throw new Error('No se pudo interpretar el documento.');
 
     const body = doc.getElementsByTagNameNS('*','body')[0];
     if(!body) throw new Error('El documento no tiene cuerpo.');
-
-    const escaparTexto = (texto)=> texto
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/\t/g,'&emsp;&emsp;');
 
     // Devuelve el texto de un párrafo y si lleva negrita.
     const leerParrafo = (p)=>{
@@ -6497,7 +6514,7 @@ function xmlOficioACuerpoHtml(xml){
       return {texto, esNegrita};
     };
 
-    let html = '';
+    const bloques = [];
     // Se recorren los hijos directos del cuerpo en orden, para que la tabla de
     // expedientes del oficio masivo aparezca en su lugar exacto.
     Array.from(body.childNodes).forEach(nodo=>{
@@ -6507,29 +6524,51 @@ function xmlOficioACuerpoHtml(xml){
         const {texto, esNegrita} = leerParrafo(nodo);
         const pPr = nodo.getElementsByTagNameNS('*','pPr')[0];
         const jc = pPr ? pPr.getElementsByTagNameNS('*','jc')[0] : null;
-        const alineacion = jc ? jc.getAttribute('w:val') : null;
+        const alineacionXml = jc ? jc.getAttribute('w:val') : null;
+        const alineacion = (alineacionXml === 'center') ? 'center'
+          : (alineacionXml === 'right' || alineacionXml === 'end') ? 'right'
+          : 'left';
 
-        const clases = [];
-        if(alineacion === 'center') clases.push('of-center');
-        if(alineacion === 'right' || alineacion === 'end') clases.push('of-right');
-        if(esNegrita) clases.push('of-bold');
-        if(!texto.trim()) clases.push('of-empty');
-
-        html += `<p class="${clases.join(' ')}">${escaparTexto(texto) || '&nbsp;'}</p>`;
+        bloques.push({tipo:'p', texto, alineacion, negrita: esNegrita, vacio: !texto.trim()});
 
       } else if(nodo.localName === 'tbl'){
         const filas = Array.from(nodo.childNodes)
-          .filter(n => n.nodeType === 1 && n.localName === 'tr');
+          .filter(n => n.nodeType === 1 && n.localName === 'tr')
+          .map(tr => Array.from(tr.childNodes)
+            .filter(n => n.nodeType === 1 && n.localName === 'tc')
+            .map(tc => Array.from(tc.getElementsByTagNameNS('*','p'))
+              .map(p => leerParrafo(p).texto).join('\n')));
+        bloques.push({tipo:'tabla', filas});
+      }
+    });
+
+    return bloques;
+}
+
+// Arma el HTML del cuerpo del oficio a partir de los bloques anteriores,
+// respetando alineación centrada/derecha y negrita, para que se vea tal cual
+// quedará en el documento final. Lo usa la vista previa en pantalla.
+function xmlOficioACuerpoHtml(xml){
+    const bloques = xmlOficioABloques(xml);
+
+    const escaparTexto = (texto)=> texto
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\t/g,'&emsp;&emsp;');
+
+    let html = '';
+    bloques.forEach(b=>{
+      if(b.tipo === 'p'){
+        const clases = [];
+        if(b.alineacion === 'center') clases.push('of-center');
+        if(b.alineacion === 'right') clases.push('of-right');
+        if(b.negrita) clases.push('of-bold');
+        if(b.vacio) clases.push('of-empty');
+        html += `<p class="${clases.join(' ')}">${escaparTexto(b.texto) || '&nbsp;'}</p>`;
+      } else if(b.tipo === 'tabla'){
         let tabla = '<table class="of-tbl"><tbody>';
-        filas.forEach(tr=>{
-          const celdas = Array.from(tr.childNodes)
-            .filter(n => n.nodeType === 1 && n.localName === 'tc');
+        b.filas.forEach(celdas=>{
           tabla += '<tr>';
-          celdas.forEach(tc=>{
-            const parrafos = Array.from(tc.getElementsByTagNameNS('*','p'));
-            const texto = parrafos.map(p => leerParrafo(p).texto).join('\n');
-            tabla += `<td>${escaparTexto(texto) || '&nbsp;'}</td>`;
-          });
+          celdas.forEach(texto=>{ tabla += `<td>${escaparTexto(texto) || '&nbsp;'}</td>`; });
           tabla += '</tr>';
         });
         tabla += '</tbody></table>';
@@ -6538,6 +6577,332 @@ function xmlOficioACuerpoHtml(xml){
     });
 
     return html || '<p class="of-empty">&nbsp;</p>';
+}
+
+/* ============================================================
+   PDF REAL DE LOS OFICIOS (sin diálogo de impresión)
+
+   Antes, "exportar a PDF" abría el diálogo de impresión del navegador y había
+   que elegir «Guardar como PDF» a mano. Para «Oficios DOM por comuna» eso
+   además obligaba a juntar todas las comunas en un solo PDF de varias
+   páginas, porque el navegador sólo entrega un archivo por cada paso por el
+   diálogo. Aquí se escribe el archivo .pdf byte a byte (sin ninguna librería:
+   no hay acceso a internet para traer una, así que se sigue el mismo criterio
+   que ya se usó para el .docx/.zip), a partir de los mismos "bloques" que
+   arma xmlOficioABloques, así que el PDF real muestra siempre el mismo texto,
+   logo y tabla de expedientes que la vista previa. Con esto cada comuna
+   descarga su propio Oficio_DOM_<comuna>.pdf, listo para abrir o enviar, sin
+   pasar por ningún diálogo.
+   ============================================================ */
+
+const OFICIO_PDF_PT_POR_MM = 72 / 25.4;
+const mmAPt = (mm)=> mm * OFICIO_PDF_PT_POR_MM;
+
+/* Tamaño Oficio (216×330 mm) con 15 mm de margen, igual que el CSS de
+   impresión (@page oficio{size:216mm 330mm;margin:15mm;}), para que el PDF
+   real pagine igual que la versión anterior basada en impresión. */
+const OFICIO_PDF_PAGINA = {ancho: mmAPt(216), alto: mmAPt(330), margen: mmAPt(15)};
+const OFICIO_PDF_FUENTE = 13.5;                       // pt, igual que #oficioImpresion
+const OFICIO_PDF_INTERLINEA = OFICIO_PDF_FUENTE * 1.55;
+const OFICIO_PDF_TABLA_FUENTE = 9;                    // pt, igual que table.of-tbl
+const OFICIO_PDF_TABLA_INTERLINEA = OFICIO_PDF_TABLA_FUENTE * 1.3;
+const OFICIO_PDF_TABLA_PAD_X = 4;                     // pt, igual que el padding CSS de la celda
+const OFICIO_PDF_TABLA_PAD_Y = 2;
+const OFICIO_PDF_LOGO_ANCHO = 34;                     // pt, igual que .of-header-logo .mark
+
+/* Anchos (por 1000 unidades de tamaño de fuente) de Helvetica, la fuente base
+   del PDF que no hace falta incrustar. Cubre ASCII y los acentos/ñ que usan
+   los oficios en español (equivalen a WinAnsiEncoding, que es la codificación
+   declarada en los objetos de fuente). Sólo se usan para calcular dónde
+   cortar las líneas: una pequeña imprecisión aquí, cuando mucho, corta una
+   palabra unos puntos antes o después, nunca rompe el documento. */
+const OFICIO_PDF_ANCHOS_HELVETICA = {
+  32:278,33:278,34:355,35:556,36:556,37:889,38:667,39:191,40:333,41:333,42:389,43:584,44:278,45:333,46:278,47:278,
+  48:556,49:556,50:556,51:556,52:556,53:556,54:556,55:556,56:556,57:556,
+  58:278,59:278,60:584,61:584,62:584,63:556,64:1015,
+  65:667,66:667,67:722,68:722,69:667,70:611,71:778,72:722,73:278,74:500,75:667,76:556,77:833,78:722,79:778,
+  80:667,81:778,82:722,83:667,84:611,85:722,86:667,87:944,88:667,89:667,90:611,
+  91:278,92:278,93:278,94:469,95:556,96:333,
+  97:556,98:556,99:500,100:556,101:556,102:278,103:556,104:556,105:222,106:222,107:500,108:222,109:833,
+  110:556,111:556,112:556,113:556,114:333,115:500,116:278,117:556,118:500,119:722,120:500,121:500,122:500,
+  123:334,124:260,125:334,126:584,
+  133:750,145:333,146:333,147:444,148:444,150:556,151:1000,160:278,161:333,170:370,176:400,186:365,191:556,
+  192:667,193:667,194:667,195:667,196:667,197:667,199:722,
+  200:667,201:667,202:667,203:667,204:278,205:278,206:278,207:278,209:722,
+  210:778,211:778,212:778,213:778,214:778,217:722,218:722,219:722,220:722,221:667,223:611,
+  224:556,225:556,226:556,227:556,228:556,229:556,231:500,
+  232:556,233:556,234:556,235:556,236:278,237:278,238:278,239:278,241:556,
+  242:556,243:556,244:556,245:556,246:556,249:556,250:556,251:556,252:556,253:500,255:500
+};
+
+/* Convierte texto Unicode a la cadena de bytes WinAnsi (1 carácter JS = 1
+   byte 0-255) con la que se escriben los operadores de texto del PDF: las
+   letras con tilde y la ñ del español coinciden con Latin-1, así que basta
+   con su código de punto; las comillas tipográficas y rayas que trae el
+   texto de los dictámenes se traducen a su código WinAnsi, y cualquier otro
+   carácter fuera de rango se reemplaza por "?" en vez de romper el archivo. */
+const OFICIO_PDF_ESPECIALES = {0x2018:145,0x2019:146,0x201C:147,0x201D:148,0x2013:150,0x2014:151,0x2026:133,0x00A0:160};
+function textoAWinAnsi(str){
+  let out = '';
+  for(const ch of String(str)){
+    const cp = ch.codePointAt(0);
+    const byte = (cp <= 0xFF) ? cp : (OFICIO_PDF_ESPECIALES[cp] !== undefined ? OFICIO_PDF_ESPECIALES[cp] : 0x3F);
+    out += String.fromCharCode(byte);
+  }
+  return out;
+}
+
+/* Ancho de un carácter ya convertido a WinAnsi. La negrita en Helvetica pesa
+   más: en vez de tabular de nuevo los ~150 anchos, se estima con un factor
+   fijo sobre el ancho de la versión normal (suficiente para cortar líneas). */
+function anchoCaracterPdf(byte, negrita){
+  const base = OFICIO_PDF_ANCHOS_HELVETICA[byte];
+  const b = (base === undefined) ? 556 : base;
+  return negrita ? Math.round(b * 1.08) : b;
+}
+
+function anchoTextoPdf(str, tam, negrita){
+  const winAnsi = textoAWinAnsi(str);
+  let total = 0;
+  for(let i = 0; i < winAnsi.length; i++) total += anchoCaracterPdf(winAnsi.charCodeAt(i), negrita);
+  return total * tam / 1000;
+}
+
+/* Corta un texto en líneas que no superen el ancho disponible, cortando por
+   palabras (igual que el "white-space:pre-wrap" que ya usa la vista previa en
+   pantalla, sólo que aquí hay que decidir el corte a mano porque el PDF no
+   tiene motor de texto propio). */
+function envolverTextoPdf(texto, anchoMax, tam, negrita){
+  const tokens = String(texto).split(/(\s+)/).filter(t => t !== '');
+  const lineas = [];
+  let actual = '';
+  let anchoActual = 0;
+  tokens.forEach(tok=>{
+    const esEspacio = /^\s+$/.test(tok);
+    const anchoTok = anchoTextoPdf(tok, tam, negrita);
+    if(actual && !esEspacio && (anchoActual + anchoTok) > anchoMax){
+      lineas.push(actual.replace(/\s+$/,''));
+      actual = tok;
+      anchoActual = anchoTok;
+    } else {
+      actual += tok;
+      anchoActual += anchoTok;
+    }
+  });
+  lineas.push(actual.replace(/\s+$/,''));
+  return lineas.length ? lineas : [''];
+}
+
+/* Coordenada X de una línea ya cortada, según su alineación (igual que las
+   clases of-center/of-right/of-empty de la vista previa). */
+function xAlineadaPdf(linea, tam, negrita, alineacion, margenIzq, anchoContenido){
+  if(alineacion === 'left') return margenIzq;
+  const ancho = anchoTextoPdf(linea, tam, negrita);
+  if(alineacion === 'center') return margenIzq + (anchoContenido - ancho) / 2;
+  return margenIzq + anchoContenido - ancho; // right
+}
+
+function pdfEscaparTexto(str){
+  return str.replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');
+}
+
+/* Los operadores devuelven texto PDF listo para concatenar al flujo de la
+   página; "y" siempre es la coordenada PDF real (origen abajo-izquierda),
+   ya convertida por quien llama a partir de la posición "desde arriba" que
+   usa el resto del generador (más fácil de razonar, igual que en CSS). */
+function opTextoPdf(x, y, tam, negrita, texto){
+  const fuente = negrita ? '/F2' : '/F1';
+  const escapado = pdfEscaparTexto(textoAWinAnsi(texto));
+  return `BT ${fuente} ${tam} Tf ${x.toFixed(2)} ${y.toFixed(2)} Td (${escapado}) Tj ET\n`;
+}
+function opLineaPdf(x1, y1, x2, y2, grosor){
+  return `${grosor.toFixed(2)} w ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S\n`;
+}
+function opRectDesdeArribaPdf(x, topY, ancho, alto, opts){
+  const yPdf = OFICIO_PDF_PAGINA.alto - topY - alto;
+  let s = '';
+  if(opts.relleno) s += `${opts.relleno} rg\n${x.toFixed(2)} ${yPdf.toFixed(2)} ${ancho.toFixed(2)} ${alto.toFixed(2)} re f\n`;
+  if(opts.borde) s += `0 0 0 RG 0.75 w\n${x.toFixed(2)} ${yPdf.toFixed(2)} ${ancho.toFixed(2)} ${alto.toFixed(2)} re S\n`;
+  return s;
+}
+
+/* Lee ancho/alto/componentes de color de un JPEG a partir de sus propios
+   marcadores, para saber cómo declarar la imagen incrustada en el PDF
+   (DeviceRGB o DeviceGray) sin depender de ninguna librería. */
+function leerDimensionesJpeg(bytes){
+  let i = 2;
+  while(i < bytes.length - 4){
+    if(bytes[i] !== 0xFF){ i++; continue; }
+    const marcador = bytes[i + 1];
+    if(marcador === 0xD8 || marcador === 0x01 || (marcador >= 0xD0 && marcador <= 0xD9)){ i += 2; continue; }
+    const largo = (bytes[i + 2] << 8) | bytes[i + 3];
+    const esSOF = (marcador >= 0xC0 && marcador <= 0xC3) || (marcador >= 0xC5 && marcador <= 0xC7)
+      || (marcador >= 0xC9 && marcador <= 0xCB) || (marcador >= 0xCD && marcador <= 0xCF);
+    if(esSOF){
+      const alto = (bytes[i + 5] << 8) | bytes[i + 6];
+      const ancho = (bytes[i + 7] << 8) | bytes[i + 8];
+      const componentes = bytes[i + 9];
+      return {ancho, alto, componentes};
+    }
+    i += 2 + largo;
+  }
+  throw new Error('No se pudo leer el tamaño del logo (JPEG).');
+}
+
+/* Convierte un Uint8Array a una cadena "binaria" (1 carácter = 1 byte), que
+   es como se maneja un PDF por dentro: su sintaxis es texto, pero sus flujos
+   (como el JPEG incrustado) son bytes crudos. Se recorre en bloques para no
+   desbordar el límite de argumentos de String.fromCharCode con archivos
+   grandes. */
+function bytesABinario(bytes){
+  let s = '';
+  const BLOQUE = 0x8000;
+  for(let i = 0; i < bytes.length; i += BLOQUE) s += String.fromCharCode.apply(null, bytes.subarray(i, i + BLOQUE));
+  return s;
+}
+function binarioABytes(str){
+  const out = new Uint8Array(str.length);
+  for(let i = 0; i < str.length; i++) out[i] = str.charCodeAt(i) & 0xFF;
+  return out;
+}
+
+/* Arma, a partir de los "bloques" (párrafos y tabla) de UN oficio, el
+   contenido de cada una de sus páginas PDF (operadores de dibujo en texto
+   plano), con el mismo logo y encabezado que la vista previa. El logo, igual
+   que en la vista previa, sólo se dibuja en la primera página: si el cuerpo
+   se extiende a una página siguiente, ésta no lo repite (tampoco lo hacía la
+   versión basada en el diálogo de impresión). */
+async function paginasOficioPdf(bloques){
+  const logoBytes = await logoOficioBytes();
+  const {ancho: logoAnchoPx, alto: logoAltoPx, componentes: logoComponentes} = leerDimensionesJpeg(logoBytes);
+  const logoAlto = OFICIO_PDF_LOGO_ANCHO * (logoAltoPx / logoAnchoPx);
+
+  const P = OFICIO_PDF_PAGINA;
+  const anchoContenido = P.ancho - 2 * P.margen;
+
+  const paginas = [];
+  let ops = '';
+  let topY = P.margen;
+
+  const nuevaPagina = ()=>{ paginas.push(ops); ops = ''; topY = P.margen; };
+  const asegurarEspacio = (alto)=>{ if(topY > P.margen && (topY + alto) > (P.alto - P.margen)) nuevaPagina(); };
+
+  // ---- Encabezado: logo + los mismos tres renglones que la vista previa ----
+  ops += `q ${OFICIO_PDF_LOGO_ANCHO.toFixed(2)} 0 0 ${logoAlto.toFixed(2)} ${P.margen.toFixed(2)} `
+    + `${(P.alto - topY - logoAlto).toFixed(2)} cm /Im1 Do Q\n`;
+  const xTexto = P.margen + OFICIO_PDF_LOGO_ANCHO + 10;
+  let yTexto = topY + 9;
+  ops += opTextoPdf(xTexto, P.alto - yTexto, 9, true, 'MINISTERIO DE BIENES NACIONALES');
+  yTexto += 8 * 1.3;
+  ops += opTextoPdf(xTexto, P.alto - yTexto, 8, false, 'Subsecretaría de Bienes Nacionales · SEREMI Región del Maule');
+  yTexto += 8 * 1.3;
+  ops += opTextoPdf(xTexto, P.alto - yTexto, 8, false, 'Unidad de Regularización');
+  const altoEncabezado = Math.max(logoAlto, yTexto - topY) + 10;
+  ops += opLineaPdf(P.margen, P.alto - (topY + altoEncabezado), P.margen + anchoContenido, P.alto - (topY + altoEncabezado), 1.4);
+  topY += altoEncabezado + 6;
+
+  // ---- Cuerpo: mismos bloques que arma xmlOficioABloques ----
+  bloques.forEach(b=>{
+    if(b.tipo === 'p'){
+      if(b.vacio){
+        asegurarEspacio(OFICIO_PDF_INTERLINEA * 0.5);
+        topY += OFICIO_PDF_INTERLINEA * 0.5;
+        return;
+      }
+      const lineas = envolverTextoPdf(b.texto, anchoContenido, OFICIO_PDF_FUENTE, b.negrita);
+      lineas.forEach(linea=>{
+        asegurarEspacio(OFICIO_PDF_INTERLINEA);
+        const x = xAlineadaPdf(linea, OFICIO_PDF_FUENTE, b.negrita, b.alineacion, P.margen, anchoContenido);
+        const baseline = topY + OFICIO_PDF_FUENTE * 0.85;
+        ops += opTextoPdf(x, P.alto - baseline, OFICIO_PDF_FUENTE, b.negrita, linea);
+        topY += OFICIO_PDF_INTERLINEA;
+      });
+    } else if(b.tipo === 'tabla'){
+      const anchosBase = (b.anchos && b.anchos.length === (b.filas[0] || []).length) ? b.anchos : (b.filas[0] || []).map(()=>1);
+      const sumaAnchos = anchosBase.reduce((a,x)=>a + x, 0) || 1;
+      const anchosPt = anchosBase.map(a => anchoContenido * (a / sumaAnchos));
+
+      b.filas.forEach((celdas, filaIdx)=>{
+        const esEncabezado = filaIdx === 0;
+        const lineasPorCelda = celdas.map((texto, i)=>{
+          const anchoCelda = Math.max((anchosPt[i] || anchoContenido / celdas.length) - OFICIO_PDF_TABLA_PAD_X * 2, 10);
+          return String(texto).split('\n').flatMap(linea =>
+            envolverTextoPdf(linea, anchoCelda, OFICIO_PDF_TABLA_FUENTE, esEncabezado));
+        });
+        const maxLineas = Math.max(1, ...lineasPorCelda.map(l => l.length));
+        const altoFila = maxLineas * OFICIO_PDF_TABLA_INTERLINEA + OFICIO_PDF_TABLA_PAD_Y * 2;
+
+        asegurarEspacio(altoFila);
+        if(esEncabezado) ops += opRectDesdeArribaPdf(P.margen, topY, anchoContenido, altoFila, {relleno:'0.949 0.961 0.969'});
+
+        let x = P.margen;
+        anchosPt.forEach((anchoCol, colIdx)=>{
+          ops += opRectDesdeArribaPdf(x, topY, anchoCol, altoFila, {borde:true});
+          (lineasPorCelda[colIdx] || []).forEach((linea, li)=>{
+            const baseline = topY + OFICIO_PDF_TABLA_PAD_Y + OFICIO_PDF_TABLA_FUENTE * 0.85 + li * OFICIO_PDF_TABLA_INTERLINEA;
+            ops += opTextoPdf(x + OFICIO_PDF_TABLA_PAD_X, P.alto - baseline, OFICIO_PDF_TABLA_FUENTE, esEncabezado, linea);
+          });
+          x += anchoCol;
+        });
+        topY += altoFila;
+      });
+      topY += OFICIO_PDF_INTERLINEA * 0.3;
+    }
+  });
+
+  paginas.push(ops);
+  return {paginas, logoAnchoPx, logoAltoPx, logoComponentes, logoBinario: bytesABinario(logoBytes)};
+}
+
+/* Escribe el archivo .pdf byte a byte: objetos, tabla xref y trailer, según
+   la sintaxis mínima que exige el formato (sin comprimir nada, para no
+   necesitar más que lo que ya trae el navegador). Los números de objeto son
+   fijos: 1 catálogo, 2 páginas, 3/4 las dos fuentes, 5 el logo, y desde el 6
+   dos objetos por página (su contenido y la página misma). */
+function construirPdfBinario(paginas, opts){
+  let out = '%PDF-1.4\n';
+  const offsets = [];
+  function agregar(id, cuerpo){
+    offsets[id] = out.length;
+    out += id + ' 0 obj\n' + cuerpo + '\nendobj\n';
+  }
+
+  const n = paginas.length;
+  const idContenido = (i)=> 6 + i * 2;
+  const idPagina = (i)=> 7 + i * 2;
+
+  agregar(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  const kids = [];
+  for(let i = 0; i < n; i++) kids.push(idPagina(i) + ' 0 R');
+  agregar(2, `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${n} >>`);
+  agregar(3, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+  agregar(4, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  const espacioColor = opts.logoComponentes === 1 ? '/DeviceGray' : '/DeviceRGB';
+  agregar(5, `<< /Type /XObject /Subtype /Image /Width ${opts.logoAnchoPx} /Height ${opts.logoAltoPx} `
+    + `/ColorSpace ${espacioColor} /BitsPerComponent 8 /Filter /DCTDecode /Length ${opts.logoBinario.length} >>\n`
+    + `stream\n${opts.logoBinario}\nendstream`);
+  for(let i = 0; i < n; i++){
+    agregar(idContenido(i), `<< /Length ${paginas[i].length} >>\nstream\n${paginas[i]}\nendstream`);
+    agregar(idPagina(i), `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${opts.ancho.toFixed(2)} ${opts.alto.toFixed(2)}] `
+      + `/Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R >> >> /Contents ${idContenido(i)} 0 R >>`);
+  }
+
+  const totalObjs = 5 + n * 2;
+  const xrefInicio = out.length;
+  out += `xref\n0 ${totalObjs + 1}\n0000000000 65535 f \n`;
+  for(let id = 1; id <= totalObjs; id++) out += String(offsets[id]).padStart(10, '0') + ' 00000 n \n';
+  out += `trailer\n<< /Size ${totalObjs + 1} /Root 1 0 R >>\nstartxref\n${xrefInicio}\n%%EOF`;
+  return out;
+}
+
+/* Un oficio (los bloques que arma xmlOficioABloques) convertido a un Blob PDF
+   real, listo para descargar o meter en un .zip: no requiere ningún diálogo
+   de impresión ni intervención del usuario. */
+async function pdfBlobDesdeBloques(bloques){
+  const {paginas, logoAnchoPx, logoAltoPx, logoComponentes, logoBinario} = await paginasOficioPdf(bloques);
+  const P = OFICIO_PDF_PAGINA;
+  const binario = construirPdfBinario(paginas, {ancho: P.ancho, alto: P.alto, logoAnchoPx, logoAltoPx, logoComponentes, logoBinario});
+  return new Blob([binarioABytes(binario)], {type: 'application/pdf'});
 }
 
 // Muestra el oficio en el panel de vista previa de la pantalla.
@@ -6972,8 +7337,10 @@ async function exportarTrioOficiosPdf(){
   }
 }
 
-/* Un Oficio DOM por comuna, todos juntos en un solo PDF, cada comuna en su
-   propia página. Usa la misma agrupación que "Oficios DOM por comuna (Word)". */
+/* Un archivo .pdf REAL por cada comuna (no un único PDF armado con el diálogo
+   de impresión): usa la misma agrupación que "Oficios DOM por comuna (Word)",
+   y cada comuna se entrega ya lista como Oficio_DOM_<comuna>.pdf, dentro de un
+   .zip junto con las demás, igual que ya se hace con los .docx. */
 async function exportarOficiosDomPorComunaPdf(){
   if(!soportaZip()){
     q('ofStatus').textContent = AVISO_NAVEGADOR;
@@ -6992,21 +7359,40 @@ async function exportarOficiosDomPorComunaPdf(){
     return;
   }
 
-  q('ofStatus').textContent = 'Generando el PDF con un oficio DOM por cada comuna…';
+  q('ofStatus').textContent = 'Generando un PDF por cada comuna…';
 
   try{
-    iniciarImpresionOficios();
+    const archivos = [];
+    const generados = [];
+
     for(const [comuna, filas] of grupos){
       const datos = datosOficioMasivo(filas, destinatarioInstitucion('dom', comuna));
       const {xml} = await construirOficioXml('masivo', datos);
-      await agregarOficioAImpresion(xml);
+      const bloques = xmlOficioABloques(xml);
+      bloques.forEach(b=>{ if(b.tipo === 'tabla') b.anchos = MASIVO_ANCHOS_COLUMNAS_TABLA; });
+      const blob = await pdfBlobDesdeBloques(bloques);
+      const nombre = 'Oficio_DOM_' + limpiarNombreArchivo(comuna) + '.pdf';
+      archivos.push(await zipEntradaBlob(nombre, blob));
+      generados.push(nombre);
     }
 
-    q('ofStatus').textContent = 'Se abrió el diálogo de impresión con un oficio por comuna: elige «Guardar como PDF».';
-    imprimirConTitulo('Oficios_DOM_por_comuna');
+    const zipBlob = await zipEscribir(archivos, 'application/zip');
+    const nombreZip = 'Oficios_DOM_por_comuna_PDF.zip';
+
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombreZip;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+
+    q('ofStatus').textContent = '✓ Se generó un PDF por cada comuna en ' + nombreZip
+      + ' — ' + generados.join(' · ');
   } catch(err){
     console.error(err);
-    q('ofStatus').textContent = 'Ocurrió un error generando el PDF de los oficios DOM por comuna: ' + err.message;
+    q('ofStatus').textContent = 'Ocurrió un error generando los PDF de los oficios DOM por comuna: ' + err.message;
   }
 }
 
