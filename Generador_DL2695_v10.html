@@ -6377,10 +6377,52 @@ const OFICIO_ERRATAS = [
   ['N\u00B0s11.662',             'N\u00B0s 11.662'],
   ['Decreto Ley N\u00B02,695',   'Decreto Ley N\u00B02.695'],
   ['E472S30',                    'E472530'],
-  /* El masivo escribe "N°SE07-{ord_n}" y los individuales "N°SE07- {ord_n}",
-     que deja un espacio suelto tras el guion. Se unifica. */
-  ['N\u00B0SE07- ',              'N\u00B0SE07-']
+  /* El masivo escribe "N°SE07-{ord_n}" (sin espacio) y los individuales
+     "N°SE07- {ord_n}" (con espacio). Se unifica al formato CON espacio, que
+     es el que corresponde: "ORD. N°SE07-       - 2026." */
+  ['N\u00B0SE07-{ord_n}',        'N\u00B0SE07- {ord_n}']
 ];
+
+/* La plantilla del oficio MASIVO (la que también usa "Oficios DOM por
+   comuna") trae en su encabezado (word/header1.xml) sólo el logo del
+   Ministerio, sin la línea "Unidad de Regularización" que sí traen las
+   cuatro plantillas individuales (dom/minvu/serviu/conservador). Por eso el
+   .docx que se descarga del oficio masivo salía sin esa línea bajo el logo,
+   aunque la vista previa en pantalla y el PDF real sí la dibujan (la dibujan
+   con CSS/JS, no leyendo el header1.xml). Se agrega aquí, en tiempo de
+   ejecución, el mismo párrafo que ya usan los oficios individuales, para no
+   tener que rehacer el Base64 de la plantilla. */
+const HEADER_PARRAFO_UNIDAD =
+  '<w:p w:rsidR="004D0752" w:rsidRPr="004D0752" w:rsidRDefault="001E67C7" w:rsidP="004D0752">'
+  + '<w:pPr><w:tabs><w:tab w:val="center" w:pos="4252"/><w:tab w:val="right" w:pos="8504"/></w:tabs>'
+  + '<w:spacing w:after="0" w:line="240" w:lineRule="auto"/>'
+  + '<w:rPr><w:rFonts w:ascii="Gill Sans MT" w:eastAsia="Times New Roman" w:hAnsi="Gill Sans MT" w:cs="Times New Roman"/>'
+  + '<w:sz w:val="24"/><w:szCs w:val="20"/><w:lang w:val="es-ES" w:eastAsia="es-ES"/></w:rPr></w:pPr>'
+  + '<w:r w:rsidRPr="004D0752"><w:rPr><w:rFonts w:ascii="gobCL" w:eastAsia="Times New Roman" w:hAnsi="gobCL" w:cs="Times New Roman"/>'
+  + '<w:b/><w:color w:val="AEAAAA"/><w:sz w:val="24"/><w:szCs w:val="20"/><w:lang w:val="es-ES" w:eastAsia="es-ES"/></w:rPr>'
+  + '<w:t xml:space="preserve">Unidad de </w:t></w:r>'
+  + '<w:r w:rsidRPr="004D0752"><w:rPr><w:rFonts w:ascii="gobCL" w:eastAsia="Times New Roman" w:hAnsi="gobCL" w:cs="Times New Roman"/>'
+  + '<w:b/><w:color w:val="AEAAAA"/><w:sz w:val="24"/><w:szCs w:val="20"/><w:lang w:eastAsia="es-ES"/></w:rPr>'
+  + '<w:t>Regularización</w:t></w:r></w:p>';
+
+/* Revisa el header1.xml de la plantilla y, si no trae ya el texto "Unidad de
+   Regularización" (el caso del oficio masivo), le agrega el mismo párrafo que
+   traen los oficios individuales, justo después del párrafo del logo. Si ya
+   lo trae, no toca nada. */
+async function asegurarUnidadEnHeader(entradas){
+  const RUTA_HEADER = 'word/header1.xml';
+  let headerXml;
+  try{ headerXml = await zipTexto(entradas, RUTA_HEADER); }
+  catch(e){ return entradas; }
+
+  if(headerXml.indexOf('Unidad de') >= 0) return entradas;
+
+  const nuevoXml = headerXml.replace('</w:p></w:hdr>', '</w:p>' + HEADER_PARRAFO_UNIDAD + '</w:hdr>');
+  if(nuevoXml === headerXml) return entradas; // formato inesperado: no se toca
+
+  const nuevaEntrada = await zipEntradaTexto(RUTA_HEADER, nuevoXml);
+  return entradas.map(e => e.nombre === RUTA_HEADER ? nuevaEntrada : e);
+}
 
 /* Logo real del Ministerio de Bienes Nacionales para la vista previa en
    pantalla y el PDF del oficio (el .docx descargado ya lo trae incrustado en
@@ -6418,7 +6460,8 @@ async function logoOficioDataUri(){
 // con los datos actuales y devuelve el XML (word/document.xml) ya relleno,
 // junto con el zip completo (útil para generar el .docx descargable).
 async function construirOficioXml(tipo, datos){
-  const entradas = await zipLeerBase64(OFICIO_TEMPLATES[tipo]);
+  let entradas = await zipLeerBase64(OFICIO_TEMPLATES[tipo]);
+  entradas = await asegurarUnidadEnHeader(entradas);
   const docPath = 'word/document.xml';
   let xml = await zipTexto(entradas, docPath);
 
