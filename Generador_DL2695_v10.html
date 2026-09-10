@@ -6873,7 +6873,13 @@ function pdfEscaparTexto(str){
 function opTextoPdf(x, y, tam, negrita, texto){
   const fuente = negrita ? '/F2' : '/F1';
   const escapado = pdfEscaparTexto(textoAWinAnsi(texto));
-  return `BT ${fuente} ${tam} Tf ${x.toFixed(2)} ${y.toFixed(2)} Td (${escapado}) Tj ET\n`;
+  /* "0 g" fija el color de relleno en negro ANTES de dibujar el texto: el
+     operador Tj usa el color de relleno activo, y opRectDesdeArribaPdf() deja
+     ese color en gris clarísimo después de pintar el fondo del encabezado de
+     una tabla (ver más abajo). Sin este reseteo, todo el texto dibujado desde
+     ahí en adelante —los datos de la tabla y el resto del oficio— salía en
+     ese mismo gris, prácticamente invisible sobre el papel. */
+  return `0 g\nBT ${fuente} ${tam} Tf ${x.toFixed(2)} ${y.toFixed(2)} Td (${escapado}) Tj ET\n`;
 }
 function opLineaPdf(x1, y1, x2, y2, grosor){
   return `${grosor.toFixed(2)} w ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S\n`;
