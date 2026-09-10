@@ -142,6 +142,11 @@
   .bit-mapeo{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;}
   .bit-mapeo label{display:block;font-size:12px;color:var(--gris-600);margin-bottom:2px;}
   .bit-scroll{overflow:auto;max-height:340px;border:1px solid var(--gris-200);border-radius:8px;}
+  .bit-checklist{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;border:1px solid var(--gris-200);border-radius:8px;padding:8px 10px;}
+  .bit-checklist label{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;margin:0;cursor:pointer;}
+  .bit-checklist input[type="checkbox"]{margin:0;cursor:pointer;}
+  .bit-checklist label.hecha{color:var(--gris-600);}
+  @media (max-width:520px){.bit-checklist{grid-template-columns:1fr;}}
   .bit-tbl{border-collapse:collapse;width:100%;font-size:12px;}
   .bit-tbl th,.bit-tbl td{border:1px solid var(--gris-200);padding:4px 6px;text-align:left;vertical-align:top;}
   .bit-tbl th{background:var(--gris-100);font-weight:600;position:sticky;top:0;}
@@ -1499,6 +1504,10 @@
               <label>N° del documento <span class="hint">· resolución u ordinario</span></label>
               <input type="text" id="bitNumero" placeholder="">
             </div>
+          </div>
+          <div class="field">
+            <label>O marca directamente las que correspondan <span class="hint">· se agregan solas, con la fecha de arriba, al expediente indicado</span></label>
+            <div class="bit-checklist" id="bitChecklist"></div>
           </div>
           <div class="field">
             <label>Observación <span class="hint">· opcional</span></label>
@@ -8024,6 +8033,7 @@ function bitacoraDatosCompletos(exp){
    él (padrón + tareas anteriores), para saber de antemano qué quedará guardado
    con la tarea que se está a punto de agregar. */
 function bitacoraExpMostrar(exp){
+  renderBitChecklist();
   const aviso = q('bitExpAviso');
   if(!aviso) return;
   const clave = String(exp || '').trim();
@@ -8044,6 +8054,71 @@ function bitacoraExpMostrar(exp){
   aviso.style.display = 'block';
   aviso.innerHTML = (piezas.length ? 'Se conoce: ' + piezas.join(' · ') : 'Sin datos guardados aún para este expediente.')
     + (previas ? ' · ' + previas + ' tarea(s) ya registrada(s)' : '');
+}
+
+/* Menú tipo checklist con TODAS las tareas de BITACORA_TAREAS: cada casilla
+   refleja si esa tarea ya está anotada en el expediente escrito en «bitExp»,
+   y al marcarla/desmarcarla se agrega o se quita de inmediato, sin pasar por
+   el botón «Agregar tarea a expediente». Sirve para el caso más común (dejar
+   constancia de una tarea de la lista) sin escribir nada; el campo de texto
+   con el datalist sigue disponible para tareas fuera de la lista («Otro»
+   o variantes con número/observación). */
+function renderBitChecklist(){
+  const cont = q('bitChecklist');
+  if(!cont) return;
+  const exp = String(val('bitExp') || '').trim();
+  cont.innerHTML = BITACORA_TAREAS.map(nombre=>{
+    const marcada = exp && state.bitacora.some(t => t.exp === exp && t.nombre === nombre);
+    return `<label class="${marcada ? 'hecha' : ''}" data-tarea="${escaparHtml(nombre)}">`
+      + `<input type="checkbox" ${marcada ? 'checked' : ''} onchange="bitacoraChecklistToggle(this)">`
+      + escaparHtml(nombre) + '</label>';
+  }).join('');
+}
+
+/* Al marcar: agrega la tarea al expediente de «bitExp» con la fecha del
+   formulario (u hoy, si no se indicó). Al desmarcar: la quita. En ambos casos
+   sin número ni observación, porque son datos que solo tienen sentido cuando
+   se escriben a mano; si la tarea necesita alguno, conviene usar el campo de
+   texto y el botón «Agregar tarea a expediente» en vez de la casilla. */
+function bitacoraChecklistToggle(input){
+  const label = input.closest('label');
+  const nombre = label.getAttribute('data-tarea');
+  const exp = String(val('bitExp') || '').trim();
+  if(!exp){
+    input.checked = false;
+    q('bitStatus').textContent = 'Indica primero el N° de expediente al que corresponde la tarea.';
+    return;
+  }
+
+  if(input.checked){
+    if(state.bitacora.some(t => t.exp === exp && t.nombre === nombre)){
+      label.classList.add('hecha');
+      q('bitStatus').textContent = '«' + nombre + '» ya estaba anotado en el expediente ' + exp + '.';
+      return;
+    }
+    state.bitacora.push({
+      exp: exp,
+      fecha: val('bitFecha') || new Date().toISOString().slice(0,10),
+      nombre: nombre,
+      numero: '',
+      nota: '',
+      origen: 'manual',
+      datos: bitacoraDatosCompletos(exp)
+    });
+    label.classList.add('hecha');
+    renderBitacora();
+    guardarTodo();
+    q('bitStatus').textContent = '✓ «' + nombre + '» agregado a la bitácora del expediente ' + exp + '.';
+  } else {
+    const antes = state.bitacora.length;
+    state.bitacora = state.bitacora.filter(t => !(t.exp === exp && t.nombre === nombre));
+    label.classList.remove('hecha');
+    if(state.bitacora.length !== antes){
+      renderBitacora();
+      guardarTodo();
+      q('bitStatus').textContent = '«' + nombre + '» quitado de la bitácora del expediente ' + exp + '.';
+    }
+  }
 }
 
 /* Texto de la inscripción como la escribe la unidad en la tabla del oficio. */
@@ -8380,6 +8455,7 @@ function renderBitacora(){
   if(!state.bitacora.length && !state.padron.length){
     cont.innerHTML = '<div class="bit-vacio">Todavía no hay tareas registradas.<br>'
       + 'Carga tu tabla de expedientes o usa «➕ Agregar tarea a expediente».</div>';
+    renderBitChecklist();
     renderBitacoraPreview();
     return;
   }
@@ -8416,6 +8492,7 @@ function renderBitacora(){
     </div>`;
   }).join('');
 
+  renderBitChecklist();
   renderBitacoraPreview();
 }
 
