@@ -7058,8 +7058,25 @@ function construirPdfBinario(paginas, opts){
   const kids = [];
   for(let i = 0; i < n; i++) kids.push(idPagina(i) + ' 0 R');
   agregar(2, `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${n} >>`);
-  agregar(3, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
-  agregar(4, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  /* Se declaran los anchos (/Widths) EXACTOS de cada carácter, en vez de
+     confiar en que el lector de PDF traiga sus propias métricas de
+     Helvetica: algunos visores (incluido el de Chrome) sustituyen la fuente
+     por una de métricas ligeramente distintas a las de OFICIO_PDF_ANCHOS_HELVETICA
+     con la que este generador decide dónde poner cada palabra, y el desajuste
+     se acumula letra a letra hasta que una palabra queda dibujada encima de
+     la siguiente. Al declarar aquí los mismos anchos que usa
+     anchoCaracterPdf(), la posición que calculó el generador y la que
+     interpreta el lector son siempre la misma, sea cual sea el visor. */
+  const widthsF1 = [];
+  const widthsF2 = [];
+  for(let c = 32; c <= 255; c++){
+    widthsF1.push(anchoCaracterPdf(c, false));
+    widthsF2.push(anchoCaracterPdf(c, true));
+  }
+  agregar(3, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding '
+    + `/FirstChar 32 /LastChar 255 /Widths [${widthsF1.join(' ')}] >>`);
+  agregar(4, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding '
+    + `/FirstChar 32 /LastChar 255 /Widths [${widthsF2.join(' ')}] >>`);
   const espacioColor = opts.logoComponentes === 1 ? '/DeviceGray' : '/DeviceRGB';
   agregar(5, `<< /Type /XObject /Subtype /Image /Width ${opts.logoAnchoPx} /Height ${opts.logoAltoPx} `
     + `/ColorSpace ${espacioColor} /BitsPerComponent 8 /Filter /DCTDecode /Length ${opts.logoBinario.length} >>\n`
