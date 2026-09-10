@@ -7022,7 +7022,14 @@ async function paginasOficioPdf(bloques){
         const altoFila = maxLineas * OFICIO_PDF_TABLA_INTERLINEA + OFICIO_PDF_TABLA_PAD_Y * 2;
 
         asegurarEspacio(altoFila);
-        if(esEncabezado) ops += opRectDesdeArribaPdf(P.margenIzq, topY, anchoContenido, altoFila, {relleno:'0.949 0.961 0.969'});
+        /* La plantilla real del oficio masivo (word/document.xml) no lleva
+           ningún sombreado (w:shd) en la fila de encabezado de la tabla: la
+           distingue solo el propio texto ("EXP.", "RUT", ...). El fondo gris
+           que llevaba antes esta fila copiaba el estilo de la vista previa en
+           pantalla (ahí sí hay un fondo, pero es puramente CSS, para que se
+           lea mejor en el navegador), y no es el que trae el .docx que de
+           verdad se envía, así que se quita para que el PDF real coincida
+           exactamente con la plantilla. */
 
         let x = P.margenIzq;
         anchosPt.forEach((anchoCol, colIdx)=>{
