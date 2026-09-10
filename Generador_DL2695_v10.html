@@ -7927,17 +7927,25 @@ const BITACORA_DESDE_TAB = {
 };
 
 /* Qué tarea de la bitácora corresponde a cada institución destinataria del
-   oficio (mismos nombres que ya trae BITACORA_TAREAS). La pestaña Oficios no
-   usa BITACORA_DESDE_TAB porque la tarea no depende de la pestaña sino de la
-   institución elegida, y porque el oficio masivo necesita anotarse en varios
-   expedientes a la vez (ver bitacoraAgregarDesdeOficio). */
+   oficio individual (mismos nombres que ya trae BITACORA_TAREAS). La pestaña
+   Oficios no usa BITACORA_DESDE_TAB porque la tarea no depende de la pestaña
+   sino de la institución elegida. El oficio MASIVO no está aquí: se trata
+   aparte en BITACORA_MASIVO_TAREAS (ver bitacoraAgregarDesdeOficio), porque en
+   los hechos despacha tres oficios (uno por institución), no uno solo. */
 const BITACORA_DESDE_OFICIO = {
   dom:         'Oficio DOM',
   minvu:       'Oficio MINVU',
   serviu:      'Oficio SERVIU',
-  conservador: 'Oficio Conservador',
-  masivo:      'Oficio masivo'
+  conservador: 'Oficio Conservador'
 };
+
+/* El oficio masivo, aunque se ve como un solo documento en pantalla, en los
+   hechos se despacha a las tres instituciones (DOM, MINVU y SERVIU) — es lo
+   mismo que hace "Los 3 a la vez" con las mismas filas. Por eso, al anotarlo
+   en la bitácora, se registran las tres tareas por separado en cada
+   expediente, en vez de una sola "Oficio masivo" genérica que no dice a quién
+   se le mandó. */
+const BITACORA_MASIVO_TAREAS = ['Oficio DOM', 'Oficio MINVU', 'Oficio SERVIU'];
 
 /* ---------- Datos del expediente que el padrón no trae ----------
    La tabla de la unidad no tiene la dirección del inmueble ni la inscripción
@@ -8102,80 +8110,98 @@ function bitacoraAgregarDesdeDocumento(){
     + (guardados ? '. Se guardaron ' + guardados + ' dato(s) del expediente para los oficios.' : '.');
 }
 
+/* Anota en la bitácora la(s) tarea(s) que corresponden a UN expediente para
+   un nombre de tarea dado, evitando duplicar si ya estaba anotado el mismo
+   nombre+número. Devuelve true si quedó anotada (o ya lo estaba, según
+   soloContar). Comparte la lógica entre el oficio individual y cada línea del
+   oficio masivo, para no repetirla. */
+function bitacoraAnotarSiFalta(exp, nombre, numero, datos){
+  if(state.bitacora.some(t => t.exp === exp && t.nombre === nombre && (t.numero||'') === (numero||''))){
+    return false;
+  }
+  state.bitacora.push({
+    exp: exp, fecha: new Date().toISOString().slice(0,10), nombre: nombre,
+    numero: numero, nota: '', origen: 'manual', datos: datos
+  });
+  return true;
+}
+
 /* Botón que vive en la pestaña Oficios: anota el oficio que se está viendo en
    la bitácora. En los oficios individuales (DOM/MINVU/SERVIU/Conservador) se
    anota una sola tarea, igual que bitacoraAgregarDesdeDocumento. En el oficio
-   MASIVO se anota la MISMA tarea en la bitácora de CADA expediente de la
-   lista (uno por fila), porque un solo oficio masivo despacha varios
-   expedientes a la vez y cada uno debe quedar con su propio registro. */
+   MASIVO, que en los hechos se despacha a las tres instituciones a la vez, se
+   anotan las TRES tareas (Oficio DOM, Oficio MINVU, Oficio SERVIU) por
+   separado, en línea aparte cada una, y en CADA expediente de la lista (uno
+   por fila), porque un solo oficio masivo despacha varios expedientes a la
+   vez y cada uno debe quedar con su propio registro completo. */
 function bitacoraAgregarDesdeOficio(){
   const tipo = val('ofTipo');
-  const nombre = BITACORA_DESDE_OFICIO[tipo];
   const linea = q('ofStatus');
-  if(!nombre){ linea.textContent = 'Elige primero la institución destinataria del oficio.'; return; }
 
   if(tipo !== 'masivo'){
+    const nombre = BITACORA_DESDE_OFICIO[tipo];
+    if(!nombre){ linea.textContent = 'Elige primero la institución destinataria del oficio.'; return; }
+
     const exp = val('ofExpediente');
     if(!exp){
       linea.textContent = 'Escribe primero el N° de expediente: la bitácora agrupa las tareas por expediente.';
       return;
     }
     const numero = val('ofOrdN');
-    if(state.bitacora.some(t => t.exp === exp && t.nombre === nombre && (t.numero||'') === (numero||''))){
+    const anotada = bitacoraAnotarSiFalta(exp, nombre, numero, bitacoraDatosCompletos(exp));
+    if(!anotada){
       linea.textContent = '«' + nombre + '» ya estaba anotado en la bitácora del expediente ' + exp + '.';
       return;
     }
-    state.bitacora.push({
-      exp: exp, fecha: new Date().toISOString().slice(0,10), nombre: nombre,
-      numero: numero, nota: '', origen: 'manual', datos: bitacoraDatosCompletos(exp)
-    });
     renderBitacora();
     guardarTodo();
     linea.textContent = '✓ «' + nombre + '» anotado hoy en la bitácora del expediente ' + exp + '.';
     return;
   }
 
-  // ---- Oficio masivo: una tarea por cada expediente de la lista ----
+  // ---- Oficio masivo: las tres tareas (DOM, MINVU, SERVIU), cada una en su
+  // propia línea, en la bitácora de CADA expediente de la lista ----
   if(!state.masivoFilas.length){
     linea.textContent = 'Agrega al menos un expediente a la lista antes de anotar el oficio masivo en la bitácora.';
     return;
   }
   const numero = val('ofOrdN');
-  const fecha = new Date().toISOString().slice(0,10);
-  let anotados = 0, repetidos = 0, sinExp = 0;
+  let expedientesAnotados = 0, tareasNuevas = 0, tareasRepetidas = 0, sinExp = 0;
 
   state.masivoFilas.forEach(fila=>{
     const exp = limpiar(fila.exp);
     if(!exp){ sinExp++; return; }
-    if(state.bitacora.some(t => t.exp === exp && t.nombre === nombre && (t.numero||'') === (numero||''))){
-      repetidos++;
-      return;
-    }
+
     /* Los datos del expediente se toman de la propia fila del oficio masivo
        (que ya trae solicitante, RUT, ubicación, rol e inscripción escritos
        ahí mismo), completados con lo que ya hubiera en el padrón o en tareas
-       anteriores de ese expediente, igual que bitacoraDatosCompletos. */
+       anteriores de ese expediente, igual que bitacoraDatosCompletos. Las
+       tres tareas del mismo expediente comparten los mismos datos. */
     const datosFila = {};
     if(fila.solicitante) datosFila.nombre = fila.solicitante;
     if(fila.rut) datosFila.rut = fila.rut;
     if(fila.ubicacion) datosFila.ubicacion = fila.ubicacion;
     if(fila.rol) datosFila.rolAvaluo = fila.rol;
-    const datos = Object.assign({}, bitacoraDatosCompletos(exp) || {}, datosFila);
+    const datosBase = Object.assign({}, bitacoraDatosCompletos(exp) || {}, datosFila);
+    const datos = Object.keys(datosBase).length ? datosBase : null;
 
-    state.bitacora.push({
-      exp: exp, fecha: fecha, nombre: nombre, numero: numero,
-      nota: '', origen: 'manual', datos: Object.keys(datos).length ? datos : null
+    let algunaNueva = false;
+    BITACORA_MASIVO_TAREAS.forEach(nombre=>{
+      const anotada = bitacoraAnotarSiFalta(exp, nombre, numero, datos);
+      if(anotada){ tareasNuevas++; algunaNueva = true; }
+      else tareasRepetidas++;
     });
-    anotados++;
+    if(algunaNueva) expedientesAnotados++;
   });
 
   renderBitacora();
   guardarTodo();
 
-  let msg = anotados
-    ? '✓ «' + nombre + '» anotado hoy en ' + anotados + ' expediente(s) de la lista.'
-    : 'No se anotó ningún expediente nuevo.';
-  if(repetidos) msg += ' ' + repetidos + ' ya estaba(n) anotado(s).';
+  let msg = tareasNuevas
+    ? '✓ Se anotaron ' + tareasNuevas + ' tarea(s) (Oficio DOM / MINVU / SERVIU) en '
+      + expedientesAnotados + ' expediente(s) de la lista.'
+    : 'No se anotó ninguna tarea nueva.';
+  if(tareasRepetidas) msg += ' ' + tareasRepetidas + ' ya estaba(n) anotada(s).';
   if(sinExp) msg += ' ' + sinExp + ' fila(s) sin N° de expediente se omitieron.';
   linea.textContent = msg;
 }
