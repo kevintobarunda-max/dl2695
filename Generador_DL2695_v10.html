@@ -6870,16 +6870,20 @@ function pdfEscaparTexto(str){
    página; "y" siempre es la coordenada PDF real (origen abajo-izquierda),
    ya convertida por quien llama a partir de la posición "desde arriba" que
    usa el resto del generador (más fácil de razonar, igual que en CSS). */
-function opTextoPdf(x, y, tam, negrita, texto){
+function opTextoPdf(x, y, tam, negrita, texto, color){
   const fuente = negrita ? '/F2' : '/F1';
   const escapado = pdfEscaparTexto(textoAWinAnsi(texto));
-  /* "0 g" fija el color de relleno en negro ANTES de dibujar el texto: el
-     operador Tj usa el color de relleno activo, y opRectDesdeArribaPdf() deja
-     ese color en gris clarísimo después de pintar el fondo del encabezado de
-     una tabla (ver más abajo). Sin este reseteo, todo el texto dibujado desde
-     ahí en adelante —los datos de la tabla y el resto del oficio— salía en
-     ese mismo gris, prácticamente invisible sobre el papel. */
-  return `0 g\nBT ${fuente} ${tam} Tf ${x.toFixed(2)} ${y.toFixed(2)} Td (${escapado}) Tj ET\n`;
+  /* Se fija el color de relleno ANTES de dibujar el texto (por defecto negro,
+     "0 g"): el operador Tj usa el color de relleno activo, y
+     opRectDesdeArribaPdf() deja ese color en gris clarísimo después de pintar
+     el fondo del encabezado de una tabla (ver más abajo). Sin este reseteo,
+     todo el texto dibujado desde ahí en adelante —los datos de la tabla y el
+     resto del oficio— salía en ese mismo gris, prácticamente invisible sobre
+     el papel. El parámetro "color" permite lo contrario: pedir un color
+     concreto para un texto puntual (p.ej. "Unidad de Regularización", que en
+     la plantilla Word real va en gris w:color="AEAAAA", no en negro). */
+  const op = color || '0 g';
+  return `${op}\nBT ${fuente} ${tam} Tf ${x.toFixed(2)} ${y.toFixed(2)} Td (${escapado}) Tj ET\n`;
 }
 function opLineaPdf(x1, y1, x2, y2, grosor){
   return `${grosor.toFixed(2)} w ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S\n`;
@@ -6964,7 +6968,9 @@ async function paginasOficioPdf(bloques){
     + `${(P.alto - topY - logoAlto).toFixed(2)} cm /Im1 Do Q\n`;
   const tamUnidad = 9;
   const yUnidad = topY + logoAlto + tamUnidad * 0.85 + 4;
-  ops += opTextoPdf(P.margenIzq, P.alto - yUnidad, tamUnidad, true, 'Unidad de Regularización');
+  /* En la plantilla Word real esta línea va en gris (w:color="AEAAAA"), no en
+     negro: el mismo gris 0.682 0.667 0.667 que usa el encabezado del .docx. */
+  ops += opTextoPdf(P.margenIzq, P.alto - yUnidad, tamUnidad, true, 'Unidad de Regularización', '0.682 0.667 0.667 rg');
   const altoEncabezado = logoAlto + (tamUnidad * 1.3) + 4;
   ops += opLineaPdf(P.margenIzq, P.alto - (topY + altoEncabezado), P.margenIzq + anchoContenido, P.alto - (topY + altoEncabezado), 1.4);
   topY += altoEncabezado + 10;
