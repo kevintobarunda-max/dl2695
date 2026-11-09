@@ -12059,6 +12059,8 @@ async function logoOficioDataUri(){
    colapsan, para numerar a mano; son 6, lo justo para que la línea quepa en
    esa columna sin partirse en dos. */
 const ORD_HUECO_MANUSCRITO = '\u2007'.repeat(6);
+/* Toda la línea va unida (espacios que no cortan) para que nunca se parta
+   en dos líneas, y con un pequeño margen derecho negativo de holgura. */
 
 function columnaAntMat(xml){
   const parrafos = xml.match(/<w:p(?=[\s>])[^>]*>[\s\S]*?<\/w:p>/g) || [];
@@ -12081,11 +12083,12 @@ function prepararEncabezadoManuscrito(xml){
     if(!parrafo.includes('{ord_n}')) return parrafo;
     const propiedades = parrafo.replace(/<w:pPr>([\s\S]*?)<\/w:pPr>/, (_, contenido) => {
       const sinAlineacion = contenido.replace(/<w:(?:ind|jc)\b[^>]*\/>/g, '');
-      const alineacion = '<w:ind w:left="' + columna + '" w:firstLine="0"/><w:jc w:val="left"/>';
+      const alineacion = '<w:ind w:left="' + columna + '" w:right="-284" w:firstLine="0"/><w:jc w:val="left"/>';
       return '<w:pPr>' + sinAlineacion.replace(/(?=<w:rPr>|$)/, alineacion) + '</w:pPr>';
     });
     return propiedades.replace(/(>)[ ]+(ORD\.)/, '$1$2')
-      .replace(/SE07- *\{ord_n\} *- */g, 'SE07-' + ORD_HUECO_MANUSCRITO + '- ');
+      .replace(/SE07- *\{ord_n\} *- */g, 'SE07-' + ORD_HUECO_MANUSCRITO + '\u2007')
+      .replace(/ORD\.(:?) (N\u00B0)?/, (_, dosPuntos, n) => 'ORD.' + dosPuntos + '\u00A0' + (n || ''));
   });
 }
 
