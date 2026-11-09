@@ -12352,6 +12352,10 @@ async function construirOficioXml(tipo, datos){
 
   xml = xml.replace(/(<w:t(?:\s[^>]*)?>)([^<]*)(<\/w:t>)/g,
     (_, inicio, texto, fin) => inicio + mayusculasAutoridad(completarDiaEnFechas(tratamientosEnMinuscula(texto))) + fin);
+  /* Bloque de firma completo en mayúsculas: "ABOGADO" y "REGIÓN DEL MAULE"
+     (las plantillas traían "Abogado" / "Región del Maule"). */
+  xml = xml.replace(/(<w:t(?:\s[^>]*)?>)(\s*)(abogado|regi[oó]n del maule)(\s*)(<\/w:t>)/gi,
+    (_, ini, a, t, b, fin) => ini + a + t.toUpperCase() + b + fin);
   if(q('ofReitera') && q('ofReitera').checked) xml = materiaReiteraOficio(xml);
   ({entradas, xml} = await logoSoloEnPrimeraPagina(entradas, xml));
   return {entradas, docPath, xml};
