@@ -11975,6 +11975,50 @@ async function asegurarUnidadEnHeader(entradas){
   return entradas.map(e => e.nombre === RUTA_HEADER ? nuevaEntrada : e);
 }
 
+/* El logo institucional va en el encabezado (word/header1.xml) de las
+   plantillas de oficio, y Word repite ese encabezado en TODAS las páginas.
+   Se deja sólo en la primera: se activa "primera página diferente"
+   (w:titlePg), el encabezado con el logo pasa a ser el de la primera página
+   y las demás páginas usan un encabezado vacío (word/header2.xml). */
+const HEADER_VACIO_RUTA = 'word/header2.xml';
+const HEADER_VACIO_RID = 'rIdEncabezadoVacio';
+const HEADER_VACIO_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+  + '<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+  + '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:p></w:hdr>';
+
+async function logoSoloEnPrimeraPagina(entradas, xml){
+  const ref = xml.match(/<w:headerReference w:type="default" r:id="([^"]+)"\/>/);
+  if(!ref || /<w:titlePg\b/.test(xml) || entradas.some(e => e.nombre === HEADER_VACIO_RUTA))
+    return {entradas, xml};
+
+  const RUTA_RELS = 'word/_rels/document.xml.rels';
+  const RUTA_TIPOS = '[Content_Types].xml';
+  let rels, tipos;
+  try{
+    rels = await zipTexto(entradas, RUTA_RELS);
+    tipos = await zipTexto(entradas, RUTA_TIPOS);
+  } catch(e){ return {entradas, xml}; }
+
+  rels = rels.replace('</Relationships>',
+    '<Relationship Id="' + HEADER_VACIO_RID + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header2.xml"/></Relationships>');
+  tipos = tipos.replace('</Types>',
+    '<Override PartName="/' + HEADER_VACIO_RUTA + '" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/></Types>');
+
+  xml = xml.replace(ref[0],
+    '<w:headerReference w:type="default" r:id="' + HEADER_VACIO_RID + '"/>'
+    + '<w:headerReference w:type="first" r:id="' + ref[1] + '"/>');
+  // w:titlePg va antes de w:docGrid (orden que exige el esquema de Word).
+  xml = /<w:docGrid\b/.test(xml)
+    ? xml.replace(/<w:docGrid\b/, '<w:titlePg/><w:docGrid')
+    : xml.replace('</w:sectPr>', '<w:titlePg/></w:sectPr>');
+
+  const nuevasRels = await zipEntradaTexto(RUTA_RELS, rels);
+  const nuevosTipos = await zipEntradaTexto(RUTA_TIPOS, tipos);
+  entradas = entradas.map(e => e.nombre === RUTA_RELS ? nuevasRels : e.nombre === RUTA_TIPOS ? nuevosTipos : e);
+  entradas.push(await zipEntradaTexto(HEADER_VACIO_RUTA, HEADER_VACIO_XML));
+  return {entradas, xml};
+}
+
 /* Logo real del Ministerio de Bienes Nacionales para la vista previa en
    pantalla y el PDF del oficio (el .docx descargado ya lo trae incrustado en
    su propia plantilla). Se extrae UNA vez de la propia plantilla del oficio
@@ -12079,6 +12123,7 @@ async function construirOficioXml(tipo, datos){
 
   xml = xml.replace(/(<w:t(?:\s[^>]*)?>)([^<]*)(<\/w:t>)/g,
     (_, inicio, texto, fin) => inicio + mayusculasAutoridad(completarDiaEnFechas(tratamientosEnMinuscula(texto))) + fin);
+  ({entradas, xml} = await logoSoloEnPrimeraPagina(entradas, xml));
   return {entradas, docPath, xml};
 }
 
