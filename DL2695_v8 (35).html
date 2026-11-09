@@ -13588,7 +13588,13 @@ function partesJerarquico(){
   const d = encabezadoComun();
   const nombres = sols().map(x => upper((x.nombre || '').trim())).filter(Boolean);
   const listaSol = nombres.length ? nombres.join(' Y ') : '____________________';
-  const recurrente = (val('jqRecurrente') || '').trim() ? upper(val('jqRecurrente').trim()) : listaSol;
+  /* Sólo el nombre, en mayúsculas: sin "don/doña" ni "representado legalmente por…".
+     Ej.: «Nombre Recurrente: CLAUDIO GONZÁLEZ BRICEÑO.» */
+  const recurrenteLimpio = String(val('jqRecurrente') || '')
+    .replace(/,?\s*representad[oa]s?\s+legalmente\s+por[\s\S]*$/i, '')
+    .replace(/\b(?:don|doña|doÑa|sr\.?|sra\.?)\s+/gi, '')
+    .replace(/\s+/g, ' ').replace(/[.\s]+$/, '').trim();
+  const recurrente = recurrenteLimpio ? upper(recurrenteLimpio) : listaSol;
   const x = c => c ? '[X]' : '[ ]';
   const imp = val('jqImpugnable') !== 'no';
   const pl = jqPlazo();
