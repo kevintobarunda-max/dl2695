@@ -9809,7 +9809,7 @@ function partesNotificacionRep(){
     ? `Se acoge recurso de reposición de ${nombresSolicitantesConTrato(destinatarios)}`
     : (extemp
       ? `Declara inadmisible el recurso de ${tratamientoYNombre(destinatarios)}.`
-      : `Se rechaza recurso de ${nombresSolicitantesConTrato(destinatarios)}`);
+      : `Se deniega recurso de ${nombresSolicitantesConTrato(destinatarios)}`);
   const de = `SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES${sufijoS} REGIÓN DEL MAULE`;
   const cabecera = `Exp.Nº: ${d.expN}\nORD. Nº: E-${val('repOrdN') || '0'}\nANT.: Su recurso en solicitud de regularización, D.L. Nº 2.695/79.-`;
   const ustedes = variosDest ? 'ustedes' : 'usted';
