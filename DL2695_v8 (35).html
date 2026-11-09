@@ -5980,13 +5980,18 @@ function prepararImportacion(tabla){
 
       <fieldset id="ofFieldsetCbrFilas" style="display:none">
         <legend>Varios expedientes (Conservador)</legend>
-        <p class="hint" style="margin:0 0 6px">Igual que el oficio masivo: escribe el N° de Expediente, completa fojas, número, año y registro de arriba y pulsa «Agregar». Con la lista vacía el oficio sale con un solo expediente, como siempre.</p>
-        <div class="field"><label>N° de Expediente</label><input type="text" id="ofCbrFilaExp" data-temporal placeholder=""></div>
-        <div class="btn-row" style="margin-top:0">
-          <button type="button" class="btn btn-outline btn-sm" onclick="cbrAgregarFila()">＋ Agregar expediente a la lista</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="cbrVaciarFilas()">Vaciar lista</button>
+        <p class="hint" style="margin:0 0 6px">Escribe directo en la tabla. <b>Enter</b> pasa a una fila nueva. Con la tabla vacía sale el oficio de un solo expediente.</p>
+        <div id="ofCbrFilasLista"></div>
+        <div class="btn-row" style="margin-top:6px">
+          <button type="button" class="btn btn-outline btn-sm" onclick="cbrNuevaFila()">＋ Fila</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="cbrVaciarFilas()">Vaciar</button>
         </div>
-        <div id="ofCbrFilasLista" style="margin-top:8px"></div>
+        <details style="margin-top:6px">
+          <summary class="hint" style="cursor:pointer">Pegar varias filas desde Excel</summary>
+          <p class="hint" style="margin:4px 0">Columnas en este orden: Exp. · Fojas · Número · Año · Registro (el registro es opcional; si falta, «Propiedad»).</p>
+          <textarea id="ofCbrPegar" data-temporal rows="5" placeholder="150041&#9;12&#9;34&#9;1990&#9;Propiedad"></textarea>
+          <button type="button" class="btn btn-outline btn-sm" style="margin-top:4px" onclick="cbrPegarFilas()">Agregar las filas pegadas</button>
+        </details>
       </fieldset>
 
       <fieldset id="ofFieldsetRol">
@@ -11108,46 +11113,60 @@ function initOficios(){
    tabla de inscripciones del oficio repite una fila por cada uno (con una
    columna "Exp." adelante). Con la lista vacía sale el oficio de siempre.
    ============================================================ */
-function cbrAgregarFila(){
-  const fila = {
-    exp: limpiar(val('ofCbrFilaExp')) || limpiar(val('ofExpediente')),
-    fojas: limpiar(val('ofFojas')),
-    num_insc: limpiar(val('ofNumInsc')),
-    anio_insc: limpiar(val('ofAnioInsc')),
-    registro: limpiar(val('ofRegistro')) || 'Propiedad'
-  };
-  if(!fila.exp && !fila.fojas && !fila.num_insc){
-    q('ofStatus').textContent = 'Completa al menos el N° de Expediente o los datos de la inscripción antes de agregarlo.';
-    return;
-  }
-  state.conservadorFilas.push(fila);
-  ['ofCbrFilaExp','ofFojas','ofNumInsc','ofAnioInsc'].forEach(id=>{ if(q(id)) q(id).value = ''; });
+const CBR_COLS = [['exp','Exp.'],['fojas','Fojas'],['num_insc','Número'],['anio_insc','Año'],['registro','Registro']];
+function cbrGuardar(){ generarOficioPreview(); try{ guardarTodo(); }catch(e){} }
+function cbrFilasUtiles(){
+  return (state.conservadorFilas || []).filter(f => CBR_COLS.some(([k]) => k !== 'registro' && String(f[k] || '').trim()));
+}
+function cbrNuevaFila(){
+  state.conservadorFilas.push({exp:'', fojas:'', num_insc:'', anio_insc:'', registro:'Propiedad'});
   renderCbrFilas();
-  generarOficioPreview();
-  try{ guardarTodo(); }catch(e){}
+  const ins = document.querySelectorAll('#ofCbrFilasLista tr:last-child input');
+  if(ins[0]) ins[0].focus();
+}
+function cbrEditar(i, k, v){
+  if(!state.conservadorFilas[i]) return;
+  state.conservadorFilas[i][k] = v;
+  clearTimeout(cbrEditar._t);
+  cbrEditar._t = setTimeout(cbrGuardar, 400);
+}
+function cbrTecla(ev, i){
+  if(ev.key !== 'Enter') return;
+  ev.preventDefault();
+  if(i === state.conservadorFilas.length - 1) cbrNuevaFila();
+  else { const ins = document.querySelectorAll('#ofCbrFilasLista tr')[i + 2]; if(ins) ins.querySelector('input').focus(); }
 }
 function cbrQuitarFila(i){
   state.conservadorFilas.splice(i, 1);
-  renderCbrFilas();
-  generarOficioPreview();
-  try{ guardarTodo(); }catch(e){}
+  renderCbrFilas(); cbrGuardar();
 }
 function cbrVaciarFilas(){
   state.conservadorFilas = [];
-  renderCbrFilas();
-  generarOficioPreview();
-  try{ guardarTodo(); }catch(e){}
+  renderCbrFilas(); cbrGuardar();
+}
+function cbrPegarFilas(){
+  const txt = val('ofCbrPegar');
+  const nuevas = String(txt || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
+    const c = l.split(/\t|;|\s{2,}|,(?=\s*\S)/).map(x => x.trim());
+    return {exp:c[0]||'', fojas:c[1]||'', num_insc:c[2]||'', anio_insc:c[3]||'', registro:c[4]||'Propiedad'};
+  });
+  if(!nuevas.length) return;
+  state.conservadorFilas = cbrFilasUtiles().concat(nuevas);
+  q('ofCbrPegar').value = '';
+  renderCbrFilas(); cbrGuardar();
 }
 function renderCbrFilas(){
   const cont = q('ofCbrFilasLista');
   if(!cont) return;
-  const filas = state.conservadorFilas || [];
-  if(!filas.length){ cont.innerHTML = '<p class="hint" style="margin:0">Sin expedientes en la lista.</p>'; return; }
-  const esc = (t)=> String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  cont.innerHTML = '<table class="of-tbl" style="width:100%;font-size:12px;border-collapse:collapse"><tr>'
-    + ['Exp.','Fojas','Número','Año','Registro',''].map(h=>'<th style="text-align:left;border-bottom:1px solid #ccc;padding:2px 4px">' + h + '</th>').join('') + '</tr>'
-    + filas.map((f, i)=>'<tr>' + [f.exp, f.fojas, f.num_insc, f.anio_insc, f.registro].map(v=>'<td style="padding:2px 4px">' + esc(v || '—') + '</td>').join('')
-      + '<td><button type="button" class="btn btn-outline btn-sm" onclick="cbrQuitarFila(' + i + ')">✕</button></td></tr>').join('')
+  if(!state.conservadorFilas.length) state.conservadorFilas.push({exp:'', fojas:'', num_insc:'', anio_insc:'', registro:'Propiedad'});
+  const esc = (t)=> String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  cont.innerHTML = '<table style="width:100%;font-size:12px;border-collapse:collapse;table-layout:fixed">'
+    + '<colgroup><col style="width:25%"><col style="width:13%"><col style="width:15%"><col style="width:14%"><col style="width:23%"><col style="width:34px"></colgroup><tr>'
+    + CBR_COLS.map(([,h])=>'<th style="text-align:left;padding:2px">' + h + '</th>').join('') + '<th></th></tr>'
+    + state.conservadorFilas.map((f, i)=>'<tr>' + CBR_COLS.map(([k])=>
+        '<td style="padding:1px"><input type="text" data-temporal style="width:100%;min-width:0;box-sizing:border-box;padding:3px 3px;font-size:12px" value="' + esc(f[k]) + '"'
+        + ' oninput="cbrEditar(' + i + ',\'' + k + '\',this.value)" onkeydown="cbrTecla(event,' + i + ')"></td>').join('')
+      + '<td><button type="button" class="btn btn-outline btn-sm" style="padding:2px 6px" title="Quitar" onclick="cbrQuitarFila(' + i + ')">✕</button></td></tr>').join('')
     + '</table>';
 }
 
@@ -11167,7 +11186,7 @@ function agregarColumnaExpConservador(xml){
 
 /* Datos del oficio al Conservador cuando hay lista de expedientes. */
 function datosConservadorVarios(datos){
-  const filas = state.conservadorFilas || [];
+  const filas = cbrFilasUtiles();
   if(!filas.length) return datos;
   return Object.assign({}, datos, {
     expediente: filas.map(f => f.exp).filter(Boolean).join(', ') || datos.expediente,
@@ -12239,7 +12258,7 @@ function prepararEncabezadoManuscrito(xml){
 // con los datos actuales y devuelve el XML (word/document.xml) ya relleno,
 // junto con el zip completo (útil para generar el .docx descargable).
 async function construirOficioXml(tipo, datos){
-  const cbrVarios = (tipo === 'conservador' && (state.conservadorFilas || []).length > 0);
+  const cbrVarios = (tipo === 'conservador' && cbrFilasUtiles().length > 0);
   if(cbrVarios) datos = datosConservadorVarios(datos);
   let entradas = await zipLeerBase64(OFICIO_TEMPLATES[tipo]);
   entradas = await asegurarUnidadEnHeader(entradas);
