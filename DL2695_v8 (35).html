@@ -5978,6 +5978,17 @@ function prepararImportacion(tabla){
         <div class="field" id="ofFieldEmail"><label>Correo de contacto (Conservador)</label><input type="text" id="ofEmailContacto" placeholder=""></div>
       </fieldset>
 
+      <fieldset id="ofFieldsetCbrFilas" style="display:none">
+        <legend>Varios expedientes (Conservador)</legend>
+        <p class="hint" style="margin:0 0 6px">Igual que el oficio masivo: escribe el N° de Expediente, completa fojas, número, año y registro de arriba y pulsa «Agregar». Con la lista vacía el oficio sale con un solo expediente, como siempre.</p>
+        <div class="field"><label>N° de Expediente</label><input type="text" id="ofCbrFilaExp" data-temporal placeholder=""></div>
+        <div class="btn-row" style="margin-top:0">
+          <button type="button" class="btn btn-outline btn-sm" onclick="cbrAgregarFila()">＋ Agregar expediente a la lista</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="cbrVaciarFilas()">Vaciar lista</button>
+        </div>
+        <div id="ofCbrFilasLista" style="margin-top:8px"></div>
+      </fieldset>
+
       <fieldset id="ofFieldsetRol">
         <legend>Rol de avalúo</legend>
         <div class="field"><label>Rol de Avalúo</label><input type="text" id="ofRolAvaluo" placeholder="" data-fmt="rol"></div>
@@ -6171,6 +6182,7 @@ const state = {
   bitacora: [],
   /* --- expedientes del OFICIO MASIVO (una fila de la tabla por expediente) --- */
   masivoFilas: [],
+  conservadorFilas: [],
   /* --- superficies de la calculadora, SIEMPRE en mt2 (la unidad elegida solo
          cambia cómo se muestran, así no se pierde precisión al convertir) --- */
   calcSup: { totales: null, reg: null },
@@ -11090,6 +11102,90 @@ function initOficios(){
   }
 }
 
+/* ============================================================
+   OFICIO AL CONSERVADOR CON VARIOS EXPEDIENTES
+   Misma lógica que el oficio masivo: se arma una lista de expedientes y la
+   tabla de inscripciones del oficio repite una fila por cada uno (con una
+   columna "Exp." adelante). Con la lista vacía sale el oficio de siempre.
+   ============================================================ */
+function cbrAgregarFila(){
+  const fila = {
+    exp: limpiar(val('ofCbrFilaExp')) || limpiar(val('ofExpediente')),
+    fojas: limpiar(val('ofFojas')),
+    num_insc: limpiar(val('ofNumInsc')),
+    anio_insc: limpiar(val('ofAnioInsc')),
+    registro: limpiar(val('ofRegistro')) || 'Propiedad'
+  };
+  if(!fila.exp && !fila.fojas && !fila.num_insc){
+    q('ofStatus').textContent = 'Completa al menos el N° de Expediente o los datos de la inscripción antes de agregarlo.';
+    return;
+  }
+  state.conservadorFilas.push(fila);
+  ['ofCbrFilaExp','ofFojas','ofNumInsc','ofAnioInsc'].forEach(id=>{ if(q(id)) q(id).value = ''; });
+  renderCbrFilas();
+  generarOficioPreview();
+  try{ guardarTodo(); }catch(e){}
+}
+function cbrQuitarFila(i){
+  state.conservadorFilas.splice(i, 1);
+  renderCbrFilas();
+  generarOficioPreview();
+  try{ guardarTodo(); }catch(e){}
+}
+function cbrVaciarFilas(){
+  state.conservadorFilas = [];
+  renderCbrFilas();
+  generarOficioPreview();
+  try{ guardarTodo(); }catch(e){}
+}
+function renderCbrFilas(){
+  const cont = q('ofCbrFilasLista');
+  if(!cont) return;
+  const filas = state.conservadorFilas || [];
+  if(!filas.length){ cont.innerHTML = '<p class="hint" style="margin:0">Sin expedientes en la lista.</p>'; return; }
+  const esc = (t)=> String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  cont.innerHTML = '<table class="of-tbl" style="width:100%;font-size:12px;border-collapse:collapse"><tr>'
+    + ['Exp.','Fojas','Número','Año','Registro',''].map(h=>'<th style="text-align:left;border-bottom:1px solid #ccc;padding:2px 4px">' + h + '</th>').join('') + '</tr>'
+    + filas.map((f, i)=>'<tr>' + [f.exp, f.fojas, f.num_insc, f.anio_insc, f.registro].map(v=>'<td style="padding:2px 4px">' + esc(v || '—') + '</td>').join('')
+      + '<td><button type="button" class="btn btn-outline btn-sm" onclick="cbrQuitarFila(' + i + ')">✕</button></td></tr>').join('')
+    + '</table>';
+}
+
+/* Agrega la columna "Exp." al comienzo de la tabla de inscripciones de la
+   plantilla del Conservador (copiando la celda "Fojas" para heredar formato). */
+function agregarColumnaExpConservador(xml){
+  return xml.replace(/<w:tbl>[\s\S]*?<\/w:tbl>/, tbl => {
+    if(!tbl.includes('{fojas}')) return tbl;
+    tbl = tbl.replace('<w:tblGrid>', '<w:tblGrid><w:gridCol w:w="1300"/>');
+    return tbl.replace(/(<w:tr\b[^>]*>(?:<w:trPr>[\s\S]*?<\/w:trPr>)?)(<w:tc>[\s\S]*?<\/w:tc>)/g, (m, inicio, celda) => {
+      const nueva = celda.replace(/<w:tcW w:w="\d+"/, '<w:tcW w:w="1300"')
+        .replace(/<w:t>Fojas<\/w:t>/, '<w:t>Exp.</w:t>').replace(/\{fojas\}/, '{exp}');
+      return inicio + nueva + celda;
+    });
+  });
+}
+
+/* Datos del oficio al Conservador cuando hay lista de expedientes. */
+function datosConservadorVarios(datos){
+  const filas = state.conservadorFilas || [];
+  if(!filas.length) return datos;
+  return Object.assign({}, datos, {
+    expediente: filas.map(f => f.exp).filter(Boolean).join(', ') || datos.expediente,
+    __filas: filas.map(f => ({
+      exp: blank(f.exp, '—'), fojas: blank(f.fojas, '____'), num_insc: blank(f.num_insc, '____'),
+      anio_insc: blank(f.anio_insc, '____'), registro: blank(f.registro, 'Propiedad')
+    }))
+  });
+}
+
+/* Con varios expedientes, la redacción pasa a plural. */
+function pluralConservador(xml){
+  return xml
+    .split('Solicita inscripción con vigencia').join('Solicita inscripciones con vigencia')
+    .split('copia de inscripción con vigencia').join('copia de las inscripciones con vigencia que se indican a continuación')
+    .split('>Interesado<').join('>Interesados<');
+}
+
 function renderOficioTipo(){
   const tipo = val('ofTipo');
   const titulos = {
@@ -11112,6 +11208,8 @@ function renderOficioTipo(){
   q('ofFieldsetInmueble').style.display    = (masivo || tipo==='conservador') ? 'none' : 'block';
   q('ofFieldRegistro').style.display       = (!masivo && tipo==='conservador') ? 'block' : 'none';
   q('ofFieldEmail').style.display          = (!masivo && tipo==='conservador') ? 'block' : 'none';
+  q('ofFieldsetCbrFilas').style.display    = (tipo==='conservador') ? 'block' : 'none';
+  if(tipo === 'conservador') renderCbrFilas();
   q('ofFieldsetInscripcion').style.display = masivo ? 'none' : 'block';
   q('ofFieldsetRol').style.display         = masivo || tipo === 'conservador' ? 'none' : 'block';
   q('ofFieldSeremi').style.display         = masivo ? 'none' : 'block';
@@ -12141,6 +12239,8 @@ function prepararEncabezadoManuscrito(xml){
 // con los datos actuales y devuelve el XML (word/document.xml) ya relleno,
 // junto con el zip completo (útil para generar el .docx descargable).
 async function construirOficioXml(tipo, datos){
+  const cbrVarios = (tipo === 'conservador' && (state.conservadorFilas || []).length > 0);
+  if(cbrVarios) datos = datosConservadorVarios(datos);
   let entradas = await zipLeerBase64(OFICIO_TEMPLATES[tipo]);
   entradas = await asegurarUnidadEnHeader(entradas);
   const docPath = 'word/document.xml';
@@ -12157,6 +12257,7 @@ async function construirOficioXml(tipo, datos){
 
   // Oficio masivo: la plantilla trae UNA fila modelo en la tabla; aquí se
   // repite tantas veces como expedientes haya.
+  if(cbrVarios){ xml = agregarColumnaExpConservador(pluralConservador(xml)); }
   if(datos.__filas) xml = repetirFilasTabla(xml, datos.__filas);
 
   Object.keys(datos).forEach(key=>{
@@ -16551,6 +16652,7 @@ function guardarAhora(){
         notariasPropias: state.notariasPropias,
         motivosOrden: state.motivosOrden,
         masivoFilas: state.masivoFilas,
+        conservadorFilas: state.conservadorFilas,
         /* ediciones manuales por párrafo de cada documento */
         docEdits: state.docEdits
       }
@@ -16883,6 +16985,7 @@ function restaurarTodo(){
     if(Array.isArray(est.notariasPropias)) state.notariasPropias = est.notariasPropias;
     if(Array.isArray(est.motivosOrden)) state.motivosOrden = est.motivosOrden;
     if(Array.isArray(est.masivoFilas)) state.masivoFilas = est.masivoFilas;
+    if(Array.isArray(est.conservadorFilas)) state.conservadorFilas = est.conservadorFilas;
     if(Array.isArray(est.jqFilas) && est.jqFilas.length) state.jqFilas = est.jqFilas;
 
     // 2) el modo de adquisición crea campos dinámicos: primero se fija el
