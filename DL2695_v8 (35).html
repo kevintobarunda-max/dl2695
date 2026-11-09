@@ -12007,22 +12007,47 @@ async function logoOficioDataUri(){
   return OFICIO_LOGO_DATAURI;
 }
 
-// Carga la plantilla Word del tipo de oficio, reemplaza los tokens {campo}
-// con los datos actuales y devuelve el XML (word/document.xml) ya relleno,
-// junto con el zip completo (útil para generar el .docx descargable).
+/* Línea "ORD. N°SE07-      - 2026." del encabezado. Se deja alineada a la
+   izquierda en la MISMA columna que el bloque "ANT.: / MAT.: / TALCA," (antes
+   iba pegada al margen derecho y no calzaba con ese bloque). La columna se lee
+   de la propia plantilla: es la sangría del párrafo "MAT.:" (left + firstLine).
+   El hueco para el número se deja con espacios de cifra (U+2007), que no se
+   colapsan, para numerar a mano; son 6, lo justo para que la línea quepa en
+   esa columna sin partirse en dos. */
+const ORD_HUECO_MANUSCRITO = '\u2007'.repeat(6);
+
+function columnaAntMat(xml){
+  const parrafos = xml.match(/<w:p(?=[\s>])[^>]*>[\s\S]*?<\/w:p>/g) || [];
+  for(const p of parrafos){
+    const texto = (p.match(/<w:t(?:\s[^>]*)?>[^<]*<\/w:t>/g) || [])
+      .map(t => t.replace(/<[^>]+>/g, '')).join('').trim();
+    if(!/^MAT\.?:/.test(texto)) continue;
+    const ind = p.match(/<w:ind\b[^>]*\/>/);
+    if(!ind) continue;
+    const num = (attr)=>{ const m = ind[0].match(new RegExp('w:' + attr + '="(-?\\d+)"')); return m ? +m[1] : 0; };
+    const col = num('left') + num('firstLine') - num('hanging');
+    if(col > 0) return col;
+  }
+  return 5529; // columna de ANT./MAT. en las plantillas DOM/MINVU/SERVIU/masivo
+}
+
 function prepararEncabezadoManuscrito(xml){
+  const columna = columnaAntMat(xml);
   return xml.replace(/<w:p(?=[\s>])[^>]*>[\s\S]*?<\/w:p>/g, parrafo => {
     if(!parrafo.includes('{ord_n}')) return parrafo;
     const propiedades = parrafo.replace(/<w:pPr>([\s\S]*?)<\/w:pPr>/, (_, contenido) => {
       const sinAlineacion = contenido.replace(/<w:(?:ind|jc)\b[^>]*\/>/g, '');
-      const alineacion = '<w:ind w:left="0" w:firstLine="0"/><w:jc w:val="right"/>';
+      const alineacion = '<w:ind w:left="' + columna + '" w:firstLine="0"/><w:jc w:val="left"/>';
       return '<w:pPr>' + sinAlineacion.replace(/(?=<w:rPr>|$)/, alineacion) + '</w:pPr>';
     });
     return propiedades.replace(/(>)[ ]+(ORD\.)/, '$1$2')
-      .replace(/SE07- *\{ord_n\} *-/g, 'SE07-' + '\u2007'.repeat(12) + '-');
+      .replace(/SE07- *\{ord_n\} *- */g, 'SE07-' + ORD_HUECO_MANUSCRITO + '- ');
   });
 }
 
+// Carga la plantilla Word del tipo de oficio, reemplaza los tokens {campo}
+// con los datos actuales y devuelve el XML (word/document.xml) ya relleno,
+// junto con el zip completo (útil para generar el .docx descargable).
 async function construirOficioXml(tipo, datos){
   let entradas = await zipLeerBase64(OFICIO_TEMPLATES[tipo]);
   entradas = await asegurarUnidadEnHeader(entradas);
