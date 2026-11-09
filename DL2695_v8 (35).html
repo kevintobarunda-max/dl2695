@@ -1692,7 +1692,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
         <p class="hint" id="avisoMinutaJerarquica"></p>
         <div class="field" id="row-repAlegacion">
           <label>Nuevos antecedentes y lo que alega el recurrente</label>
-          <textarea id="repAlegacion" placeholder="Señalando que el inmueble se adquiere por cesión de derechos. Se acompaña cesión de derechos de fecha 17 de febrero de 1993."></textarea>
+          <textarea id="repAlegacion" rows="10" style="min-height:220px;resize:vertical" placeholder="Señalando que el inmueble se adquiere por cesión de derechos. Se acompaña cesión de derechos de fecha 17 de febrero de 1993."></textarea>
         </div>
       </fieldset>
     </div>
@@ -5813,6 +5813,10 @@ function prepararImportacion(tabla){
         <div class="btn-row" style="margin-top:2px">
           <button type="button" class="btn btn-outline btn-sm" onclick="autocompletarOficios()">↻ Autocompletar con datos del Informe</button>
         </div>
+        <label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-weight:600">
+          <input type="checkbox" id="ofReitera" style="width:auto" onchange="generarOficioPreview()">
+          Reitera oficio <span class="hint">· mismo oficio, sólo cambia «MAT.: Reitera Oficio.»</span>
+        </label>
       </fieldset>
 
       <!-- ---- Traer del padrón ---- -->
@@ -12087,6 +12091,31 @@ function columnaAntMat(xml){
   return 5529; // columna de ANT./MAT. en las plantillas DOM/MINVU/SERVIU/masivo
 }
 
+/* "Reitera oficio": el oficio es idéntico, sólo cambia la materia a
+   "MAT.: Reitera Oficio." Se conserva el formato (negrita de "MAT.:") y se
+   reemplaza el resto del texto de ese párrafo. */
+function materiaReiteraOficio(xml){
+  let hecho = false;
+  return xml.replace(/<w:p(?=[\s>])[^>]*>[\s\S]*?<\/w:p>/g, parrafo => {
+    if(hecho) return parrafo;
+    const texto = (parrafo.match(/<w:t(?:\s[^>]*)?>[^<]*<\/w:t>/g) || [])
+      .map(t => t.replace(/<[^>]+>/g, '')).join('').trim();
+    if(!/^MAT\.?:/.test(texto)) return parrafo;
+    hecho = true;
+    let restante = true, primeroTras = true;
+    return parrafo.replace(/(<w:t)(?:\s[^>]*)?(>)([^<]*)(<\/w:t>)/g, (m, ini, cierre, t, fin) => {
+      if(restante){
+        // el trozo que trae "MAT.:" se conserva hasta los dos puntos
+        const k = t.indexOf(':');
+        if(k >= 0){ restante = ''; return ini + ' xml:space="preserve"' + cierre + t.slice(0, k + 1) + fin; }
+        return m;
+      }
+      if(primeroTras){ primeroTras = false; return ini + ' xml:space="preserve"' + cierre + ' Reitera Oficio.' + fin; }
+      return ini + cierre + fin;
+    }).replace(/(<w:t xml:space="preserve">[^<]*:)(<\/w:t>)(?![\s\S]*Reitera Oficio)/, '$1 Reitera Oficio.$2');
+  });
+}
+
 function prepararEncabezadoManuscrito(xml){
   const columna = columnaAntMat(xml);
   /* "- 2026." va con una tabulación derecha en el borde derecho del texto,
@@ -12142,6 +12171,7 @@ async function construirOficioXml(tipo, datos){
 
   xml = xml.replace(/(<w:t(?:\s[^>]*)?>)([^<]*)(<\/w:t>)/g,
     (_, inicio, texto, fin) => inicio + mayusculasAutoridad(completarDiaEnFechas(tratamientosEnMinuscula(texto))) + fin);
+  if(q('ofReitera') && q('ofReitera').checked) xml = materiaReiteraOficio(xml);
   ({entradas, xml} = await logoSoloEnPrimeraPagina(entradas, xml));
   return {entradas, docPath, xml};
 }
