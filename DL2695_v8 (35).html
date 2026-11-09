@@ -11902,6 +11902,10 @@ async function zipEscribir(entradas, mime){
 /* Devuelve el .docx con una de sus partes reemplazada, conservando las demás
    exactamente como venían en la plantilla. */
 async function blobDocx(entradas, ruta, contenido){
+  /* Guion que no corta (U+2011, p. ej. en "SE07-"): en Word se escribe como
+     w:noBreakHyphen para que se vea bien con cualquier fuente. */
+  contenido = contenido.replace(/(<w:t(?:\s[^>]*)?>)([^<]*\u2011[^<]*)(<\/w:t>)/g, (_, ini, txt, fin) =>
+    ini + txt.split('\u2011').join('</w:t><w:noBreakHyphen/><w:t xml:space="preserve">') + fin);
   const nueva = await zipEntradaTexto(ruta, contenido);
   const salida = entradas.map(e => e.nombre === ruta ? nueva : e);
   if(!entradas.some(e => e.nombre === ruta)) salida.push(nueva);
@@ -12058,6 +12062,8 @@ async function logoOficioDataUri(){
    El hueco para el número se deja con espacios de cifra (U+2007), que no se
    colapsan, para numerar a mano; son 6, lo justo para que la línea quepa en
    esa columna sin partirse en dos. */
+/* La línea ORD. empieza 2 cm (1134 twips) a la izquierda del bloque ANT./MAT. */
+const ORD_CORRIMIENTO_IZQ = 1134;
 const ORD_HUECO_MANUSCRITO = '\u2007'.repeat(6);
 /* Toda la línea va unida (espacios que no cortan) para que nunca se parta
    en dos líneas, y con un pequeño margen derecho negativo de holgura. */
@@ -12083,11 +12089,11 @@ function prepararEncabezadoManuscrito(xml){
     if(!parrafo.includes('{ord_n}')) return parrafo;
     const propiedades = parrafo.replace(/<w:pPr>([\s\S]*?)<\/w:pPr>/, (_, contenido) => {
       const sinAlineacion = contenido.replace(/<w:(?:ind|jc)\b[^>]*\/>/g, '');
-      const alineacion = '<w:ind w:left="' + columna + '" w:right="-284" w:firstLine="0"/><w:jc w:val="left"/>';
+      const alineacion = '<w:ind w:left="' + Math.max(0, columna - ORD_CORRIMIENTO_IZQ) + '" w:right="-1418" w:firstLine="0"/><w:jc w:val="left"/>';
       return '<w:pPr>' + sinAlineacion.replace(/(?=<w:rPr>|$)/, alineacion) + '</w:pPr>';
     });
     return propiedades.replace(/(>)[ ]+(ORD\.)/, '$1$2')
-      .replace(/SE07- *\{ord_n\} *- */g, 'SE07-' + ORD_HUECO_MANUSCRITO + '\u2007')
+      .replace(/SE07- *\{ord_n\} *- */g, 'SE07\u2011' + ORD_HUECO_MANUSCRITO + '\u2007')
       .replace(/ORD\.(:?) (N\u00B0)?/, (_, dosPuntos, n) => 'ORD.' + dosPuntos + '\u00A0' + (n || ''));
   });
 }
@@ -12364,7 +12370,7 @@ const PDF_FUENTES_VERDANA = [{"nombre":"Verdana","anchos":[352,394,459,818,636,1
    con su código de punto; las comillas tipográficas y rayas que trae el
    texto de los dictámenes se traducen a su código WinAnsi, y cualquier otro
    carácter fuera de rango se reemplaza por "?" en vez de romper el archivo. */
-const OFICIO_PDF_ESPECIALES = {0x2018:145,0x2019:146,0x201C:147,0x201D:148,0x2013:150,0x2014:151,0x2026:133,0x2022:149,0x00A0:160};
+const OFICIO_PDF_ESPECIALES = {0x2011:45,0x2018:145,0x2019:146,0x201C:147,0x201D:148,0x2013:150,0x2014:151,0x2026:133,0x2022:149,0x00A0:160};
 function textoAWinAnsi(str){
   let out = '';
   for(const ch of String(str)){
