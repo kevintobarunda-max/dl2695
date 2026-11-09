@@ -9832,7 +9832,7 @@ function partesNotificacionRep(){
   } else {
     /* Rechazo en el fondo: si hay jerárquico en subsidio, se eleva al superior,
        igual que en la resolución. */
-    bloques.push(bl('resuelve-1', `1) Rechazar recurso de reposición interpuesto por ${ustedes}${conJerarquico ? ', y' : '.'}`));
+    bloques.push(bl('resuelve-1', `1) Denegar recurso de reposición interpuesto por ${ustedes}${conJerarquico ? ', y' : '.'}`));
     if(conJerarquico){
       bloques.push(bl('resuelve-2', `2) Elevar los antecedentes al superior jerárquico para que conozca del recurso interpuesto en subsidio por ${variosDest ? 'Uds.' : 'Ud.'}, eximiéndose esta parte de seguir conociendo de su solicitud.`));
     }
