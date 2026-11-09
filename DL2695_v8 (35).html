@@ -11902,6 +11902,10 @@ async function zipEscribir(entradas, mime){
 /* Devuelve el .docx con una de sus partes reemplazada, conservando las demás
    exactamente como venían en la plantilla. */
 async function blobDocx(entradas, ruta, contenido){
+  /* En el Word, el hueco de la línea ORD. se vuelve una tabulación derecha
+     (ver prepararEncabezadoManuscrito): "- 2026." queda en el borde derecho. */
+  contenido = contenido.replace(/(<w:t(?:\s[^>]*)?>)([^<]*?)\u2011\u2007{6}([^<]*)(<\/w:t>)/g, (_, ini, a, b, fin) =>
+    ini + a + '\u2011</w:t><w:tab/><w:t xml:space="preserve">' + b + fin);
   /* Guion que no corta (U+2011, p. ej. en "SE07-"): en Word se escribe como
      w:noBreakHyphen para que se vea bien con cualquier fuente. */
   contenido = contenido.replace(/(<w:t(?:\s[^>]*)?>)([^<]*\u2011[^<]*)(<\/w:t>)/g, (_, ini, txt, fin) =>
@@ -12062,8 +12066,8 @@ async function logoOficioDataUri(){
    El hueco para el número se deja con espacios de cifra (U+2007), que no se
    colapsan, para numerar a mano; son 6, lo justo para que la línea quepa en
    esa columna sin partirse en dos. */
-/* La línea ORD. empieza 2 cm (1134 twips) a la izquierda del bloque ANT./MAT. */
-const ORD_CORRIMIENTO_IZQ = 1134;
+/* La línea ORD. empieza 1 cm (1134 twips) a la izquierda del bloque ANT./MAT. */
+const ORD_CORRIMIENTO_IZQ = 567;
 const ORD_HUECO_MANUSCRITO = '\u2007'.repeat(6);
 /* Toda la línea va unida (espacios que no cortan) para que nunca se parta
    en dos líneas, y con un pequeño margen derecho negativo de holgura. */
@@ -12085,15 +12089,21 @@ function columnaAntMat(xml){
 
 function prepararEncabezadoManuscrito(xml){
   const columna = columnaAntMat(xml);
+  /* "- 2026." va con una tabulación derecha en el borde derecho del texto,
+     para que termine justo donde termina el bloque ANT./MAT. */
+  const pgSz = xml.match(/<w:pgSz\b[^>]*w:w="(\d+)"/), pgMar = xml.match(/<w:pgMar\b[^>]*\/>/);
+  const mar = (a)=>{ const m = pgMar && pgMar[0].match(new RegExp('w:' + a + '="(\\d+)"')); return m ? +m[1] : 1701; };
+  const anchoTexto = pgSz ? (+pgSz[1] - mar('left') - mar('right')) : 8838;
   return xml.replace(/<w:p(?=[\s>])[^>]*>[\s\S]*?<\/w:p>/g, parrafo => {
     if(!parrafo.includes('{ord_n}')) return parrafo;
     const propiedades = parrafo.replace(/<w:pPr>([\s\S]*?)<\/w:pPr>/, (_, contenido) => {
       const sinAlineacion = contenido.replace(/<w:(?:ind|jc)\b[^>]*\/>/g, '');
       const alineacion = '<w:ind w:left="' + Math.max(0, columna - ORD_CORRIMIENTO_IZQ) + '" w:right="-1418" w:firstLine="0"/><w:jc w:val="left"/>';
-      return '<w:pPr>' + sinAlineacion.replace(/(?=<w:rPr>|$)/, alineacion) + '</w:pPr>';
+      const tabs = '<w:tabs><w:tab w:val="right" w:pos="' + anchoTexto + '"/></w:tabs>';
+      return '<w:pPr>' + tabs + sinAlineacion.replace(/<w:tabs>[\s\S]*?<\/w:tabs>/g, '').replace(/(?=<w:rPr>|$)/, alineacion) + '</w:pPr>';
     });
     return propiedades.replace(/(>)[ ]+(ORD\.)/, '$1$2')
-      .replace(/SE07- *\{ord_n\} *- */g, 'SE07\u2011' + ORD_HUECO_MANUSCRITO + '\u2007')
+      .replace(/SE07- *\{ord_n\} *- */g, 'SE07\u2011' + ORD_HUECO_MANUSCRITO + '- ')
       .replace(/ORD\.(:?) (N\u00B0)?/, (_, dosPuntos, n) => 'ORD.' + dosPuntos + '\u00A0' + (n || ''));
   });
 }
