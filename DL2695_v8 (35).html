@@ -9584,6 +9584,30 @@ function fundamentosRechazoEnParrafo(texto){
   }).join('. ') + (partes.length ? '.' : '');
 }
 
+/* Quita la numeración del comienzo de un numeral ("5.- ", "a.- ", "b) ",
+   "III. ", "1.2.- ") y deja su redacción tal cual. */
+function quitarNumeracion(texto){
+  return String(texto || '').split('\n').map(l =>
+    l.replace(/^\s*(?:\d+(?:\.\d+)*|[a-zñA-ZÑ]|[ivxlcIVXLC]+)\s*(?:[°º]\s*)?(?:\.\s*-|\.-|-|\)|\.)\s+/, '')
+  ).join('\n');
+}
+
+/* Para la minuta del Recurso Jerárquico: la redacción textual de los
+   numerales que fundaron el rechazo, uno por párrafo y sin su número. */
+function fundamentosTextualesSinNumero(){
+  const propio = val('repFundamentos');
+  let parrafos;
+  if(propio) parrafos = propio.split(/\n+/);
+  else if(state.resultado === 'no') parrafos = fundamentosInformeUnoNegativo().map(b => b.texto);
+  else {
+    const textos = motivosTextos();
+    const orden = ordenMotivosActivo();
+    if(!orden.length) return fundamentosDelRechazo();
+    parrafos = orden.map(k => textos[k]);
+  }
+  return parrafos.map(quitarNumeracion).map(t => t.trim()).filter(Boolean).join('\n\n');
+}
+
 function fundamentosDelRechazo(){
   const propio = val('repFundamentos');
   if(propio) return propio;
@@ -13511,7 +13535,7 @@ function sincronizarMinutaReposicion(){
   const alegacion = q('row-repAlegacion');
   if(alegacion) alegacion.style.display = habilitada || esRepAcoge() || !esRepExtemporaneo() ? '' : 'none';
   if(!habilitada) return;
-  const fundamentos = fundamentosDelRechazo();
+  const fundamentos = fundamentosTextualesSinNumero();
   const compartidos = {
     jqCaso: val('expN'),
     jqRecurrente: representanteReposicion() ? recurrenteIndividualizado() : nombresSolicitantes(),
