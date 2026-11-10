@@ -1022,7 +1022,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
             <option value="Nicolás Muñoz Mora">Nicolás Muñoz Mora (NMM)</option>
             <option value="Raimundo Mora Matta">Raimundo Mora Matta (RMM)</option>
             <option value="Jonatan González Muñoz">Jonatan González Muñoz (JGM)</option>
-            <option value="Rubén Villagra Fritz">Rubén Villagra Fritz (RVF)</option>
+            <option value="Rubén Villagra Friz">Rubén Villagra Friz (RVF)</option>
             <option value="Cristina Soledad Soto Soto">Cristina Soledad Soto Soto (CSS)</option>
             <option value="Javiera Constanza Mosqueira Bravo">Javiera Constanza Mosqueira Bravo (JMB)</option>
             <option value="Franco Sepúlveda González">Franco Sepúlveda González (FSG)</option>
@@ -17072,6 +17072,8 @@ function restaurarTodo(){
   _restaurando = true;
   try{
     const campos = datos.campos;
+    /* El apellido correcto es "Friz" (antes se escribía "Fritz"). */
+    ['abogado','abogadoSelect'].forEach(k=>{ if(campos[k] === 'Rub\u00e9n Villagra Fritz') campos[k] = 'Rub\u00e9n Villagra Friz'; });
     if(!campos.rectListaDatos && campos.rectTexto?.trim()){
       campos.rectListaDatos=JSON.stringify([{nombre:campos.rectPunto?.trim() || 'Apartado por identificar',activo:true,texto:campos.rectTexto}]);
     }
