@@ -8013,7 +8013,11 @@ function camposHerenciaHtml(){
       <div class="field"><label>N°</label><input type="text" id="modoHerNum"></div>
       <div class="field"><label>Año</label><input type="text" id="modoHerAnio"></div>
     </div>
-    <div class="field"><label>Conservador de Bienes Raíces de</label><input type="text" id="modoHerCbr" placeholder="(igual al de la inscripción conservatoria)"></div>`;
+    <div class="field"><label>Conservador de Bienes Raíces de</label><input type="text" id="modoHerCbr" placeholder="(igual al de la inscripción conservatoria)"></div>
+    <details class="ch-embebido" open style="margin-top:8px;border:1px solid #e3ddcc;border-radius:8px;padding:6px 8px;background:#fffdf8">
+      <summary style="cursor:pointer;font-size:12.5px;font-weight:700;color:var(--azul-900)">Herederos y cuotas (calculadora)</summary>
+      <div id="chEmbebido" style="margin-top:6px"></div>
+    </details>`;
 }
 function inscripcionHerencia(){
   return {
@@ -8126,6 +8130,8 @@ function renderModoSub(){
     sincronizarNotarioSelect();
     aplicarObjetoUI();
     if(modo === 'herenciaCesion') renderCesiones();
+    /* calculadora de herederos dentro del modo herencia */
+    if(modo === 'herencia' || modo === 'herenciaCesion') CH.renderEmbebido(true);
   }
 }
 
@@ -8283,7 +8289,7 @@ function textoCesionesDerechos(){
 function textoHerenciaCesion(){
   const fojas = blank(val('fojas')), numInsc = blank(val('numInsc')), anioInsc = blank(val('anioInsc')), cbr = blank(val('cbr'));
   const h = inscripcionHerencia();
-  const herencia = `${SolicitanteMay()} ${v('funda','fundan')} su pretensión en la calidad de ${herederoCalidad()} de la sucesión de ${blank(val('modoContraparte'))}, cuya Inscripción Especial de Herencia rola a fojas ${h.fojas}, N° ${h.num} del año ${h.anio} en el Conservador de Bienes Raíces de ${h.cbr}, título aparente citado en la inscripción conservatoria.`;
+  const herencia = `${SolicitanteMay()} ${v('funda','fundan')} su pretensión en la calidad de ${herederoCalidad()} de la sucesión de ${blank(val('modoContraparte'))}, cuya Inscripción Especial de Herencia rola a fojas ${h.fojas}, N° ${h.num} del año ${h.anio} en el Conservador de Bienes Raíces de ${h.cbr}, título aparente citado en la inscripción conservatoria.${CH.textoDocumento() ? ' ' + CH.textoDocumento() : ''}`;
   const lista = cesiones();
   let cesion;
   if(lista.length === 1){
@@ -8341,7 +8347,7 @@ function textoModoAdquisicion(){
   }
   if(modo==='herencia'){
     const h = inscripcionHerencia();
-    return `${SolicitanteMay()} ${v('funda','fundan')} su pretensión en la calidad de ${herederoCalidad()} de la sucesión de ${blank(val('modoContraparte'))}, cuya Inscripción Especial de Herencia rola a fojas ${h.fojas}, N° ${h.num} del año ${h.anio} en el Conservador de Bienes Raíces de ${h.cbr}, la cual constituye, en base al Art. 3° del D.L. 2695, el título aparente citado en la inscripción conservatoria, idóneo para presumir la continuidad de la posesión en los términos del Artículo 3° inciso 2° de la ley.`;
+    return `${SolicitanteMay()} ${v('funda','fundan')} su pretensión en la calidad de ${herederoCalidad()} de la sucesión de ${blank(val('modoContraparte'))}, cuya Inscripción Especial de Herencia rola a fojas ${h.fojas}, N° ${h.num} del año ${h.anio} en el Conservador de Bienes Raíces de ${h.cbr}, la cual constituye, en base al Art. 3° del D.L. 2695, el título aparente citado en la inscripción conservatoria, idóneo para presumir la continuidad de la posesión en los términos del Artículo 3° inciso 2° de la ley.${CH.textoDocumento() ? ' ' + CH.textoDocumento() : ''}`;
   }
   if(modo==='conyugal'){
     return `${SolicitanteMay()} ${v('ampara','amparan')} su posesión en Escritura Pública de Liquidación de Bienes en Sociedad Conyugal, celebrada con fecha ${fechaProsa(val('modoFecha'))} en la Notaría Pública de ${blank(val('modoNotario'))}, donde ${elLa()} ${v('requirente se adjudica','requirentes se adjudican')} de la disolución de la sociedad conyugal conformada con ${blank(val('modoContraparte'))}, ${objetoAdquirido('de los derechos de dominio que a ellos les corresponde sobre el inmueble a mayor extensión que ampara la propiedad objeto del procedimiento administrativo que nos convoca','el inmueble a mayor extensión que ampara la propiedad objeto del procedimiento administrativo que nos convoca')}. ${fundamentoTituloAparente('la escritura pública de liquidación de la sociedad conyugal')}`;
@@ -10277,6 +10283,7 @@ function generar(){
   generarAhora();
 }
 function generarAhora(){
+  if(q('chEmbebido')) CH.renderEmbebido();
   if(activeMainTab() === "resolucionC") sincronizarMenusTerrenoC();
   if(activeMainTab() === 'resolucionRectificatoria') mostrarListaRect();
   clearTimeout(_generarTimer);
@@ -13878,13 +13885,17 @@ const CH = (()=>{
   const esc = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   const opt = (v, t, sel)=> `<option value="${v}"${String(sel) === String(v) ? ' selected' : ''}>${t}</option>`;
 
-  /* ---------- versión simple para el D.L. 2.695 ----------
-     Una lista de personas con su condición; el motor anterior hace el
-     reparto. Nietos y sobrinos se agrupan por el padre/madre fallecido al
-     que representan (cada grupo es una estirpe). */
+  /* ---------- versión para el D.L. 2.695 ----------
+     Los solicitantes salen del expediente y a cada uno se le indica su
+     condición; los demás herederos se agregan por cantidad y condición.
+     Nietos y sobrinos se agrupan por el hijo o hermano fallecido al que
+     representan (cada grupo es una estirpe). La misma calculadora se muestra
+     en la pestaña «Cuota hereditaria» y dentro de «Origen de la posesión»
+     cuando el título es una herencia; su resultado se redacta en el párrafo
+     de la herencia. */
   const CONDICIONES = {
-    conyuge: 'Cónyuge o conviviente civil',
     hijo: 'Hijo/a',
+    conyuge: 'Cónyuge o conviviente civil',
     nieto: 'Nieto/a (por hijo/a fallecido/a)',
     padre: 'Padre o madre',
     hermano: 'Hermano/a (mismo padre y madre)',
@@ -13892,169 +13903,219 @@ const CH = (()=>{
     sobrino: 'Sobrino/a (por hermano/a fallecido/a)',
     otro: 'Otro pariente (tío/a, primo/a…)'
   };
-  const CORTA = {conyuge: 'Cónyuge / conviviente', hijo: 'Hijo/a', nieto: 'Nieto/a', padre: 'Padre/madre',
-    hermano: 'Hermano/a', mediohermano: 'Medio hermano/a', sobrino: 'Sobrino/a', otro: 'Otro pariente'};
-  const filaVacia = (cond)=> ({nombre: '', cond: cond || 'hijo', de: '', solicitante: false});
-  const simpleVacio = ()=> ({simple: true, causante: '', causanteTrato: 'don', sc: false, filas: [filaVacia('hijo')]});
+  const SING = {conyuge: 'cónyuge sobreviviente', hijo: 'hijo/a', nieto: 'nieto/a', padre: 'padre/madre',
+    hermano: 'hermano/a', mediohermano: 'medio hermano/a', sobrino: 'sobrino/a', otro: 'otro pariente'};
+  const PLUR = {conyuge: 'cónyuges', hijo: 'hijos/as', nieto: 'nietos/as', padre: 'padres', hermano: 'hermanos/as',
+    mediohermano: 'medio hermanos/as', sobrino: 'sobrinos/as', otro: 'otros parientes'};
+  const conRep = c => c === 'nieto' || c === 'sobrino';
 
-  function simple(){
-    if(!state.cuotaHer || !state.cuotaHer.simple) state.cuotaHer = simpleVacio();
+  function datosH(){
+    const d = state.cuotaHer;
+    if(!d || !d.v3) state.cuotaHer = {v3: true, causante: '', causanteTrato: 'don', sc: false, sol: {}, otros: []};
     return state.cuotaHer;
   }
+  const sols_ = ()=> (typeof sols === 'function' ? sols() : []);
+  /* condición con género, para el solicitante */
+  const GEN = {hijo: ['hijo', 'hija'], nieto: ['nieto', 'nieta'], padre: ['padre', 'madre'], hermano: ['hermano', 'hermana'],
+    mediohermano: ['medio hermano', 'medio hermana'], sobrino: ['sobrino', 'sobrina'], conyuge: ['cónyuge sobreviviente', 'cónyuge sobreviviente'], otro: ['pariente', 'pariente']};
+  const solicitantesExp = ()=> (typeof sols === 'function' ? sols() : []).map((p, i) => ({i, nombre: String(p.nombre || '').trim()})).filter(p => p.nombre);
+  const causanteNombre = ()=> String((q('modoContraparte') && val('modoContraparte')) || datosH().causante || '').trim();
+  const condSol = i => (datosH().sol[i] || {});
+  const activo = ()=>{ const H = datosH(); return solicitantesExp().some(p => condSol(p.i).cond) || H.otros.some(o => +o.cant > 0); };
 
-  /* Pasa la lista simple al formato del motor. */
-  function aMotor(Sx){
-    const D = Object.assign(sucVacia(), {causante: Sx.causante, regimen: Sx.sc ? 'sc' : 'sep', bien: 'social', renuncia: false, cuotaInmueble: '1'});
-    const grupos = {};
-    const avisos = [];
-    Sx.filas.forEach((f, i)=>{
-      const nombre = String(f.nombre || '').trim() || ('Persona ' + (i + 1));
+  /* Pasa los datos al formato del motor. */
+  function aMotor(H){
+    const D = Object.assign(sucVacia(), {regimen: H.sc ? 'sc' : 'sep', bien: 'social', renuncia: false, cuotaInmueble: '1'});
+    const grupos = {}, avisos = [], filas = [];
+    solicitantesExp().forEach(p => { const c = condSol(p.i); if(c.cond) filas.push({nombre: p.nombre, cond: c.cond, de: c.de, sol: true}); });
+    H.otros.forEach((o, r) => { for(let k = 0; k < Math.min(50, +o.cant || 0); k++) filas.push({nombre: `__otro_${r}_${k}`, cond: o.cond, de: o.de, fila: r}); });
+    filas.forEach((f, idx)=>{
       if(f.cond === 'conyuge'){
-        if(D.conyuge.existe) avisos.push('Hay más de un cónyuge o conviviente en la lista: sólo se considera el primero.');
-        else D.conyuge = {existe: true, nombre, situacion: 'acepta', sucesion: null};
+        if(D.conyuge.existe){ avisos.push('Hay más de un cónyuge o conviviente: sólo se considera uno.'); return; }
+        D.conyuge = {existe: true, nombre: f.nombre, situacion: 'acepta', sucesion: null};
         return;
       }
-      if(f.cond === 'nieto' || f.cond === 'sobrino'){
-        const de = String(f.de || '').trim() || (f.cond === 'nieto' ? 'hijo/a fallecido/a' : 'hermano/a fallecido/a');
-        const k = f.cond + '|' + de.toLocaleUpperCase('es');
+      if(conRep(f.cond)){
+        const de = String(f.de || '').trim();
+        const k = f.cond + '|' + (de ? de.toLocaleUpperCase('es') : (f.sol ? 'sol' + idx : 'fila' + f.fila));
         if(!grupos[k]){
-          grupos[k] = Object.assign(nodoNuevo(f.cond === 'nieto' ? 'hijo' : 'hermano'), {nombre: de, situacion: 'premuerto'});
+          grupos[k] = Object.assign(nodoNuevo(f.cond === 'nieto' ? 'hijo' : 'hermano'), {nombre: de || (f.cond === 'nieto' ? 'hijo/a fallecido/a' : 'hermano/a fallecido/a'), situacion: 'premuerto'});
           D.herederos.push(grupos[k]);
         }
-        grupos[k].representantes.push(Object.assign(nodoNuevo('representante'), {nombre}));
+        grupos[k].representantes.push(Object.assign(nodoNuevo('representante'), {nombre: f.nombre}));
         return;
       }
       const tipo = {hijo: 'hijo', padre: 'ascendiente', hermano: 'hermano', mediohermano: 'mediohermano', otro: 'colateral'}[f.cond] || 'hijo';
-      D.herederos.push(Object.assign(nodoNuevo(tipo), {nombre, grado: tipo === 'colateral' ? 3 : 1}));
+      D.herederos.push(Object.assign(nodoNuevo(tipo), {nombre: f.nombre, grado: tipo === 'colateral' ? 3 : 1}));
     });
-    return {D, avisos};
+    return {D, avisos, filas};
   }
 
-  /* Por qué alguien de la lista no hereda: lo excluye un orden anterior. */
-  function motivoExclusion(cond, Sx){
-    const hay = c => Sx.filas.some(f => f.cond === c);
-    if(hay('hijo') || hay('nieto')) return 'No hereda: lo excluyen los hijos del causante (art. 988 C.C.).';
-    if(hay('conyuge') || hay('padre')) return 'No hereda: lo excluyen el cónyuge o los padres (art. 989 C.C.).';
-    if(hay('hermano') || hay('mediohermano') || hay('sobrino')) return 'No hereda: lo excluyen los hermanos (art. 990 C.C.).';
-    return 'No hereda.';
+  function motivoExclusion(H, filas){
+    const hay = c => filas.some(f => f.cond === c);
+    if(hay('hijo') || hay('nieto')) return 'lo excluyen los hijos del causante (art. 988 C.C.)';
+    if(hay('conyuge') || hay('padre')) return 'lo excluyen el cónyuge o los padres del causante (art. 989 C.C.)';
+    if(hay('hermano') || hay('mediohermano') || hay('sobrino')) return 'lo excluyen los hermanos del causante (art. 990 C.C.)';
+    return 'no le corresponde suceder';
   }
 
-  function render(){
-    const Sx = simple();
-    const form = q('chForm'); if(!form) return;
-    const tieneCony = Sx.filas.some(f => f.cond === 'conyuge');
-    form.innerHTML = `
-      <div class="grid2">
-        <div class="field"><label>Causante (la persona fallecida)</label>
-          <div style="display:flex;gap:6px"><select data-chs="causanteTrato" style="width:auto">${opt('don', 'don', Sx.causanteTrato)}${opt('doña', 'doña', Sx.causanteTrato)}</select>
-          <input type="text" data-chs="causante" value="${esc(Sx.causante)}" placeholder="Nombre completo"></div></div>
-        <div class="field" style="display:flex;align-items:flex-end"><button type="button" class="btn btn-outline btn-sm" data-ch-traer>↻ Traer causante del expediente</button></div>
-      </div>
-      <p class="hint" style="margin:0 0 8px;font-size:12px">Anota a cada persona y su condición respecto del causante. La calculadora decide quién hereda y cuánto. Si un hijo o hermano del causante ya falleció, no lo anotes: anota a sus hijos como «Nieto/a» o «Sobrino/a» e indica de quién son hijos.</p>
-      <table class="ch-tabla" style="margin-bottom:8px"><thead><tr><th style="width:34%">Nombre</th><th>Condición</th><th style="width:70px;text-align:center">Solicitante</th><th style="width:34px"></th></tr></thead><tbody>
-      ${Sx.filas.map((f, i)=>`<tr>
-        <td><input type="text" data-chs="filas.${i}.nombre" value="${esc(f.nombre)}" placeholder="Nombre" style="width:100%;font-size:12.5px;padding:5px 6px"></td>
-        <td><select data-chs="filas.${i}.cond" data-redibujar style="width:100%;font-size:12.5px;padding:5px 6px">${Object.entries(CONDICIONES).map(([k, t]) => opt(k, t, f.cond)).join('')}</select>
-          ${(f.cond === 'nieto' || f.cond === 'sobrino') ? `<input type="text" data-chs="filas.${i}.de" value="${esc(f.de)}" placeholder="Hijo/a de… (nombre del ${f.cond === 'nieto' ? 'hijo/a' : 'hermano/a'} fallecido/a)" style="width:100%;font-size:12px;padding:4px 6px;margin-top:4px">` : ''}</td>
-        <td style="text-align:center"><input type="checkbox" style="width:auto" data-chs="filas.${i}.solicitante" ${f.solicitante ? 'checked' : ''}></td>
-        <td><button type="button" class="btn btn-outline btn-sm" style="padding:2px 7px" title="Quitar" data-chs-quitar="${i}">✕</button></td></tr>`).join('')}
-      </tbody></table>
-      <div class="btn-row" style="margin:0 0 10px"><button type="button" class="btn btn-outline btn-sm" data-chs-agregar>＋ Agregar persona</button>
-        <button type="button" class="btn btn-outline btn-sm" data-ch-vaciar>🗑 Vaciar</button></div>
-      ${tieneCony ? `<label style="display:flex;gap:6px;align-items:center;font-size:12.5px"><input type="checkbox" style="width:auto" data-chs="sc" ${Sx.sc ? 'checked' : ''}>
+  /* Resultado ordenado: solicitantes uno a uno y demás herederos por fila. */
+  function resultado(){
+    const H = datosH();
+    const {D, avisos, filas} = aMotor(H);
+    if(!filas.length) return null;
+    const r = calcular(D);
+    const cuota = new Map(r.personas.map(p => [p.nombre, p.q]));
+    const motivo = motivoExclusion(H, filas);
+    const generos = {}; solicitantesExp().forEach(p => { generos[p.nombre] = ((sols_() || [])[p.i] || {}).genero; });
+    const sols = filas.filter(f => f.sol).map(f => ({nombre: f.nombre, cond: f.cond, de: String(f.de || '').trim(), q: cuota.get(f.nombre) || null, fem: generos[f.nombre] === 'F'}));
+    const otros = H.otros.map((o, r2) => ({cant: Math.min(50, +o.cant || 0), cond: o.cond, de: String(o.de || '').trim(), q: cuota.get(`__otro_${r2}_0`) || null})).filter(o => o.cant > 0);
+    const total = sols.filter(s => s.q).length + otros.filter(o => o.q).reduce((a, o) => a + o.cant, 0);
+    const fisco = r.personas.some(p => p.nombre === 'Fisco de Chile');
+    return {r, avisos, sols, otros, total, motivo, fisco, sc: H.sc && D.conyuge.existe};
+  }
+
+  /* Párrafo que se agrega al texto de la herencia en los documentos. */
+  function textoDocumento(){
+    if(!activo()) return '';
+    const R = resultado(); if(!R) return '';
+    const caus = upper(causanteNombre() || '____________');
+    const condTxt = (c, de, plural) => (plural ? PLUR[c] : SING[c]) + (conRep(c) && de ? `, en representación de ${upper(de)}` : '');
+    const gan = c => (c === 'conyuge' && R.sc) ? ' (incluida la mitad que le corresponde como gananciales)' : '';
+    const condSolTxt = s => GEN[s.cond][s.fem ? 1 : 0] + (conRep(s.cond) && s.de ? `, en representación de ${upper(s.de)}` : '');
+    const partes = R.sols.map(s => s.q
+      ? `${upper(s.nombre)}, en calidad de ${condSolTxt(s)}, con una cuota de ${txt(s.q)}${gan(s.cond)}`
+      : `${upper(s.nombre)}, en calidad de ${condSolTxt(s)}, quien no es ${s.fem ? 'heredera' : 'heredero'}, pues ${R.motivo}`);
+    const otrosP = R.otros.filter(o => o.q).map(o => o.cond === 'conyuge'
+      ? `el o la cónyuge sobreviviente, con una cuota de ${txt(o.q)}${gan(o.cond)}`
+      : `${o.cant} ${condTxt(o.cond, o.de, o.cant > 1)}, con una cuota de ${txt(o.q)}${o.cant > 1 ? ' cada uno' : ''}`);
+    if(R.fisco) otrosP.push('el Fisco de Chile, a falta de otros herederos');
+    let lista = partes.slice();
+    if(otrosP.length) lista.push((partes.length ? 'además, ' : '') + (otrosP.length > 1 ? otrosP.slice(0, -1).join('; ') + '; y ' + otrosP[otrosP.length - 1] : otrosP[0]));
+    return `Conforme a las reglas de la sucesión intestada (artículos 980 y siguientes del Código Civil), a la sucesión de ${caus} le `
+      + `${R.total === 1 ? 'corresponde 1 heredero' : `corresponden ${R.total} herederos`}: ${lista.join('; ')}.`;
+  }
+
+  /* ---------- formulario compartido ---------- */
+  function htmlWidget(){
+    const H = datosH();
+    const solsE = solicitantesExp();
+    const selCond = (path, v)=> `<select data-chw="${path}" data-redibujar style="font-size:12.5px;padding:4px 6px;min-width:0;width:100%">${Object.entries(CONDICIONES).map(([k, t]) => opt(k, t, v)).join('')}</select>`;
+    const inDe = (path, v, c)=> conRep(c) ? `<input type="text" data-chw="${path}" value="${esc(v)}" placeholder="Hijo/a de… (${c === 'nieto' ? 'hijo/a' : 'hermano/a'} fallecido/a)" style="font-size:12px;padding:4px 6px;margin-top:4px;width:100%">` : '';
+    const hayCony = solsE.some(p => condSol(p.i).cond === 'conyuge') || H.otros.some(o => o.cond === 'conyuge' && +o.cant > 0);
+    return `
+      <p class="ch-sub-tit" style="margin:0 0 4px">Condición del solicitante</p>
+      ${solsE.length ? `<table class="ch-tabla" style="margin-bottom:8px"><tbody>${solsE.map(p => {
+          const c = condSol(p.i);
+          return `<tr><td style="width:42%">${esc(p.nombre)}</td><td>${c.cond ? selCond(`sol.${p.i}.cond`, c.cond) : `<select data-chw="sol.${p.i}.cond" data-redibujar style="font-size:12.5px;padding:4px 6px;width:100%"><option value="" selected>— elegir —</option>${Object.entries(CONDICIONES).map(([k, t]) => opt(k, t, '')).join('')}</select>`}${inDe(`sol.${p.i}.de`, c.de || '', c.cond)}</td></tr>`;
+        }).join('')}</tbody></table>`
+        : `<p class="hint" style="font-size:12px;margin:0 0 8px">Primero escribe el nombre del solicitante en «Datos del expediente».</p>`}
+      <p class="ch-sub-tit" style="margin:0 0 4px">Demás herederos</p>
+      ${H.otros.length ? `<table class="ch-tabla" style="margin-bottom:6px"><thead><tr><th style="width:70px">Cantidad</th><th>Condición</th><th style="width:34px"></th></tr></thead><tbody>${H.otros.map((o, r) =>
+          `<tr><td><input type="number" min="1" max="50" data-chw="otros.${r}.cant" value="${esc(o.cant)}" style="width:60px;font-size:12.5px;padding:4px 6px"></td>`
+          + `<td>${selCond(`otros.${r}.cond`, o.cond)}${inDe(`otros.${r}.de`, o.de || '', o.cond)}</td>`
+          + `<td><button type="button" class="btn btn-outline btn-sm" style="padding:2px 7px" title="Quitar" data-chw-quitar="${r}">✕</button></td></tr>`).join('')}</tbody></table>`
+        : `<p class="hint" style="font-size:12px;margin:0 0 6px">Si hay otros herederos (cónyuge, hermanos del solicitante, etc.), agrégalos por cantidad.</p>`}
+      <div class="btn-row" style="margin:0 0 6px"><button type="button" class="btn btn-outline btn-sm" data-chw-agregar>＋ Agregar herederos</button></div>
+      ${hayCony ? `<label style="display:flex;gap:6px;align-items:flex-start;font-size:12px;margin-top:4px"><input type="checkbox" style="width:auto;margin-top:2px" data-chw="sc" ${H.sc ? 'checked' : ''}>
         Casados en sociedad conyugal y el inmueble se adquirió durante el matrimonio (el cónyuge se queda con la mitad como gananciales)</label>` : ''}`;
+  }
+
+  function htmlResumen(){
+    const R = resultado();
+    if(!R) return '<p class="hint" style="font-size:12px;margin:6px 0 0">Indica la condición del solicitante para ver el cálculo.</p>';
+    const fila = (n, c, qq, extra)=> `<tr${qq ? '' : ' style="color:#8a8378"'}><td>${n}</td><td>${c}${extra || ''}</td><td class="num">${qq ? '<b>' + txt(qq) + '</b>' : '—'}</td><td class="num">${qq ? pct(qq) : '—'}</td></tr>`;
+    return R.avisos.map(a => `<div class="ch-aviso">⚠ ${esc(a)}</div>`).join('')
+      + `<p style="font-size:13px;margin:8px 0 6px"><b>${R.total}</b> ${R.total === 1 ? 'heredero' : 'herederos'} con derecho</p>`
+      + `<table class="ch-tabla"><thead><tr><th>Heredero</th><th>Condición</th><th class="num">Cuota c/u</th><th class="num">%</th></tr></thead><tbody>`
+      + R.sols.map(s => fila(esc(s.nombre) + ' <span class="hint">(solicitante)</span>', esc(SING[s.cond]) + (s.de && conRep(s.cond) ? ' de ' + esc(s.de) : ''), s.q, s.q ? '' : `<br><span style="font-size:11.5px">No hereda: ${esc(R.motivo)}.</span>`)).join('')
+      + R.otros.map(o => fila(o.cant + ' ' + esc(o.cant === 1 ? SING[o.cond] : PLUR[o.cond]), 'demás herederos' + (o.de && conRep(o.cond) ? ' (de ' + esc(o.de) + ')' : ''), o.q, o.q ? '' : `<br><span style="font-size:11.5px">No heredan: ${esc(R.motivo)}.</span>`)).join('')
+      + (R.fisco ? fila('Fisco de Chile', 'sin otros herederos', R.r.personas.find(p => p.nombre === 'Fisco de Chile').q) : '')
+      + `</tbody></table>`;
+  }
+
+  /* ---------- pantallas ---------- */
+  function render(){
+    const H = datosH();
+    const form = q('chForm'); if(!form) return;
+    if(!H.causante && q('modoContraparte') && val('modoContraparte')) H.causante = val('modoContraparte');
+    form.innerHTML = `<div class="ch-w">
+      <div class="field"><label>Causante (la persona fallecida)</label>
+        <div style="display:flex;gap:6px"><select data-chw="causanteTrato" style="width:auto">${opt('don', 'don', H.causanteTrato)}${opt('doña', 'doña', H.causanteTrato)}</select>
+        <input type="text" data-chw="causante" value="${esc(H.causante)}" placeholder="Nombre completo"></div></div>
+      <div data-chw-cuerpo>${htmlWidget()}</div></div>`;
     renderResultado();
   }
-
   function renderResultado(){
     const out = q('chResultado'); if(!out) return;
-    const Sx = simple();
-    const llenas = Sx.filas.filter(f => String(f.nombre || '').trim());
-    if(!llenas.length){ out.innerHTML = '<p class="hint" style="font-size:12px">Anota a los herederos para ver el resultado.</p>'; return; }
-    const {D, avisos} = aMotor({...Sx, filas: llenas});
-    const r = calcular(D);
-    const cuota = new Map(r.personas.map(p => [p.nombre.trim().toLocaleUpperCase('es'), p.q]));
-    const filas = llenas.map(f => {
-      const nom = f.nombre.trim();
-      const qq = cuota.get(nom.toLocaleUpperCase('es'));
-      const cond = CORTA[f.cond] + ((f.cond === 'nieto' || f.cond === 'sobrino') && f.de ? ` (representa a ${f.de.trim()})` : '');
-      const condTexto = CORTA[f.cond].toLowerCase() + ((f.cond === 'nieto' || f.cond === 'sobrino') && f.de ? `, en representación de ${upper(f.de.trim())}` : '');
-      return {nom, cond, condTexto, q: qq, sol: f.solicitante, motivo: qq ? '' : motivoExclusion(f.cond, Sx)};
-    });
-    const herederos = filas.filter(f => f.q);
-    const sols = filas.filter(f => f.sol);
-    const notaSc = (Sx.sc && D.conyuge.existe) ? ' (incluye la mitad que le corresponde como gananciales)' : '';
-    let h = avisos.map(a => `<div class="ch-aviso">⚠ ${esc(a)}</div>`).join('');
-    h += `<p style="font-size:14px;margin:0 0 10px"><b>${herederos.length}</b> ${herederos.length === 1 ? 'heredero' : 'herederos'} con derecho`
-      + (filas.length > herederos.length ? ` · ${filas.length - herederos.length} no ${filas.length - herederos.length === 1 ? 'hereda' : 'heredan'}` : '') + `</p>`;
-    sols.forEach(s => {
-      h += `<div class="ch-aviso" style="background:#eef5ee;border-color:#a9cfb1">Solicitante <b>${esc(s.nom)}</b>: ${s.q ? `cuota de <b>${txt(s.q)}</b> (${pct(s.q)})` : '<b>no es heredero</b>. ' + esc(s.motivo)}</div>`;
-    });
-    h += `<table class="ch-tabla"><thead><tr><th>Nombre</th><th>Condición</th><th class="num">Cuota</th><th class="num">%</th></tr></thead><tbody>`
-      + filas.map(f => `<tr${f.q ? '' : ' style="color:#8a8378"'}><td>${esc(f.nom)}${f.sol ? ' <span class="hint">(solicitante)</span>' : ''}</td><td>${esc(f.cond)}${f.q ? '' : `<br><span style="font-size:11.5px">${esc(f.motivo)}</span>`}</td>`
-        + `<td class="num">${f.q ? '<b>' + txt(f.q) + '</b>' : '—'}</td><td class="num">${f.q ? pct(f.q) : '—'}</td></tr>`).join('')
-      + `<tr class="total"><td colspan="2">Total</td><td class="num">${txt(r.suma)}</td><td class="num">${pct(r.suma)}</td></tr></tbody></table>`;
-    if(r.personas.some(p => p.nombre === 'Fisco de Chile')) h += `<div class="ch-aviso" style="margin-top:8px">Nadie de la lista hereda: la herencia corresponde al Fisco (art. 995 C.C.).</div>`;
-    h += `<details style="margin-top:10px"><summary style="cursor:pointer;font-size:12.5px;font-weight:600">Cómo se calculó</summary><ol class="ch-pasos" style="margin-top:6px">${r.ctx.pasos.slice(1).map(p => `<li>${esc(p)}</li>`).join('')}</ol></details>`;
-    const dona = Sx.causanteTrato === 'doña';
-    const texto = `Al fallecimiento de ${dona ? 'doña' : 'don'} ${upper(Sx.causante.trim() || '____________')}, le ${herederos.length === 1 ? 'sucede' : 'suceden'} ${herederos.length} ${herederos.length === 1 ? 'heredero' : 'herederos'}: `
-      + herederos.map(f => `${upper(f.nom)}, en calidad de ${f.condTexto}, con una cuota de ${txt(f.q)}${f.cond.startsWith('Cónyuge') ? notaSc : ''}`).join('; ') + '.';
-    h += `<h3 style="font-size:12.5px;margin:12px 0 6px;color:var(--azul-900)">Texto para el informe</h3><textarea id="chTexto" readonly>${esc(texto)}</textarea>`
-      + `<div class="btn-row" style="margin-top:6px"><button type="button" class="btn btn-primary btn-sm" data-ch-copiar>📋 Copiar texto</button></div>`
+    const t = textoDocumento();
+    out.innerHTML = htmlResumen()
+      + (t ? `<h3 style="font-size:12.5px;margin:12px 0 6px;color:var(--azul-900)">Texto (se agrega solo al párrafo de la herencia)</h3><textarea id="chTexto" readonly>${esc(t)}</textarea>`
+        + `<div class="btn-row" style="margin-top:6px"><button type="button" class="btn btn-primary btn-sm" data-ch-copiar>📋 Copiar texto</button></div>` : '')
       + `<p class="hint" style="margin:8px 0 0;font-size:11.5px">Sucesión sin testamento (Código Civil). Si hay posesión efectiva, testamento o cesiones de derechos, mandan las cuotas que digan esos documentos.</p>`;
-    out.innerHTML = h;
+  }
+  /* Dentro de «Origen de la posesión» (modo herencia). */
+  function renderEmbebido(forzar){
+    const caja = q('chEmbebido'); if(!caja) return;
+    enlazar(caja);
+    const cuerpo = caja.querySelector('[data-chw-cuerpo]'), res = caja.querySelector('[data-chw-resumen]');
+    const nuevo = htmlWidget();
+    /* Sólo se redibuja el formulario si cambió (p. ej. el nombre del
+       solicitante) y nadie está escribiendo en él; el resumen siempre. */
+    if(!cuerpo || !res){ caja.innerHTML = `<div data-chw-cuerpo>${nuevo}</div><div data-chw-resumen>${htmlResumen()}</div>`; caja._chHtml = nuevo; return; }
+    if((forzar || !caja.contains(document.activeElement)) && caja._chHtml !== nuevo){ cuerpo.innerHTML = nuevo; caja._chHtml = nuevo; }
+    res.innerHTML = htmlResumen();
+  }
+  function refrescarTodo(){
+    renderEmbebido(true);
+    if(q('cuotaView') && !q('cuotaView').hidden){
+      const cuerpo = q('chForm') && q('chForm').querySelector('[data-chw-cuerpo]');
+      if(cuerpo) cuerpo.innerHTML = htmlWidget();
+      renderResultado();
+    }
   }
 
   /* ---------- eventos ---------- */
   const partes = p => p.split('.').filter(Boolean).map(x => /^\d+$/.test(x) ? +x : x);
   function fijar(obj, path, v){
     const ks = partes(path); const ult = ks.pop();
-    const o = ks.reduce((o2, k) => o2[k], obj); o[ult] = v;
+    let o = obj;
+    ks.forEach(k => { if(o[k] == null) o[k] = {}; o = o[k]; });
+    o[ult] = v;
   }
   function guardar(){ try{ guardarTodo(); }catch(e){} }
+  function actualizarDoc(){ try{ if(typeof generar === 'function') generar(); }catch(e){} }
 
-  function init(){
-    const vista = q('cuotaView'); if(!vista || vista.dataset.init) return;
-    vista.dataset.init = '1';
-    vista.addEventListener('input', e=>{
-      const el = e.target.closest('[data-chs]'); if(!el || el.type === 'checkbox' || el.tagName === 'SELECT') return;
-      fijar(simple(), el.dataset.chs, el.value);
-      renderResultado(); guardar();
+  function enlazar(caja){
+    if(caja.dataset.chEnlazado) return;
+    caja.dataset.chEnlazado = '1';
+    caja.addEventListener('input', e=>{
+      const el = e.target.closest('[data-chw]'); if(!el || el.type === 'checkbox' || el.tagName === 'SELECT') return;
+      fijar(datosH(), el.dataset.chw, el.type === 'number' ? Math.max(0, Math.min(50, +el.value || 0)) : el.value);
+      e.stopPropagation();
+      caja._chHtml = htmlWidget();   // lo escrito ya está en pantalla: no hace falta redibujar
+      if(el.dataset.chw === 'causante' && q('modoContraparte')) q('modoContraparte').value = el.value;
+      if(caja.id === 'chEmbebido'){ const res = caja.querySelector('[data-chw-resumen]'); if(res) res.innerHTML = htmlResumen(); }
+      else renderResultado();
+      guardar(); actualizarDoc();
     });
-    vista.addEventListener('change', e=>{
-      const el = e.target.closest('[data-chs]'); if(!el) return;
-      fijar(simple(), el.dataset.chs, el.type === 'checkbox' ? el.checked : el.value);
-      if(el.hasAttribute('data-redibujar') || el.dataset.chs === 'sc') render(); else renderResultado();
-      guardar();
+    caja.addEventListener('change', e=>{
+      const el = e.target.closest('[data-chw]'); if(!el) return;
+      e.stopPropagation();
+      const valor = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? Math.max(0, Math.min(50, +el.value || 0)) : el.value);
+      fijar(datosH(), el.dataset.chw, valor);
+      if(!el.hasAttribute('data-redibujar')) caja._chHtml = htmlWidget();
+      if(el.hasAttribute('data-redibujar') || el.dataset.chw === 'sc') refrescarTodo();
+      else if(caja.id !== 'chEmbebido') renderResultado();
+      guardar(); actualizarDoc();
     });
-    vista.addEventListener('keydown', e=>{
-      // Enter en el último nombre agrega otra persona
-      const el = e.target.closest('[data-chs$=".nombre"]');
-      if(!el || e.key !== 'Enter') return;
-      e.preventDefault();
-      const i = +el.dataset.chs.split('.')[1];
-      const Sx = simple();
-      if(i === Sx.filas.length - 1){ Sx.filas.push(filaVacia(Sx.filas[i].cond === 'conyuge' ? 'hijo' : Sx.filas[i].cond)); render(); guardar(); }
-      const sig = vista.querySelector(`[data-chs="filas.${i + 1}.nombre"]`); if(sig) sig.focus();
-    });
-    vista.addEventListener('click', e=>{
-      if(e.target.closest('[data-chs-agregar]')){
-        const Sx = simple(); Sx.filas.push(filaVacia('hijo')); render(); guardar();
-        const ins = vista.querySelector(`[data-chs="filas.${Sx.filas.length - 1}.nombre"]`); if(ins) ins.focus();
-        return;
+    caja.addEventListener('click', e=>{
+      if(e.target.closest('[data-chw-agregar]')){
+        datosH().otros.push({cant: 1, cond: 'hijo', de: ''});
+        refrescarTodo(); guardar(); actualizarDoc(); return;
       }
-      const qu = e.target.closest('[data-chs-quitar]');
-      if(qu){ simple().filas.splice(+qu.dataset.chsQuitar, 1); render(); guardar(); return; }
-      if(e.target.closest('[data-ch-traer]')){
-        const c = (typeof causanteActual === 'function') ? causanteActual() : state.causante;
-        if(c && c.nombre){ simple().causante = c.nombre; simple().causanteTrato = c.genero === 'F' ? 'doña' : 'don'; render(); guardar(); }
-        else flashStatus('No hay causante cargado en el expediente.');
-        return;
-      }
-      if(e.target.closest('[data-ch-vaciar]')){
-        if(!confirm('¿Vaciar la lista de herederos?')) return;
-        state.cuotaHer = simpleVacio(); render(); guardar(); return;
-      }
+      const qu = e.target.closest('[data-chw-quitar]');
+      if(qu){ datosH().otros.splice(+qu.dataset.chwQuitar, 1); refrescarTodo(); guardar(); actualizarDoc(); return; }
       if(e.target.closest('[data-ch-copiar]')){
         const t = q('chTexto'); if(!t) return;
         t.select();
@@ -14064,7 +14125,13 @@ const CH = (()=>{
     });
   }
 
-  return {init, render, calcular, aMotor, simple, _txt: txt};
+  function init(){
+    const vista = q('cuotaView'); if(!vista) return;
+    enlazar(vista);
+  }
+
+  return {init, render, renderEmbebido, textoDocumento, calcular, aMotor, datosH, _txt: txt};
+
 
 })();
 
