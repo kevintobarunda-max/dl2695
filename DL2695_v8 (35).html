@@ -9979,6 +9979,11 @@ function runsRectificatoria(id, linea){
     const m = t.match(/^(Exp\.Nº:|RES\. EXENTA N°:)\s*([\s\S]*)$/);
     if(m) return [{texto:m[1], negrita:true}, {texto:' ' + m[2], negrita:false}];
   }
+  if(id === 'cabecera'){
+    const m = t.match(/^(ORD\.:|ANT\.:|MAT\.:)\s*([\s\S]*)$/);
+    return m ? [{texto:m[1], negrita:true}, {texto:' ' + m[2], negrita:false}] : [{texto:t, negrita:false}];
+  }
+  if(id === 'de' || /^a-\d+$/.test(id)) return [{texto:t, negrita:true}];
   if(id === 'materia' || /^(vistos|cons|resuelvo)-titulo$/.test(id)) return [{texto:t, negrita:true}];
   if(id === 'distribucion') return [{texto:t, negrita:/^DISTRIBUCI[ÓO]N:/i.test(t)}];
   if(!/^res-\d+$/.test(id)) return [{texto:t, negrita:false}];
@@ -10020,7 +10025,7 @@ function partesRectificatoria(tab){
   if(notifica){
     cabecera = `ORD.: ${numero('rectOrd')}\nANT.: Notifica Resolución Exenta a través de la cual se rectifica la resolución que allí se indica.\nMAT.: ${materia}\nTALCA, ${fecha}`;
     bloques.push(bl('cabecera',cabecera), bl('de','DE: '+de));
-    const direcciones = solicitantesNotificados().map(p => `${p.genero === 'F' ? 'SEÑORA' : 'SEÑOR'} ${upper(blank(p.nombre))}\n${blank(p.domicilio || val('rectDomicilio'))}`);
+    const direcciones = solicitantesNotificados().map(p => `${p.genero === 'F' ? 'SEÑORA' : 'SEÑOR'} ${upper(blank(p.nombre))}, ${upper(blank(p.domicilio || val('rectDomicilio'))).replace(/[.\s]+$/,'')}.`);
     a = direcciones.join('\n\n');
     direcciones.forEach((linea,i) => bloques.push(bl('a-'+i,(i===0 ? 'A: ' : '')+linea)));
     bloques.push(bl('intro',`Mediante la presente, envío copia de la Resolución Exenta que rectifica la ${original}, de esta Secretaría Regional Ministerial de Bienes Nacionales, Región del Maule.`),
@@ -10039,8 +10044,8 @@ function partesRectificatoria(tab){
       bl('res-3',`3.-\tNOTIFÍQUESE la presente resolución ${alALa()} de autos, ${nombres}, al domicilio establecido en el expediente administrativo N°${d.expN}, comuna de ${d.comuna}.`),
       bl('res-4',"4.-\tPUBLÍQUESE la presente resolución en el sitio electrónico del Gobierno Transparente del Ministerio de Bienes Nacionales en la sección “actos y resoluciones”, en la categoría “actos con efectos sobre terceros”, a objeto de dar cumplimiento con lo previsto en el artículo 7°, de la letra g), de la Ley N°20.285 sobre Acceso a la Información Pública, teniendo presente el deber de confidencialidad acerca de los datos personales que la presente resolución pudiera contener, en virtud de lo dispuesto en la Ley N°19.628, debiendo ser estos utilizados estrictamente dentro del marco de las funciones del servicio y respetarse las demás exigencias que para su tratamiento establece el ordenamiento jurídico."),bl('cierre','Téngase la presente Resolución como parte integrante de la modificada, para todos los efectos legales.\nArchívese en su oportunidad.'));
   }
-  bloques.push(bl('firma',upper(d.seremi)+'\n'+(notifica ? de : de.replace(/ REGIÓN DEL MAULE$/,'\nREGIÓN DEL MAULE'))),bl('distribucion',notifica
-    ? `Distribución:\n${v('Destinatario','Destinatarios')}\nExpediente ${d.expN}\nOficina de Partes`
+  bloques.push(bl('firma',upper(d.seremi)+'\n'+(notifica ? 'ABOGADO\n' : '')+de.replace(/ REGIÓN DEL MAULE$/,'\nREGIÓN DEL MAULE')),bl('distribucion',notifica
+    ? `Distribución:\n${v('Destinatario','Destinatarios')}\nExpediente ${d.expN}\nOficina de Partes\n${inicialesDistribucion()}`
     : `DISTRIBUCIÓN:\n${Interesados()}\nExpediente\nOf. de Partes\n${inicialesDistribucion()}`));
   return {materia,fecha,de,a,cabecera,bloques};
 }
@@ -10159,7 +10164,7 @@ function bloquesFinales(tab, base){
     });
   }
   const final = salida.map(b => ({...b, texto: textoSegunContexto(tab,b.id,b.texto)}));
-  if(tab === 'resolucionRectificatoria') return final.map(b => ({...b, texto: ajustarTextoRectificatoria(b.id, b.texto)}));
+  if(/Rectificatoria$/.test(tab)) return final.map(b => ({...b, texto: ajustarTextoRectificatoria(b.id, b.texto)}));
   return final;
 }
 
@@ -10170,6 +10175,8 @@ function bloquesFinales(tab, base){
 function ajustarTextoRectificatoria(id, texto){
   let t = String(texto);
   if(id === 'firma') return t.replace(/^\s*regi[oó]n del maule\s*$/im, 'REGIÓN DEL MAULE');
+  if(/^a-\d+$/.test(id)) return t.toUpperCase();
+  if(!/^(cons|res)-\d+$/.test(id)) return t;
   t = t.replace(/de esta SECRETAR[ÍI]A REGIONAL MINISTERIAL(,? )REGI[ÓO]N DEL MAULE/g, 'de esta Secretaría Regional Ministerial$1Región del Maule')
        .replace(/de esta SECRETAR[ÍI]A REGIONAL MINISTERIAL\b/g, 'de esta Secretaría Regional Ministerial');
   if(/^(cons|res)-\d+$/.test(id)) t = t.replace(/\bComuna de\b/g, 'comuna de').replace(/\bProvincia de\b/g, 'provincia de');
@@ -13176,7 +13183,8 @@ async function paginasDocumentoBPdf(tab, bloques){
   } else if(/^notificacion/.test(tab)){
     const c = col(176.8, 'justify');
     const cab = por.cabecera !== undefined ? String(por.cabecera).split('\n') : [];
-    cab.forEach(l => parrafo(runsEtiquetaPdfB(l), c));
+    if(tab === 'notificacionRectificatoria') topY = Math.max(topY, logoTop + logoAlto - P.interCab);
+    cab.forEach(l => parrafo(tab === 'notificacionRectificatoria' ? runsRectificatoria('cabecera', l) : runsEtiquetaPdfB(l), c));
     if(!paginas.length) topY = Math.max(topY, logoTop + logoAlto);
     cuerpo({cabecera:1}, b=>{
       if(b.id === 'de') parrafo(Bd(b.texto), {antes: 24});
@@ -14455,7 +14463,7 @@ function documentoFallecimientoWordXml(tab, bloques, cxLogo, cyLogo){
     notificacionAnterior ? 454 * 635 : LOGO_RESOLUCION.y);
   const cabeceraIds = /^resolucion/.test(tab)
     ? ['exp','materia','lugarFecha','resN'] : ['cabecera'];
-  const esRect = tab === 'resolucionRectificatoria';
+  const esRect = /Rectificatoria$/.test(tab);
   const runsXml = (runs)=> wordRuns(runs, {sz:21}).replace(/\t/g, '</w:t><w:tab/><w:t xml:space="preserve">');
   const parrafo = (texto, opciones={})=>String(texto).split('\n').map((linea,i)=>{
     const runs = (esRect && opciones.id) ? runsRectificatoria(opciones.id, linea) : [{texto:linea, negrita:!!opciones.negrita}];
@@ -14471,7 +14479,7 @@ function documentoFallecimientoWordXml(tab, bloques, cxLogo, cyLogo){
   /* En la rectificatoria, "Exp.Nº:" baja hasta la altura en que termina el
      logo (el resto del encabezado sigue debajo). */
   const cabecera = bloques.filter(b=>cabeceraIds.includes(b.id)).map(b=>parrafo(b.texto,{
-    align:'left',negrita:b.id==='materia',before:(esRect && b.id==='exp') ? 1380 : 140,id:b.id
+    align:'left',negrita:b.id==='materia',before:(esRect && (b.id==='exp' || b.id==='cabecera')) ? 1380 : 140,id:b.id
   })).join('');
   const celda = (contenido,ancho)=>'<w:tc><w:tcPr><w:tcW w:w="'+ancho+'" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr>'+contenido+'</w:tc>';
   let out = '<w:tbl><w:tblPr><w:tblW w:w="10890" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>'
