@@ -13130,6 +13130,7 @@ async function paginasDocumentoBPdf(tab, bloques){
 
   if(/^resolucion/.test(tab)){
     if(esModelo) topY += 7;
+    if(tab === 'resolucionRectificatoria') topY = Math.max(topY, logoTop + logoAlto - P.interCab);
     const c = col(esModelo ? 219.5 : 214.3, esModelo ? 'left' : 'justify');
     if(por.exp !== undefined)        parrafo(runsEtiquetaPdfB(por.exp), {...c, align: 'left'});
     if(por.materia !== undefined)    parrafo(Bd(por.materia), {...c, antes: P.interCab});
@@ -13143,7 +13144,7 @@ async function paginasDocumentoBPdf(tab, bloques){
       else if(b.id === 'firma')      firma(b.texto, esModelo ? 59 : 24, (P.ancho - P.anchoFirmaCentrada) / 2, P.anchoFirmaCentrada);
       else if(b.id === 'distribucion') distribucion(b.texto, P.inter);
       else if(tab === 'resolucionRectificatoria')
-        String(b.texto).split('\n').forEach((l, i)=> parrafo(runsRectificatoria(b.id, l), {align: 'justify', antes: i ? 0 : P.inter}));
+        String(b.texto).split('\n').forEach((l, i)=> parrafo(runsRectificatoria(b.id, l), {align: 'justify', antes: (!i || /^\s*“/.test(l)) ? P.inter : 0}));
       else                           parrafo(N(b.texto), {align: 'justify', antes: P.inter});
     });
   } else if(tab === 'informe'){
@@ -14458,15 +14459,19 @@ function documentoFallecimientoWordXml(tab, bloques, cxLogo, cyLogo){
   const runsXml = (runs)=> wordRuns(runs, {sz:21}).replace(/\t/g, '</w:t><w:tab/><w:t xml:space="preserve">');
   const parrafo = (texto, opciones={})=>String(texto).split('\n').map((linea,i)=>{
     const runs = (esRect && opciones.id) ? runsRectificatoria(opciones.id, linea) : [{texto:linea, negrita:!!opciones.negrita}];
+    /* Rectificatoria: una línea en blanco antes del texto citado (“…”). */
+    const antesCita = (esRect && i > 0 && /^\s*“/.test(linea)) ? 240 : 0;
     let xml = wordParrafo(runsXml(runs), {
-      align:opciones.align || 'both', before:i===0 ? (opciones.before || 0) : 0,
+      align:opciones.align || 'both', before:i===0 ? (opciones.before || 0) : antesCita,
       after:opciones.after || 0
     });
     if(opciones.keepNext) xml = xml.replace('<w:pPr>','<w:pPr><w:keepNext/>');
     return xml;
   }).join('');
+  /* En la rectificatoria, "Exp.Nº:" baja hasta la altura en que termina el
+     logo (el resto del encabezado sigue debajo). */
   const cabecera = bloques.filter(b=>cabeceraIds.includes(b.id)).map(b=>parrafo(b.texto,{
-    align:'left',negrita:b.id==='materia',before:140,id:b.id
+    align:'left',negrita:b.id==='materia',before:(esRect && b.id==='exp') ? 1380 : 140,id:b.id
   })).join('');
   const celda = (contenido,ancho)=>'<w:tc><w:tcPr><w:tcW w:w="'+ancho+'" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr>'+contenido+'</w:tc>';
   let out = '<w:tbl><w:tblPr><w:tblW w:w="10890" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>'
