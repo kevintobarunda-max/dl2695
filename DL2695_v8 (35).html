@@ -9957,15 +9957,53 @@ function agregarParteRect(){
 
 function textoRectificaciones(original){
   const seleccion=datosListaRect().filter(x=>x.activo);
-  const inicio='1.- RECTIFÍQUESE la '+original+', de esta Secretaría Regional Ministerial, Región del Maule';
+  const inicio='1.-\tRECTIFÍQUESE la '+original+', de esta Secretaría Regional Ministerial, Región del Maule';
   function referencia(nombre){
     const n=nombre.match(/^(Considerando|Resuelvo|Visto)\s+(\d+)$/i);
     if(n) return n[1].toLowerCase()==='visto'?'el punto '+n[2]+' de los VISTOS':'el punto '+n[2]+' del '+n[1].toUpperCase();
     return {'Suma o materia':'la suma','Vistos':'el apartado VISTOS','Encabezado':'el encabezado','Lugar y fecha':'el lugar y la fecha','Número de resolución':'el número de resolución','Cierre':'el cierre','Firma':'la firma','Distribución':'la distribución'}[nombre] || 'el apartado «'+nombre+'»';
   }
   if(!seleccion.length) return inicio+', en ________, quedando de la siguiente forma:\n“________”.';
-  if(seleccion.length===1) return inicio+', en '+referencia(seleccion[0].nombre)+', quedando de la siguiente forma:\n“'+blank(seleccion[0].texto)+'”';
+  if(seleccion.length===1) return inicio+', en su '+referencia(seleccion[0].nombre).replace(/^(?:el|la)\s+/,'')+', quedando de la siguiente forma:\n“'+blank(seleccion[0].texto)+'”';
   return inicio+', en las siguientes partes:\n'+seleccion.map((x,i)=>(i+1)+') En '+referencia(x.nombre)+', quedando de la siguiente forma:\n“'+blank(x.texto)+'”').join('\n\n');
+}
+
+/* Negritas de la resolución rectificatoria, como en el modelo 158170:
+   número del numeral, "RECTIFÍQUESE la Resolución Exenta N° … de fecha …",
+   la parte que se rectifica, NOTIFÍQUESE, PUBLÍQUESE y el N° de expediente
+   del punto 3. Devuelve runs {texto, negrita}; "\t" queda como texto y cada
+   exportador lo dibuja como tabulación. */
+function runsRectificatoria(id, linea){
+  const t = String(linea);
+  if(id === 'exp' || id === 'resN'){
+    const m = t.match(/^(Exp\.Nº:|RES\. EXENTA N°:)\s*([\s\S]*)$/);
+    if(m) return [{texto:m[1], negrita:true}, {texto:' ' + m[2], negrita:false}];
+  }
+  if(id === 'materia' || /^(vistos|cons|resuelvo)-titulo$/.test(id)) return [{texto:t, negrita:true}];
+  if(id === 'distribucion') return [{texto:t, negrita:/^DISTRIBUCI[ÓO]N:/i.test(t)}];
+  if(!/^res-\d+$/.test(id)) return [{texto:t, negrita:false}];
+  const reglas = [
+    /^\d+\.-(?:\t|\s+)?(?:NOTIFÍQUESE|PUBLÍQUESE)?/,
+    /RECTIFÍQUESE la Resolución Exenta N° E-[^,]*? de fecha [^,]+/,
+    /(?<=en su )[^,]+?(?=, quedando)/,
+    /(?<=^\d+\) En )[^,]+?(?=, quedando)/,
+    /NOTIFÍQUESE|PUBLÍQUESE/,
+    /N°\s?\d+,(?= comuna)/
+  ];
+  const marca = new Array(t.length).fill(false);
+  reglas.forEach(re => {
+    const g = new RegExp(re.source, 'g');
+    let m;
+    while((m = g.exec(t))){ for(let i = m.index; i < m.index + m[0].length; i++) marca[i] = true; if(!m[0].length) g.lastIndex++; }
+  });
+  // la tabulación tras "1.-" no lleva negrita propia
+  const runs = [];
+  for(let i = 0; i < t.length; i++){
+    const b = marca[i];
+    if(runs.length && runs[runs.length - 1].negrita === b) runs[runs.length - 1].texto += t[i];
+    else runs.push({texto:t[i], negrita:b});
+  }
+  return runs.length ? runs : [{texto:'', negrita:false}];
 }
 
 function partesRectificatoria(tab){
@@ -9989,16 +10027,19 @@ function partesRectificatoria(tab){
       bl('recursos','Infórmese que, en contra de la presente Resolución, podrán interponerse los recursos contemplados en el Título IV de la Ley N° 19.880, que establece las Bases de los Procedimientos Administrativos que rigen los actos de los Órganos de la Administración del Estado.'),
       bl('contacto',CONTACTO_NOTIFICACION), bl('saluda','Saluda atentamente,'));
   } else {
-    bloques.push(bl('exp','Exp. Nº: '+d.expN),bl('materia','MAT.: '+materia),bl('lugarFecha','Región del Maule, '+fecha),bl('resN','RES. EXENTA N°: '+numero('rectNumero')),
+    /* Formato del modelo «resolución 158170»: encabezado, numerales con su
+       número en negrita y tabulación, y negritas en RECTIFÍQUESE, la parte
+       que se rectifica, NOTIFÍQUESE y PUBLÍQUESE (ver runsRectificatoria). */
+    bloques.push(bl('exp','Exp.Nº: '+d.expN),bl('materia','MAT.: '+materia),bl('lugarFecha','Región del Maule, '+fecha),bl('resN','RES. EXENTA N°: '+numero('rectNumero')),
       bl('vistos-titulo','VISTOS:'),bl('vistos',blank(val('rectVistos'))),bl('cons-titulo','CONSIDERANDO:'),
-      bl('cons-1',`La ${original}, de esta Secretaría Regional Ministerial, recaída en el expediente administrativo N° ${d.expN}, comuna de ${d.comuna}, a nombre de ${nombres}, sus antecedentes y, especialmente, la necesidad de corregir ${blank(val('rectMotivo'))}, aspecto que por este acto se corrige.`),
+      bl('cons-1',`La ${original}, de esta Secretaría Regional Ministerial, recaída en expediente administrativo N°${d.expN}, comuna de ${d.comuna}, a nombre de ${nombres}, sus antecedentes, especialmente la necesidad de corregir ${blank(val('rectMotivo'))}, aspecto que por este acto se corrige.`),
       bl('resuelvo-titulo','RESUELVO:'),
       bl('res-1',textoRectificaciones(original)),
-      bl('res-2','2.- En lo demás, tiene plena vigencia la resolución que por este acto se rectifica.'),
-      bl('res-3',`3.- NOTIFÍQUESE la presente resolución ${alALa()} de autos, ${nombres}, al domicilio establecido en el expediente administrativo N° ${d.expN}, comuna de ${d.comuna}.`),
-      bl('res-4',"4.- PUBLÍQUESE la presente resolución en el sitio electrónico del Gobierno Transparente del Ministerio de Bienes Nacionales en la sección “actos y resoluciones”, en la categoría “actos con efectos sobre terceros”, a objeto de dar cumplimiento con lo previsto en el artículo 7°, de la letra g), de la Ley N°20.285 sobre Acceso a la Información Pública, teniendo presente el deber de confidencialidad acerca de los datos personales que la presente resolución pudiera contener, en virtud de lo dispuesto en la Ley N°19.628, debiendo ser estos utilizados estrictamente dentro del marco de las funciones del servicio y respetarse las demás exigencias que para su tratamiento establece el ordenamiento jurídico."),bl('cierre','Téngase la presente resolución como parte integrante de la modificada, para todos los efectos legales. Archívese en su oportunidad.'));
+      bl('res-2','2.-\tEn lo demás, tiene plena vigencia la Resolución que por este acto se rectifica.'),
+      bl('res-3',`3.-\tNOTIFÍQUESE la presente resolución ${alALa()} de autos, ${nombres}, al domicilio establecido en el expediente administrativo N°${d.expN}, comuna de ${d.comuna}.`),
+      bl('res-4',"4.-\tPUBLÍQUESE la presente resolución en el sitio electrónico del Gobierno Transparente del Ministerio de Bienes Nacionales en la sección “actos y resoluciones”, en la categoría “actos con efectos sobre terceros”, a objeto de dar cumplimiento con lo previsto en el artículo 7°, de la letra g), de la Ley N°20.285 sobre Acceso a la Información Pública, teniendo presente el deber de confidencialidad acerca de los datos personales que la presente resolución pudiera contener, en virtud de lo dispuesto en la Ley N°19.628, debiendo ser estos utilizados estrictamente dentro del marco de las funciones del servicio y respetarse las demás exigencias que para su tratamiento establece el ordenamiento jurídico."),bl('cierre','Téngase la presente Resolución como parte integrante de la modificada, para todos los efectos legales.\nArchívese en su oportunidad.'));
   }
-  bloques.push(bl('firma',upper(d.seremi)+'\n'+de),bl('distribucion',notifica
+  bloques.push(bl('firma',upper(d.seremi)+'\n'+(notifica ? de : de.replace(/ REGIÓN DEL MAULE$/,'\nREGIÓN DEL MAULE'))),bl('distribucion',notifica
     ? `Distribución:\n${v('Destinatario','Destinatarios')}\nExpediente ${d.expN}\nOficina de Partes`
     : `DISTRIBUCIÓN:\n${Interesados()}\nExpediente\nOf. de Partes\n${inicialesDistribucion()}`));
   return {materia,fecha,de,a,cabecera,bloques};
@@ -10117,7 +10158,22 @@ function bloquesFinales(tab, base){
     return {...b,texto:textoSegunContexto(tab,b.id,texto)};
     });
   }
-  return salida.map(b => ({...b, texto: textoSegunContexto(tab,b.id,b.texto)}));
+  const final = salida.map(b => ({...b, texto: textoSegunContexto(tab,b.id,b.texto)}));
+  if(tab === 'resolucionRectificatoria') return final.map(b => ({...b, texto: ajustarTextoRectificatoria(b.id, b.texto)}));
+  return final;
+}
+
+/* Detalles de redacción del modelo «resolución 158170» que las reglas
+   generales del programa cambian: "de esta Secretaría Regional Ministerial,
+   Región del Maule" en minúscula, "comuna de"/"provincia de" en minúscula y
+   la última línea de la firma "REGIÓN DEL MAULE" en mayúscula. */
+function ajustarTextoRectificatoria(id, texto){
+  let t = String(texto);
+  if(id === 'firma') return t.replace(/^\s*regi[oó]n del maule\s*$/im, 'REGIÓN DEL MAULE');
+  t = t.replace(/de esta SECRETAR[ÍI]A REGIONAL MINISTERIAL(,? )REGI[ÓO]N DEL MAULE/g, 'de esta Secretaría Regional Ministerial$1Región del Maule')
+       .replace(/de esta SECRETAR[ÍI]A REGIONAL MINISTERIAL\b/g, 'de esta Secretaría Regional Ministerial');
+  if(/^(cons|res)-\d+$/.test(id)) t = t.replace(/\bComuna de\b/g, 'comuna de').replace(/\bProvincia de\b/g, 'provincia de');
+  return t;
 }
 
 /* Texto completo de un documento, con las ediciones ya aplicadas. */
@@ -13086,6 +13142,8 @@ async function paginasDocumentoBPdf(tab, bloques){
       else if(b.id === 'cierre')     parrafo(N(b.texto), {antes: P.inter});
       else if(b.id === 'firma')      firma(b.texto, esModelo ? 59 : 24, (P.ancho - P.anchoFirmaCentrada) / 2, P.anchoFirmaCentrada);
       else if(b.id === 'distribucion') distribucion(b.texto, P.inter);
+      else if(tab === 'resolucionRectificatoria')
+        String(b.texto).split('\n').forEach((l, i)=> parrafo(runsRectificatoria(b.id, l), {align: 'justify', antes: i ? 0 : P.inter}));
       else                           parrafo(N(b.texto), {align: 'justify', antes: P.inter});
     });
   } else if(tab === 'informe'){
@@ -14396,8 +14454,11 @@ function documentoFallecimientoWordXml(tab, bloques, cxLogo, cyLogo){
     notificacionAnterior ? 454 * 635 : LOGO_RESOLUCION.y);
   const cabeceraIds = /^resolucion/.test(tab)
     ? ['exp','materia','lugarFecha','resN'] : ['cabecera'];
+  const esRect = tab === 'resolucionRectificatoria';
+  const runsXml = (runs)=> wordRuns(runs, {sz:21}).replace(/\t/g, '</w:t><w:tab/><w:t xml:space="preserve">');
   const parrafo = (texto, opciones={})=>String(texto).split('\n').map((linea,i)=>{
-    let xml = wordParrafo(wordRuns([{texto:linea, negrita:!!opciones.negrita}], {sz:21}), {
+    const runs = (esRect && opciones.id) ? runsRectificatoria(opciones.id, linea) : [{texto:linea, negrita:!!opciones.negrita}];
+    let xml = wordParrafo(runsXml(runs), {
       align:opciones.align || 'both', before:i===0 ? (opciones.before || 0) : 0,
       after:opciones.after || 0
     });
@@ -14405,7 +14466,7 @@ function documentoFallecimientoWordXml(tab, bloques, cxLogo, cyLogo){
     return xml;
   }).join('');
   const cabecera = bloques.filter(b=>cabeceraIds.includes(b.id)).map(b=>parrafo(b.texto,{
-    align:'left',negrita:b.id==='materia',before:140
+    align:'left',negrita:b.id==='materia',before:140,id:b.id
   })).join('');
   const celda = (contenido,ancho)=>'<w:tc><w:tcPr><w:tcW w:w="'+ancho+'" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr>'+contenido+'</w:tc>';
   let out = '<w:tbl><w:tblPr><w:tblW w:w="10890" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>'
@@ -14418,7 +14479,7 @@ function documentoFallecimientoWordXml(tab, bloques, cxLogo, cyLogo){
     if(b.id === 'firma'){
       const lineas = String(b.texto).split('\n');
       lineas.forEach((linea,i)=>{out += parrafo(linea,{align:'center',before:i===0?480:0,keepNext:i<lineas.length-1});});
-    } else out += parrafo(b.texto,{
+    } else out += parrafo(b.texto,{id:b.id,
       align:titulo?'center': /^(de|a-\d+|distribucion|saluda|cierre)$/.test(b.id)?'left':'both',
       negrita:titulo || b.id === 'de' || /^a-\d+/.test(b.id),
       before:titulo?360: b.id==='distribucion'?240:180,keepNext:titulo
