@@ -618,6 +618,7 @@ body[data-documento="resolucionRep"][data-rep-fundamentos-auto="no"] #sidePanel 
 #navGrupo-otros.menu-abierto>.nav-documentos{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px}
 #navGrupo-otros .otros-causa{grid-column:1;text-align:left;white-space:normal}
 #navGrupo-otros .otros-causa::after{content:' ▸'}
+#navGrupo-otros .otros-directo{grid-column:1;text-align:left;white-space:normal}
 #navGrupo-otros .otros-causa[aria-expanded=true]{background:#fff;color:#152a4a}
 #navGrupo-otros .otros-productos{display:inline-flex;align-items:center;gap:4px}
 #navGrupo-otros .otros-productos[hidden]{display:none}
@@ -679,6 +680,8 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
     <button type="button" class="otros-causa" aria-expanded="false" aria-controls="otrosFallecimiento">Causa por fallecimiento</button>
 
     <button type="button" class="otros-causa" aria-expanded="false" aria-controls="otrosRectificatoria">Rectificatoria</button>
+
+    <button type="button" class="otros-directo" data-tab="cuotaHereditaria">Cuota hereditaria</button>
 
   </div>
 
@@ -1823,6 +1826,49 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
 
 <!-- ================= OFICIOS (Word) ================= -->
 <!-- ================= BITÁCORA Y PADRÓN DE EXPEDIENTES ================= -->
+<!-- ================= CALCULADORA DE CUOTA HEREDITARIA ================= -->
+<style>
+  #cuotaView{padding:14px 16px;}
+  .ch-wrap{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px;align-items:start;}
+  @media (max-width:1000px){ .ch-wrap{grid-template-columns:1fr;} }
+  .ch-nodo{border:1px solid #e3ddcc;border-radius:8px;padding:8px;margin:0 0 8px;background:#fff;}
+  .ch-fila{display:grid;grid-template-columns:minmax(120px,1.6fr) minmax(110px,1fr) minmax(130px,1.2fr) auto;gap:6px;align-items:center;}
+  .ch-fila input,.ch-fila select{width:100%;min-width:0;font-size:12.5px;padding:5px 6px;}
+  .ch-extra{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px;font-size:12px;}
+  .ch-extra select{width:auto;font-size:12px;padding:3px 5px;}
+  .ch-sub{margin:8px 0 0 10px;padding:6px 0 2px 10px;border-left:3px solid #c9d6ea;}
+  .ch-sub-tit{font-size:11.5px;font-weight:700;color:var(--azul-900);margin:0 0 6px;}
+  .ch-sub.transmision{border-left-color:#e2b48a;}
+  .ch-tabla{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .ch-tabla th,.ch-tabla td{border-bottom:1px solid #e6e2d3;padding:5px 6px;text-align:left;vertical-align:top;}
+  .ch-tabla th{background:#f4f1e8;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;}
+  .ch-tabla td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .ch-tabla tr.total td{font-weight:700;border-top:2px solid #cfc7b2;}
+  .ch-pasos{margin:0;padding-left:18px;font-size:12.5px;line-height:1.5;}
+  .ch-pasos li{margin-bottom:4px;}
+  .ch-aviso{background:#fff6e6;border:1px solid #ecc98f;border-radius:6px;padding:6px 8px;font-size:12px;margin:0 0 8px;}
+  .ch-ok{color:var(--ok);font-weight:700;}
+  .ch-mal{color:var(--rojo-dark);font-weight:700;}
+  #chTexto{width:100%;min-height:150px;font-size:12.5px;line-height:1.5;}
+</style>
+<section id="cuotaView" hidden>
+  <div class="ch-wrap">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Calculadora de cuota hereditaria</h2>
+        <span class="hint">sucesión intestada · Código Civil, arts. 980 y ss.</span>
+      </div>
+      <div class="panel-body" id="chForm"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Resultado</h2>
+        <span class="hint">cuotas sobre los derechos del causante en el inmueble</span>
+      </div>
+      <div class="panel-body" id="chResultado"></div>
+    </section>
+  </div>
+</section>
 <section id="relojView" hidden><iframe title="Reloj Control" id="relojFrame" style="width:100%;height:78vh;border:0" data-contenido="&lt;!DOCTYPE html&gt;
 &lt;html lang=&quot;es&quot;&gt;
 &lt;head&gt;
@@ -6188,6 +6234,7 @@ const state = {
   /* --- expedientes del OFICIO MASIVO (una fila de la tabla por expediente) --- */
   masivoFilas: [],
   conservadorFilas: [],
+  cuotaHer: null,
   /* --- superficies de la calculadora, SIEMPRE en mt2 (la unidad elegida solo
          cambia cómo se muestran, así no se pierde precisión al convertir) --- */
   calcSup: { totales: null, reg: null },
@@ -7483,8 +7530,10 @@ mainTabs.forEach(btn=>{
     const esBitacora = (tab === 'bitacora');
     const esAsignaciones = tab === 'asignaciones';
     const esReloj = tab === 'reloj';
+    const esCuota = tab === 'cuotaHereditaria';
     q('relojView').hidden = !esReloj;
-    const esDoc = !esOficios && !esBitacora && !esAsignaciones && !esReloj;
+    q('cuotaView').hidden = !esCuota;
+    const esDoc = !esOficios && !esBitacora && !esAsignaciones && !esReloj && !esCuota;
     q('asignacionesView').hidden = !esAsignaciones;
     document.querySelector('.layout').style.display = esDoc ? 'grid' : 'none';
     q('oficiosView').style.display   = esOficios  ? 'grid'  : 'none';
@@ -7507,6 +7556,9 @@ mainTabs.forEach(btn=>{
       if(!frame.hasAttribute('srcdoc')) frame.srcdoc = frame.dataset.contenido;
     } else if(esBitacora){
       initBitacora();
+    } else if(esCuota){
+      abrirGrupoNavegacion(q('navGrupo-otros'), false);
+      CH.init(); CH.render();
     } else {
       generar();
     }
@@ -13536,6 +13588,7 @@ function nuevoExpediente(){
     state.jqFilas = [{arg: '', desc: ''}];
     state.cesiones = [cesionVacia()];
     state.causante = {nombre: '', genero: 'M', ci: ''};
+    state.cuotaHer = null;
     state.motivosOrden = [];
     state.calcSup = {totales: null, reg: null};
     state.docEdits = {}; state.lastRender = {};
@@ -13572,6 +13625,467 @@ function nuevoExpediente(){
   if(q('expN')) q('expN').focus();
 }
 
+
+/* ============================================================
+   CALCULADORA DE CUOTA HEREDITARIA (pestaña "Otros")
+   Reglas de la sucesión intestada del Código Civil chileno:
+     · Liquidación previa de la sociedad conyugal (o comunidad del AUC):
+       si el bien es social, la mitad son gananciales del cónyuge/conviviente
+       sobreviviente y sólo la otra mitad es herencia.
+     · 1er orden (art. 988): hijos + cónyuge. El cónyuge lleva el doble de
+       cada hijo; si hay un solo hijo, igual que él; nunca menos de 1/4.
+     · 2º orden (art. 989): cónyuge + ascendientes de grado más próximo:
+       2/3 cónyuge, 1/3 ascendientes. Si falta uno, todo al otro.
+     · 3er orden (art. 990): hermanos; el de simple conjunción (medio
+       hermano) lleva la mitad que el carnal.
+     · 4º orden (art. 992): colaterales hasta el 6º grado; el más próximo
+       excluye al más lejano y el de simple conjunción lleva la mitad.
+     · A falta de todos: el Fisco (art. 995).
+     · Representación (arts. 984-986): sólo en la descendencia del causante
+       y de sus hermanos; los representantes llevan por estirpe la cuota del
+       representado (premuerto, incapaz, indigno, desheredado o que repudió).
+     · Transmisión (art. 957): si un heredero muere después del causante sin
+       haber aceptado o repudiado, su cuota pasa a sus propios herederos.
+     · El conviviente civil tiene los mismos derechos que el cónyuge
+       (Ley N° 20.830, art. 22).
+   Los cálculos se hacen con fracciones exactas (BigInt).
+   ============================================================ */
+const CH = (()=>{
+
+  /* ---------- fracciones exactas ---------- */
+  const babs = n => n < 0n ? -n : n;
+  const gcd = (a, b)=>{ a = babs(a); b = babs(b); while(b){ [a, b] = [b, a % b]; } return a || 1n; };
+  const fr = (n, d = 1n)=>{
+    n = BigInt(n); d = BigInt(d);
+    if(d < 0n){ n = -n; d = -d; }
+    const g = gcd(n, d); return {n: n / g, d: d / g};
+  };
+  const mul = (a, b)=> fr(a.n * b.n, a.d * b.d);
+  const div = (a, b)=> fr(a.n * b.d, a.d * b.n);
+  const add = (a, b)=> fr(a.n * b.d + b.n * a.d, a.d * b.d);
+  const sub = (a, b)=> fr(a.n * b.d - b.n * a.d, a.d * b.d);
+  const menor = (a, b)=> a.n * b.d < b.n * a.d;
+  const esCero = a => a.n === 0n;
+  const txt = a => a.d === 1n ? String(a.n) : a.n + '/' + a.d;
+  const pct = a => (Number(a.n * 1000000n / a.d) / 10000).toLocaleString('es-CL', {maximumFractionDigits: 4}) + '%';
+  const lcm = (a, b)=> a / gcd(a, b) * b;
+
+  /* "1", "1/2", "0,5", "50%" -> fracción */
+  function leerFraccion(s){
+    s = String(s || '').trim().replace(/\s+/g, '');
+    if(!s) return fr(1);
+    let m = s.match(/^(\d+)\/(\d+)$/);
+    if(m && +m[2] > 0) return fr(m[1], m[2]);
+    m = s.match(/^(\d+)(?:[.,](\d+))?(%)?$/);
+    if(m){
+      const dec = m[2] || '';
+      let f = fr(BigInt(m[1] + dec), 10n ** BigInt(dec.length));
+      if(m[3]) f = div(f, fr(100));
+      return f;
+    }
+    return null;
+  }
+
+  /* ---------- datos ---------- */
+  let uid = 0;
+  const nuevoId = ()=> 'n' + Date.now().toString(36) + (uid++);
+  const sucVacia = ()=> ({conyuge: {existe: false, nombre: '', situacion: 'acepta', sucesion: null}, herederos: []});
+  const nodoNuevo = (tipo)=> ({id: nuevoId(), nombre: '', tipo: tipo || 'hijo', grado: tipo === 'colateral' ? 3 : 1, doble: true,
+    situacion: 'acepta', representantes: [], sucesion: null});
+  const datosVacios = ()=> Object.assign(sucVacia(), {
+    causante: '', fecha: '', regimen: 'sc', bien: 'social', renuncia: false, cuotaInmueble: '1', superficie: '', unidad: 'm²'
+  });
+
+  function datos(){
+    if(!state.cuotaHer || typeof state.cuotaHer !== 'object') state.cuotaHer = datosVacios();
+    return state.cuotaHer;
+  }
+
+  const TIPOS = {
+    hijo: 'Hijo/a', ascendiente: 'Ascendiente', hermano: 'Hermano/a carnal', mediohermano: 'Medio hermano/a',
+    colateral: 'Otro colateral', representante: 'Descendiente'
+  };
+  const REPRESENTABLE = t => t === 'hijo' || t === 'hermano' || t === 'mediohermano' || t === 'representante';
+  const SIN_SUCEDER = s => s === 'premuerto' || s === 'repudia' || s === 'indigno';
+  const GRADO_ASC = {1: 'padre / madre', 2: 'abuelo/a', 3: 'bisabuelo/a'};
+  const GRADO_COL = {3: '3º (tío/a, sobrino/a)', 4: '4º (primo/a, tío/a abuelo/a)', 5: '5º', 6: '6º'};
+
+  const esConviviente = ()=> /^auc/.test(datos().regimen);
+  const nombreDe = (n, def)=> (n && String(n.nombre || '').trim()) || def;
+
+  /* ¿Este heredero cuenta para el reparto? Acepta, transmite su cuota, o no
+     sucede pero lo representan descendientes que sí cuentan. */
+  function cuenta(n){
+    if(!n) return false;
+    if(n.situacion === 'acepta' || n.situacion === 'transmision') return true;
+    if(SIN_SUCEDER(n.situacion) && REPRESENTABLE(n.tipo)) return (n.representantes || []).some(cuenta);
+    return false;
+  }
+  const conyugeCuenta = s => !!(s.conyuge && s.conyuge.existe && s.conyuge.situacion !== 'repudia');
+
+  /* ---------- cálculo ---------- */
+  function asignar(n, q, calidad, ctx, ruta){
+    if(esCero(q)) return;
+    const nom = nombreDe(n, 'Heredero sin nombre');
+    if(n.situacion === 'transmision'){
+      const s = n.sucesion || sucVacia();
+      const hay = conyugeCuenta(s) || (s.herederos || []).some(cuenta);
+      if(!hay){
+        ctx.avisos.push(`${nom} falleció después del causante, pero no indicaste sus herederos: su cuota (${txt(q)}) queda a nombre de su sucesión.`);
+        ctx.filas.push({nombre: 'Sucesión de ' + nom, calidad: calidad + ' · transmisión (art. 957)', q, ruta});
+        return;
+      }
+      ctx.pasos.push(`${nom} falleció después del causante: su cuota de ${txt(q)} se transmite a sus herederos (art. 957 C.C.) y se reparte con las mismas reglas.`);
+      repartir(s, q, ctx, (ruta ? ruta + ' › ' : '') + 'herederos de ' + nom, false);
+      return;
+    }
+    if(SIN_SUCEDER(n.situacion)){
+      const reps = (n.representantes || []).filter(cuenta);
+      const motivo = {premuerto: 'premuerto o incapaz', repudia: 'repudió', indigno: 'indigno o desheredado'}[n.situacion];
+      const parte = div(q, fr(reps.length));
+      ctx.pasos.push(`${nom} (${motivo}) es representado por ${reps.length === 1 ? nombreDe(reps[0], 'su descendiente') : reps.length + ' descendientes'}: la cuota de su estirpe (${txt(q)}) se divide en partes iguales, ${txt(parte)} cada uno (arts. 984 y 985 C.C.).`);
+      const etq = (n.tipo === 'hermano' || n.tipo === 'mediohermano') ? 'sobrino/a' : (n.tipo === 'hijo' ? 'nieto/a' : 'descendiente');
+      reps.forEach(r => asignar(r, parte, etq + ', por representación de ' + nom, ctx, ruta));
+      return;
+    }
+    /* Si llegó por transmisión, se dice de quién es heredero. */
+    const transmitente = ruta ? ruta.split(' › ').pop().replace(/^herederos de /, '') : '';
+    ctx.filas.push({nombre: nom, calidad: transmitente ? `${calidad} de ${transmitente} (por transmisión)` : calidad, q, ruta});
+  }
+
+  function repartir(s, masa, ctx, ruta, raiz){
+    const her = (s.herederos || []);
+    const cony = s.conyuge || {};
+    const hayCony = conyugeCuenta(s);
+    const tituloCony = (raiz && esConviviente()) ? 'conviviente civil sobreviviente' : 'cónyuge sobreviviente';
+    const nomCony = nombreDe(cony, raiz && esConviviente() ? 'Conviviente civil' : 'Cónyuge');
+    const darCony = (q, calidad)=> asignar({...cony, tipo: 'conyuge', nombre: nomCony}, q, calidad, ctx, ruta);
+    if(cony.existe && cony.situacion === 'repudia') ctx.pasos.push(`${nomCony} repudió la herencia: no se considera en el reparto.`);
+
+    // 1er orden: hijos (personalmente o representados) + cónyuge
+    const hijos = her.filter(h => h.tipo === 'hijo' && cuenta(h));
+    if(hijos.length){
+      const n = hijos.length;
+      let qc = fr(0), qh;
+      if(hayCony){
+        if(n === 1) qc = div(masa, fr(2));
+        else {
+          qc = mul(masa, fr(2, n + 2));
+          if(menor(qc, mul(masa, fr(1, 4)))){
+            qc = mul(masa, fr(1, 4));
+            ctx.pasos.push(`Con ${n} hijos, el doble de lo de cada hijo sería menos de 1/4: se aplica el mínimo de 1/4 para ${tituloCony === 'cónyuge sobreviviente' ? 'el cónyuge' : 'el conviviente civil'} (art. 988 inc. 2º C.C.).`);
+          }
+        }
+        qh = div(sub(masa, qc), fr(n));
+        ctx.pasos.push(`Primer orden (art. 988 C.C.): ${n} ${n === 1 ? 'hijo' : 'hijos'} y ${tituloCony}. ${n === 1 ? 'Con un solo hijo, el cónyuge lleva lo mismo que él' : 'El cónyuge lleva el doble que cada hijo'}: ${tituloCony} ${txt(qc)}, cada hijo (o su estirpe) ${txt(qh)}.`);
+        darCony(qc, tituloCony + ' (1er orden)');
+      } else {
+        qh = div(masa, fr(n));
+        ctx.pasos.push(`Primer orden (art. 988 C.C.): ${n} ${n === 1 ? 'hijo' : 'hijos'}, sin cónyuge: la masa (${txt(masa)}) se divide en partes iguales, ${txt(qh)} cada uno.`);
+      }
+      hijos.forEach(h => asignar(h, qh, 'hijo/a', ctx, ruta));
+      return;
+    }
+
+    // 2º orden: ascendientes de grado más próximo + cónyuge
+    const ascAll = her.filter(h => h.tipo === 'ascendiente' && cuenta(h));
+    const gMin = ascAll.length ? Math.min(...ascAll.map(a => +a.grado || 1)) : 0;
+    const asc = ascAll.filter(a => (+a.grado || 1) === gMin);
+    if(ascAll.length > asc.length) ctx.pasos.push('El ascendiente de grado más próximo excluye a los demás (art. 989 C.C.).');
+    if(asc.length || hayCony){
+      if(asc.length && hayCony){
+        const qc = mul(masa, fr(2, 3)), qa = div(mul(masa, fr(1, 3)), fr(asc.length));
+        ctx.pasos.push(`Segundo orden (art. 989 C.C.): sin descendientes. ${tituloCony.charAt(0).toUpperCase() + tituloCony.slice(1)} lleva 2/3 (${txt(qc)}) y los ascendientes 1/3, ${txt(qa)} cada uno.`);
+        darCony(qc, tituloCony + ' (2º orden)');
+        asc.forEach(a => asignar(a, qa, 'ascendiente (' + (GRADO_ASC[a.grado] || 'grado ' + a.grado) + ')', ctx, ruta));
+      } else if(asc.length){
+        const qa = div(masa, fr(asc.length));
+        ctx.pasos.push(`Segundo orden (art. 989 C.C.): sin descendientes ni cónyuge. Los ascendientes se dividen la masa en partes iguales, ${txt(qa)} cada uno.`);
+        asc.forEach(a => asignar(a, qa, 'ascendiente (' + (GRADO_ASC[a.grado] || 'grado ' + a.grado) + ')', ctx, ruta));
+      } else {
+        ctx.pasos.push(`Segundo orden (art. 989 C.C.): sin descendientes ni ascendientes, toda la masa (${txt(masa)}) es para ${tituloCony === 'cónyuge sobreviviente' ? 'el cónyuge' : 'el conviviente civil'}.`);
+        darCony(masa, tituloCony + ' (2º orden)');
+      }
+      return;
+    }
+
+    // 3er orden: hermanos (carnales doble que medio hermanos)
+    const herm = her.filter(h => (h.tipo === 'hermano' || h.tipo === 'mediohermano') && cuenta(h));
+    if(herm.length){
+      const peso = h => h.tipo === 'hermano' ? 2n : 1n;
+      const total = herm.reduce((a, h) => a + peso(h), 0n);
+      const hayMedios = herm.some(h => h.tipo === 'mediohermano');
+      ctx.pasos.push(`Tercer orden (art. 990 C.C.): sin descendientes, ascendientes ni cónyuge, heredan los hermanos.${hayMedios ? ' El medio hermano lleva la mitad que el carnal.' : ' Se dividen la masa en partes iguales.'}`);
+      herm.forEach(h => asignar(h, mul(masa, fr(peso(h), total)), h.tipo === 'hermano' ? 'hermano/a carnal' : 'medio hermano/a', ctx, ruta));
+      return;
+    }
+
+    // 4º orden: otros colaterales hasta el 6º grado
+    const colAll = her.filter(h => h.tipo === 'colateral' && cuenta(h) && (+h.grado || 3) <= 6);
+    if(colAll.length){
+      const g = Math.min(...colAll.map(c => +c.grado || 3));
+      const col = colAll.filter(c => (+c.grado || 3) === g);
+      const peso = c => c.doble === false ? 1n : 2n;
+      const total = col.reduce((a, c) => a + peso(c), 0n);
+      ctx.pasos.push(`Cuarto orden (art. 992 C.C.): heredan los colaterales de ${g}º grado (el más próximo excluye a los demás)${col.some(c => c.doble === false) ? '; los de simple conjunción llevan la mitad que los de doble conjunción' : ''}.`);
+      col.forEach(c => asignar(c, mul(masa, fr(peso(c), total)), `colateral de ${g}º grado`, ctx, ruta));
+      return;
+    }
+
+    // Fisco
+    ctx.pasos.push(`Sin herederos de ningún orden: la masa (${txt(masa)}) corresponde al Fisco de Chile (art. 995 C.C.).`);
+    ctx.filas.push({nombre: 'Fisco de Chile', calidad: 'herencia vacante (art. 995)', q: masa, ruta});
+  }
+
+  function calcular(){
+    const D = datos();
+    const ctx = {filas: [], pasos: [], avisos: []};
+    let base = leerFraccion(D.cuotaInmueble);
+    if(!base || esCero(base)){ ctx.avisos.push('La cuota del causante sobre el inmueble no es válida (usa 1, 1/2, 0,5 o 50%). Se calcula sobre el total.'); base = fr(1); }
+    if(menor(fr(1), base)) ctx.avisos.push('La cuota del causante sobre el inmueble es mayor que 1: revisa el dato.');
+    const nomCaus = nombreDe({nombre: D.causante}, 'el causante');
+    ctx.pasos.push(`Derechos de ${nomCaus} sobre el inmueble: ${txt(base)}.`);
+
+    let herencia = base;
+    const conRegimen = (D.regimen === 'sc' || D.regimen === 'auc_com');
+    const cony = D.conyuge || {};
+    if(conRegimen && D.bien === 'social' && cony.existe){
+      const quien = D.regimen === 'sc' ? 'cónyuge' : 'conviviente civil';
+      if(D.renuncia){
+        ctx.pasos.push(`El ${quien} renunció a los gananciales: todo el bien social (${txt(base)}) pasa a la herencia.`);
+      } else {
+        const gan = div(base, fr(2));
+        herencia = sub(base, gan);
+        ctx.pasos.push(`Liquidación de la ${D.regimen === 'sc' ? 'sociedad conyugal' : 'comunidad del AUC'}: el bien es social, la mitad (${txt(gan)}) corresponde al ${quien} sobreviviente como gananciales y no se hereda; la otra mitad (${txt(herencia)}) forma la herencia.`);
+        asignar({...cony, nombre: nombreDe(cony, quien === 'cónyuge' ? 'Cónyuge' : 'Conviviente civil'), tipo: 'conyuge',
+          situacion: cony.situacion === 'transmision' ? 'transmision' : 'acepta'},
+          gan, `${quien} sobreviviente · gananciales (mitad del bien social)`, ctx, '');
+      }
+    } else if(conRegimen && D.bien === 'propio'){
+      ctx.pasos.push('El bien es propio del causante: no hay gananciales y todo forma la herencia.');
+    } else if(D.regimen === 'part' && cony.existe){
+      ctx.pasos.push('Participación en los gananciales: el cónyuge puede tener un crédito de participación, pero no es comunero del inmueble; todo forma la herencia.');
+    } else if(D.regimen === 'sep' && cony.existe){
+      ctx.pasos.push('Separación de bienes: no hay gananciales; todo forma la herencia.');
+    }
+    if(cony.existe && D.regimen === 'ninguno') ctx.avisos.push('Marcaste cónyuge o conviviente pero el régimen dice "sin cónyuge": revisa el régimen.');
+
+    repartir(D, herencia, ctx, '', true);
+
+    // totales por persona
+    const porPersona = new Map();
+    ctx.filas.forEach(f=>{
+      const k = f.nombre.trim().toLocaleUpperCase('es');
+      const prev = porPersona.get(k);
+      if(prev){ prev.q = add(prev.q, f.q); prev.calidades.push(f.calidad); }
+      else porPersona.set(k, {nombre: f.nombre, q: f.q, calidades: [f.calidad]});
+    });
+    const suma = ctx.filas.reduce((a, f)=> add(a, f.q), fr(0));
+    return {ctx, base, herencia, suma, personas: [...porPersona.values()]};
+  }
+
+  /* ---------- formulario (recursivo) ---------- */
+  const esc = t => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const opt = (v, t, sel)=> `<option value="${v}"${String(sel) === String(v) ? ' selected' : ''}>${t}</option>`;
+
+  function situaciones(n){
+    const o = [['acepta', 'Acepta / vivo'], ['transmision', 'Falleció después (transmisión)']];
+    if(REPRESENTABLE(n.tipo)) o.push(['premuerto', 'Premuerto o incapaz (lo representan)'], ['indigno', 'Indigno o desheredado (lo representan)'], ['repudia', 'Repudió (pueden representarlo)']);
+    else o.push(['premuerto', 'Premuerto (no hay representación)'], ['repudia', 'Repudió']);
+    return o;
+  }
+
+  function htmlNodo(n, path, enRep){
+    let h = `<div class="ch-nodo"><div class="ch-fila">`
+      + `<input type="text" placeholder="${enRep ? 'Nombre del descendiente' : 'Nombre del heredero'}" value="${esc(n.nombre)}" data-ch="${path}.nombre">`;
+    if(enRep) h += `<span class="hint" style="font-size:11px">descendiente (representa)</span>`;
+    else h += `<select data-ch="${path}.tipo" data-redibujar>${Object.entries(TIPOS).filter(([k]) => k !== 'representante').map(([k, t]) => opt(k, t, n.tipo)).join('')}</select>`;
+    h += `<select data-ch="${path}.situacion" data-redibujar>${situaciones(n).map(([k, t]) => opt(k, t, n.situacion)).join('')}</select>`
+      + `<button type="button" class="btn btn-outline btn-sm" style="padding:2px 7px" title="Quitar" data-ch-quitar="${path}">✕</button></div>`;
+    if(!enRep && n.tipo === 'ascendiente')
+      h += `<div class="ch-extra">Grado: <select data-ch="${path}.grado" data-redibujar data-num>${Object.entries(GRADO_ASC).map(([k, t]) => opt(k, t, n.grado || 1)).join('')}</select></div>`;
+    if(!enRep && n.tipo === 'colateral')
+      h += `<div class="ch-extra">Grado: <select data-ch="${path}.grado" data-redibujar data-num>${Object.entries(GRADO_COL).map(([k, t]) => opt(k, t, n.grado || 3)).join('')}</select>`
+        + `<select data-ch="${path}.doble" data-redibujar data-bool>${opt('true', 'doble conjunción', n.doble !== false)}${opt('false', 'simple conjunción', n.doble === false ? 'false' : '')}</select></div>`;
+    if(SIN_SUCEDER(n.situacion) && REPRESENTABLE(n.tipo)){
+      const quien = nombreDe(n, 'este heredero');
+      h += `<div class="ch-sub"><p class="ch-sub-tit">Lo representan sus descendientes (hijos de ${esc(quien)})</p>`
+        + (n.representantes || []).map((r, i) => htmlNodo(r, `${path}.representantes.${i}`, true)).join('')
+        + `<button type="button" class="btn btn-outline btn-sm" data-ch-agregar="${path}.representantes" data-tipo="representante">＋ Descendiente</button></div>`;
+    }
+    if(n.situacion === 'transmision'){
+      const quien = nombreDe(n, 'este heredero');
+      h += `<div class="ch-sub transmision"><p class="ch-sub-tit">Herederos de ${esc(quien)} (su cuota se transmite, art. 957)</p>`
+        + htmlSucesion(n.sucesion || (n.sucesion = sucVacia()), `${path}.sucesion`, false) + `</div>`;
+    }
+    return h + `</div>`;
+  }
+
+  function htmlConyuge(c, path, raiz){
+    const conv = raiz && esConviviente();
+    const etq = conv ? 'Conviviente civil sobreviviente' : 'Cónyuge sobreviviente';
+    let h = `<div class="ch-nodo"><label style="display:flex;gap:6px;align-items:center;font-size:12.5px;font-weight:600">`
+      + `<input type="checkbox" style="width:auto" data-ch="${path}.existe" data-redibujar ${c.existe ? 'checked' : ''}> Hay ${etq.toLowerCase()}</label>`;
+    if(c.existe){
+      h += `<div class="ch-fila" style="grid-template-columns:minmax(120px,1.6fr) minmax(130px,1.2fr);margin-top:6px">`
+        + `<input type="text" placeholder="Nombre ${conv ? 'del conviviente' : 'del cónyuge'}" value="${esc(c.nombre)}" data-ch="${path}.nombre">`
+        + `<select data-ch="${path}.situacion" data-redibujar>${[['acepta', 'Acepta / vivo'], ['repudia', 'Repudió la herencia'], ['transmision', 'Falleció después (transmisión)']].map(([k, t]) => opt(k, t, c.situacion)).join('')}</select></div>`;
+      if(c.situacion === 'transmision')
+        h += `<div class="ch-sub transmision"><p class="ch-sub-tit">Herederos de ${esc(nombreDe(c, 'el cónyuge'))} (art. 957)</p>`
+          + htmlSucesion(c.sucesion || (c.sucesion = sucVacia()), `${path}.sucesion`, false) + `</div>`;
+    }
+    return h + `</div>`;
+  }
+
+  function htmlSucesion(s, path, raiz){
+    const p = path ? path + '.' : '';
+    return htmlConyuge(s.conyuge || (s.conyuge = sucVacia().conyuge), p + 'conyuge', raiz)
+      + (s.herederos || []).map((n, i) => htmlNodo(n, `${p}herederos.${i}`, false)).join('')
+      + `<div class="btn-row" style="margin:4px 0 0">`
+      + ['hijo', 'ascendiente', 'hermano', 'mediohermano', 'colateral'].map(t =>
+          `<button type="button" class="btn btn-outline btn-sm" data-ch-agregar="${p}herederos" data-tipo="${t}">＋ ${TIPOS[t]}</button>`).join('')
+      + `</div>`;
+  }
+
+  function render(){
+    const D = datos();
+    const form = q('chForm'); if(!form) return;
+    const conRegimen = D.regimen === 'sc' || D.regimen === 'auc_com';
+    form.innerHTML = `
+      <fieldset><legend>Causante y bien</legend>
+        <div class="grid2">
+          <div class="field"><label>Nombre del causante</label><div style="display:flex;gap:6px"><select data-ch="causanteTrato" style="width:auto">${opt('don', 'don', D.causanteTrato || 'don')}${opt('doña', 'doña', D.causanteTrato)}</select><input type="text" data-ch="causante" value="${esc(D.causante)}"></div></div>
+          <div class="field"><label>Fecha de fallecimiento</label><input type="date" data-ch="fecha" value="${esc(D.fecha)}"></div>
+          <div class="field"><label>Cuota del causante sobre el inmueble <span class="hint">· 1, 1/2, 0,5 o 50%</span></label><input type="text" data-ch="cuotaInmueble" value="${esc(D.cuotaInmueble)}"></div>
+          <div class="field"><label>Superficie del inmueble <span class="hint">· opcional, para ver la equivalencia</span></label>
+            <div style="display:flex;gap:6px"><input type="text" inputmode="decimal" data-ch="superficie" value="${esc(D.superficie)}"><select data-ch="unidad" style="width:auto">${opt('m²', 'm²', D.unidad)}${opt('ha', 'ha', D.unidad)}</select></div></div>
+        </div>
+        <div class="btn-row" style="margin:0"><button type="button" class="btn btn-outline btn-sm" data-ch-traer>↻ Traer causante del expediente</button></div>
+      </fieldset>
+      <fieldset><legend>Régimen patrimonial</legend>
+        <div class="grid2">
+          <div class="field"><label>Régimen con el cónyuge o conviviente</label>
+            <select data-ch="regimen" data-redibujar>
+              ${opt('sc', 'Sociedad conyugal', D.regimen)}${opt('sep', 'Separación de bienes', D.regimen)}${opt('part', 'Participación en los gananciales', D.regimen)}
+              ${opt('auc_com', 'Acuerdo de Unión Civil con comunidad', D.regimen)}${opt('auc_sin', 'Acuerdo de Unión Civil sin comunidad', D.regimen)}${opt('ninguno', 'Sin cónyuge ni conviviente', D.regimen)}
+            </select></div>
+          ${conRegimen ? `<div class="field"><label>El inmueble es</label><select data-ch="bien" data-redibujar>${opt('social', D.regimen === 'sc' ? 'Social (adquirido durante el matrimonio)' : 'Común (adquirido durante el AUC)', D.bien)}${opt('propio', 'Propio del causante', D.bien)}</select></div>` : ''}
+        </div>
+        ${conRegimen && D.bien === 'social' ? `<label style="display:flex;gap:6px;align-items:center;font-size:12.5px"><input type="checkbox" style="width:auto" data-ch="renuncia" data-redibujar ${D.renuncia ? 'checked' : ''}> El sobreviviente renunció a los gananciales</label>` : ''}
+      </fieldset>
+      <fieldset><legend>Herederos</legend>
+        <p class="hint" style="margin:0 0 8px;font-size:12px">Agrega a todos los parientes que podrían heredar; la calculadora aplica sola el orden de sucesión (los hijos excluyen a padres y hermanos, etc.). Si un hijo o hermano murió antes, márcalo como premuerto y agrega a sus hijos para la representación. Si un heredero murió después del causante, marca «Falleció después» y agrega sus propios herederos.</p>
+        ${htmlSucesion(D, '', true)}
+      </fieldset>
+      <div class="btn-row" style="margin:0"><button type="button" class="btn btn-outline btn-sm" data-ch-vaciar>🗑 Vaciar calculadora</button></div>`;
+    renderResultado();
+  }
+
+  function renderResultado(){
+    const out = q('chResultado'); if(!out) return;
+    const D = datos();
+    const r = calcular();
+    const sup = parseFloat(String(D.superficie || '').replace(/\./g, '').replace(',', '.'));
+    const conSup = isFinite(sup) && sup > 0;
+    const unidad = D.unidad || 'm²';
+    const equiv = q2 => conSup ? (sup * Number(q2.n) / Number(q2.d)).toLocaleString('es-CL', {maximumFractionDigits: unidad === 'ha' ? 4 : 2}) + ' ' + unidad : '';
+    const den = r.personas.reduce((a, p) => lcm(a, p.q.d), 1n);
+    const comun = q2 => (q2.n * (den / q2.d)) + '/' + den;
+    const ok = r.suma.n === r.base.n && r.suma.d === r.base.d;
+
+    let h = r.ctx.avisos.map(a => `<div class="ch-aviso">⚠ ${esc(a)}</div>`).join('');
+    if(!r.ctx.filas.length){ out.innerHTML = h + '<p class="hint">Agrega herederos para ver el cálculo.</p>'; return; }
+    h += `<table class="ch-tabla"><thead><tr><th>Heredero</th><th>Calidad</th><th class="num">Cuota</th><th class="num">%</th>${den > 1n ? '<th class="num">Común denom.</th>' : ''}${conSup ? '<th class="num">Equivale a</th>' : ''}</tr></thead><tbody>`
+      + r.personas.map(p => `<tr><td>${esc(p.nombre)}</td><td>${esc(p.calidades.join(' + '))}</td><td class="num"><b>${txt(p.q)}</b></td><td class="num">${pct(p.q)}</td>${den > 1n ? `<td class="num">${comun(p.q)}</td>` : ''}${conSup ? `<td class="num">${equiv(p.q)}</td>` : ''}</tr>`).join('')
+      + `<tr class="total"><td colspan="2">Total</td><td class="num">${txt(r.suma)}</td><td class="num">${pct(r.suma)}</td>${den > 1n ? `<td class="num">${comun(r.suma)}</td>` : ''}${conSup ? `<td class="num">${equiv(r.suma)}</td>` : ''}</tr></tbody></table>`
+      + `<p style="font-size:12px;margin:6px 0 12px">${ok ? `<span class="ch-ok">✓ Las cuotas suman ${txt(r.base)}, la cuota del causante.</span>` : `<span class="ch-mal">✕ Las cuotas suman ${txt(r.suma)} y deberían sumar ${txt(r.base)}.</span>`}</p>`
+      + `<h3 style="font-size:12.5px;margin:0 0 6px;color:var(--azul-900)">Desarrollo del cálculo</h3><ol class="ch-pasos">${r.ctx.pasos.map(p => `<li>${esc(p)}</li>`).join('')}</ol>`
+      + `<h3 style="font-size:12.5px;margin:12px 0 6px;color:var(--azul-900)">Texto para el informe</h3>`
+      + `<textarea id="chTexto" readonly>${esc(textoInforme(r))}</textarea>`
+      + `<div class="btn-row" style="margin-top:6px"><button type="button" class="btn btn-primary btn-sm" data-ch-copiar>📋 Copiar texto</button></div>`
+      + `<p class="hint" style="margin:8px 0 0;font-size:11.5px">Cálculo para la sucesión intestada. Si hay testamento, cesiones de derechos o una posesión efectiva que fije otras cuotas, prevalece lo que conste en esos instrumentos.</p>`;
+    out.innerHTML = h;
+  }
+
+  function textoInforme(r){
+    const D = datos();
+    const caus = upper(nombreDe({nombre: D.causante}, '____________'));
+    const dona = D.causanteTrato === 'doña';
+    const fecha = D.fecha ? `, ${dona ? 'fallecida' : 'fallecido'} con fecha ` + fechaProsa(D.fecha) : '';
+    const partes = r.personas.map(p => `${upper(p.nombre)}, en calidad de ${p.calidades.join(' y ')}, una cuota de ${txt(p.q)} (${pct(p.q)})`);
+    const regimen = (D.regimen === 'sc' || D.regimen === 'auc_com') && D.bien === 'social' && D.conyuge && D.conyuge.existe && !D.renuncia
+      ? `, previa liquidación de la ${D.regimen === 'sc' ? 'sociedad conyugal' : 'comunidad del Acuerdo de Unión Civil'}`
+      : '';
+    return `De conformidad con las reglas de la sucesión intestada contenidas en los artículos 980 y siguientes del Código Civil${regimen}, `
+      + `los derechos que correspondían a ${dona ? 'doña' : 'don'} ${caus}${fecha}, equivalentes a ${txt(r.base)} del inmueble, se distribuyen de la siguiente forma: `
+      + partes.join('; ') + '.';
+  }
+
+  /* ---------- eventos ---------- */
+  const partes = p => p.split('.').filter(Boolean).map(x => /^\d+$/.test(x) ? +x : x);
+  function obtener(obj, path){ return partes(path).reduce((o, k) => o == null ? o : o[k], obj); }
+  function fijar(obj, path, v){
+    const ks = partes(path); const ult = ks.pop();
+    const o = ks.reduce((o2, k) => o2[k], obj); o[ult] = v;
+  }
+  function guardar(){ try{ guardarTodo(); }catch(e){} }
+
+  function init(){
+    const vista = q('cuotaView'); if(!vista || vista.dataset.init) return;
+    vista.dataset.init = '1';
+    vista.addEventListener('input', e=>{
+      const el = e.target.closest('[data-ch]'); if(!el || el.type === 'checkbox' || el.tagName === 'SELECT') return;
+      fijar(datos(), el.dataset.ch, el.value);
+      renderResultado(); guardar();
+    });
+    vista.addEventListener('change', e=>{
+      const el = e.target.closest('[data-ch]'); if(!el) return;
+      let v = el.type === 'checkbox' ? el.checked : el.value;
+      if(el.hasAttribute('data-num')) v = +v;
+      if(el.hasAttribute('data-bool')) v = (v === 'true');
+      fijar(datos(), el.dataset.ch, v);
+      if(el.dataset.ch === 'regimen' && v === 'ninguno') datos().conyuge.existe = false;
+      if(el.hasAttribute('data-redibujar')) render(); else renderResultado();
+      guardar();
+    });
+    vista.addEventListener('click', e=>{
+      const ag = e.target.closest('[data-ch-agregar]');
+      if(ag){
+        const lista = obtener(datos(), ag.dataset.chAgregar);
+        lista.push(nodoNuevo(ag.dataset.tipo));
+        render(); guardar();
+        const ins = vista.querySelectorAll(`[data-ch="${ag.dataset.chAgregar}.${lista.length - 1}.nombre"]`);
+        if(ins[0]) ins[0].focus();
+        return;
+      }
+      const qu = e.target.closest('[data-ch-quitar]');
+      if(qu){
+        const ks = partes(qu.dataset.chQuitar); const i = ks.pop();
+        const lista = ks.reduce((o, k) => o[k], datos());
+        lista.splice(i, 1); render(); guardar(); return;
+      }
+      if(e.target.closest('[data-ch-traer]')){
+        const c = (typeof causanteActual === 'function') ? causanteActual() : state.causante;
+        const nom = (c && c.nombre) || '';
+        if(nom){ datos().causante = nom; if(c.genero) datos().causanteTrato = c.genero === 'F' ? 'doña' : 'don'; render(); guardar(); }
+        else flashStatus('No hay causante cargado en el expediente.');
+        return;
+      }
+      if(e.target.closest('[data-ch-vaciar]')){
+        if(!confirm('¿Vaciar todos los datos de la calculadora?')) return;
+        state.cuotaHer = datosVacios(); render(); guardar(); return;
+      }
+      if(e.target.closest('[data-ch-copiar]')){
+        const t = q('chTexto'); if(!t) return;
+        t.select();
+        (navigator.clipboard ? navigator.clipboard.writeText(t.value) : Promise.reject()).then(
+          ()=> flashStatus('Texto copiado ✓'), ()=>{ document.execCommand('copy'); flashStatus('Texto copiado ✓'); });
+      }
+    });
+  }
+
+  return {init, render, calcular, datosVacios, _fr: fr, _txt: txt};
+})();
 
 /* ============================================================
    SUPERIOR JERÁRQUICO — Minuta tipo de informe de descargos
@@ -16825,6 +17339,7 @@ function guardarAhora(){
         motivosOrden: state.motivosOrden,
         masivoFilas: state.masivoFilas,
         conservadorFilas: state.conservadorFilas,
+        cuotaHer: state.cuotaHer,
         /* ediciones manuales por párrafo de cada documento */
         docEdits: state.docEdits
       }
@@ -17160,6 +17675,7 @@ function restaurarTodo(){
     if(Array.isArray(est.motivosOrden)) state.motivosOrden = est.motivosOrden;
     if(Array.isArray(est.masivoFilas)) state.masivoFilas = est.masivoFilas;
     if(Array.isArray(est.conservadorFilas)) state.conservadorFilas = est.conservadorFilas;
+    if(est.cuotaHer && typeof est.cuotaHer === 'object') state.cuotaHer = est.cuotaHer;
     if(Array.isArray(est.jqFilas) && est.jqFilas.length) state.jqFilas = est.jqFilas;
 
     // 2) el modo de adquisición crea campos dinámicos: primero se fija el
