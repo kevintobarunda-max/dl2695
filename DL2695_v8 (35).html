@@ -1711,7 +1711,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
           </div>
         </div>
         <div class="check-row" id="row-repJerarquico">
-          <input type="checkbox" id="repJerarquico" onchange="toggleClass('row-repJerarquico','checked',this.checked); generar();">
+          <input type="checkbox" id="repJerarquico" onchange="toggleClass('row-repJerarquico','checked',this.checked); sincronizarBotonJerarquico(); generar();">
           <div>
             <div class="lbl">Se interpuso además Recurso Jerárquico en subsidio</div>
             <div class="hint">
@@ -9333,8 +9333,13 @@ function parsearRumbos(t){
   const buscar = (estricto)=>{
     // estricto: el rumbo va al comienzo, tras salto de línea, ";" o punto, para no cortar
     // textos como "Camino Sur - Ruta 5". Si así no se hallan al menos 2, se busca en cualquier parte.
-    const ant = estricto ? '(?:^|[\\n;]|\\.\\s)\\s*' : '(?<![' + LETRAS_ES + '])';
-    const re = new RegExp('(' + ant + ')' + palabra + '(' + sep + ')', 'gi');
+    let ant = estricto ? '(?:^|[\\n;]|\\.\\s)\\s*' : '(?<![' + LETRAS_ES + '])';
+    let re;
+    try{ re = new RegExp('(' + ant + ')' + palabra + '(' + sep + ')', 'gi'); }
+    catch(e){   // navegadores sin «lookbehind»
+      ant = '(?:^|[^' + LETRAS_ES + '])';
+      re = new RegExp('(' + ant + ')' + palabra + '(' + sep + ')', 'gi');
+    }
     const out = []; let m;
     while((m = re.exec(t))){
       if(/^[ \u00a0]$/.test(m[3]) && (!estricto || m[2] !== m[2].toUpperCase())){ re.lastIndex = m.index + m[0].length; continue; }   // «Este camino…» no es un rumbo
@@ -10200,8 +10205,8 @@ function runsRectificatoria(id, linea){
   const reglas = [
     /^\d+\.-(?:\t|\s+)?(?:NOTIFÍQUESE|PUBLÍQUESE)?/,
     /RECTIFÍQUESE la Resolución Exenta N° E-[^,]*? de fecha [^,]+/,
-    /(?<=en su )[^,]+?(?=, quedando)/,
-    /(?<=^\d+\) En )[^,]+?(?=, quedando)/,
+    /en su ([^,]+?)(?=, quedando)/,
+    /^\d+\) En ([^,]+?)(?=, quedando)/,
     /NOTIFÍQUESE|PUBLÍQUESE/,
     /N°\s?\d+,(?= comuna)/
   ];
@@ -10209,7 +10214,13 @@ function runsRectificatoria(id, linea){
   reglas.forEach(re => {
     const g = new RegExp(re.source, 'g');
     let m;
-    while((m = g.exec(t))){ for(let i = m.index; i < m.index + m[0].length; i++) marca[i] = true; if(!m[0].length) g.lastIndex++; }
+    while((m = g.exec(t))){
+      // si la regla tiene un grupo, sólo va en negrita ese grupo
+      const ini = m[1] !== undefined ? m.index + m[0].indexOf(m[1]) : m.index;
+      const largo = m[1] !== undefined ? m[1].length : m[0].length;
+      for(let i = ini; i < ini + largo; i++) marca[i] = true;
+      if(!m[0].length) g.lastIndex++;
+    }
   });
   // la tabulación tras "1.-" no lleva negrita propia
   const runs = [];
@@ -10435,7 +10446,8 @@ function generar(){
   generarAhora();
 }
 function generarAhora(){
-  if(q('chEmbebido')) CH.renderEmbebido();
+  try{ sincronizarBotonJerarquico(); }catch(e){ console.warn(e); }
+  try{ if(q('chEmbebido')) CH.renderEmbebido(); }catch(e){ console.warn('Calculadora de herederos:', e); }
   if(activeMainTab() === "resolucionC") sincronizarMenusTerrenoC();
   if(activeMainTab() === 'resolucionRectificatoria') mostrarListaRect();
   clearTimeout(_generarTimer);
@@ -14462,6 +14474,17 @@ function jqPlazo(){          // 'si' | 'no' | '' (sin datos)
 
 function puedeMinutaJerarquica(){
   return !esRepAcoge() && chk('repJerarquico');
+}
+
+/* Sólo habilita/deshabilita el botón «Minuta Jerárquico»: se llama al
+   comienzo de cada actualización y al cambiar Acoge/Rechaza o la casilla del
+   jerárquico, para que nunca quede deshabilitado por un error en otra parte. */
+function sincronizarBotonJerarquico(){
+  const habilitada = puedeMinutaJerarquica();
+  const boton = document.querySelector('#mainTabs button[data-tab="jerarquico"]');
+  if(boton){ boton.hidden = false; boton.disabled = !habilitada; boton.style.display = 'block'; }
+  const ayuda = q('navJerarquicoAyuda');
+  if(ayuda) ayuda.hidden = habilitada;
 }
 
 function sincronizarMinutaReposicion(){
