@@ -5364,6 +5364,27 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
 
         calcularEstadisticas();
         guardarDatos();
+
+        /* Al marcar «¿Lista?» se anota en la bitácora la tarea
+           «Documento derivado a firma»; al desmarcarla, se quita. */
+        if (element === checkbox &amp;&amp; parent.tareaDerivadoAFirma) {
+            const etapa = tr.querySelector(&quot;.etapa-select&quot;);
+            const msg = parent.tareaDerivadoAFirma({
+                codigo: tr.cells[2].textContent.trim(),
+                comuna: tr.cells[4].textContent.trim(),
+                nombre: tr.cells[5].textContent.trim(),
+                etapa: etapa ? etapa.value : &quot;&quot;,
+                tabla: tr.closest(&quot;table&quot;).getAttribute(&quot;data-table-id&quot;),
+                marcado: checkbox.checked
+            });
+            const aviso = tr.closest(&quot;.tab-content&quot;) &amp;&amp; tr.closest(&quot;.tab-content&quot;).querySelector(&quot;.storage-status&quot;);
+            if (aviso &amp;&amp; msg) {
+                if (!aviso.dataset.base) aviso.dataset.base = aviso.textContent;
+                aviso.textContent = msg;
+                clearTimeout(aviso._t);
+                aviso._t = setTimeout(() =&gt; { aviso.textContent = aviso.dataset.base; }, 4000);
+            }
+        }
     }
 
     function calcularEstadisticas() {
@@ -16310,6 +16331,7 @@ const BITACORA_TAREAS = [
   'Oficio SERVIU',
   'Oficio Conservador',
   'Oficio masivo',
+  'Documento derivado a firma',
   'Otro'
 ];
 
@@ -16662,6 +16684,35 @@ function bitacoraAgregarDesdeDocumento(){
    nombre+número. Devuelve true si quedó anotada (o ya lo estaba, según
    soloContar). Comparte la lógica entre el oficio individual y cada línea del
    oficio masivo, para no repetirla. */
+/* Desde Asignaciones: marcar «¿Lista?» anota «Documento derivado a firma»
+   en la bitácora del expediente (fecha de hoy); desmarcarla la quita. */
+const TAREA_DERIVADO_FIRMA = 'Documento derivado a firma';
+function tareaDerivadoAFirma(info){
+  const exp = String(info && info.codigo || '').trim();
+  if(!exp) return '';
+  const esta = t => t.exp === exp && t.nombre === TAREA_DERIVADO_FIRMA;
+  let msg;
+  if(info.marcado){
+    if(state.bitacora.some(esta)) return '«' + TAREA_DERIVADO_FIRMA + '» ya estaba en la bitácora del expediente ' + exp + '.';
+    const datos = Object.assign({}, info.nombre ? {nombre: info.nombre} : {}, info.comuna ? {comuna: info.comuna} : {}, bitacoraDatosCompletos(exp) || {});
+    const tabla = info.tabla === 'tramitacion_b' ? 'Tramitación B' : (/reposic/i.test(info.tabla || '') ? 'Reposición' : '');
+    state.bitacora.push({
+      exp, fecha: new Date().toISOString().slice(0,10), nombre: TAREA_DERIVADO_FIRMA,
+      numero: '', nota: [tabla, info.etapa].filter(Boolean).join(' · '), origen: 'asignaciones', datos
+    });
+    msg = '✓ Tarea «' + TAREA_DERIVADO_FIRMA + '» agregada a la bitácora (exp. ' + exp + ').';
+  } else {
+    const antes = state.bitacora.length;
+    state.bitacora = state.bitacora.filter(t => !(esta(t) && t.origen === 'asignaciones'));
+    if(state.bitacora.length === antes) return '';
+    msg = 'Tarea «' + TAREA_DERIVADO_FIRMA + '» quitada de la bitácora (exp. ' + exp + ').';
+  }
+  try{ renderBitacora(); }catch(e){}
+  try{ renderBitChecklist(); }catch(e){}
+  guardarTodo();
+  return msg;
+}
+
 function bitacoraAnotarSiFalta(exp, nombre, numero, datos){
   if(state.bitacora.some(t => t.exp === exp && t.nombre === nombre && (t.numero||'') === (numero||''))){
     return false;
