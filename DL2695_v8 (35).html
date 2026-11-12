@@ -360,6 +360,16 @@
   }
   .preview-toolbar .status{font-size:12px;color:var(--tinta-suave);}
   .paper-wrap{padding:20px;background:#e9e7df;}
+  /* ---- vista previa tipo documento ---- */
+  .vp-barra{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 12px 0;background:#e9e7df;}
+  .vp-btn{border:1px solid #c9c2ae;background:#f6f4ee;color:var(--tinta);border-radius:8px 8px 0 0;padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .vp-btn.activo{background:#fff;border-color:#b9b19a;color:var(--azul-900);box-shadow:0 -2px 0 var(--azul-800) inset;}
+  .vp-estado{font-size:11.5px;color:var(--tinta-suave);margin-left:auto;}
+  .doc-preview{background:#8b8f96;padding:18px 12px;min-height:640px;}
+  .doc-paginas{display:flex;flex-direction:column;align-items:center;gap:16px;}
+  .doc-pagina{display:block;background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.35);max-width:100%;}
+  body:not([data-vista-previa="texto"]) .paper-wrap{display:none;}
+  body[data-vista-previa="texto"] .doc-preview{display:none;}
   .paper{
     background:var(--papel);
     border:1px solid var(--papel-borde);
@@ -1810,6 +1820,17 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
       </div>
       <div class="copiar-partes" id="copiarPartes"></div>
 
+      <!-- Vista previa: «Documento» muestra las hojas tal como se exportan
+           (se dibuja el mismo PDF que genera «Descargar PDF»); «Editar texto»
+           es el cuadro de texto editable de siempre. -->
+      <div class="vp-barra" role="tablist" aria-label="Tipo de vista previa">
+        <button type="button" class="vp-btn" data-vista="documento" role="tab" onclick="cambiarVistaPrevia('documento')">📄 Documento</button>
+        <button type="button" class="vp-btn" data-vista="texto" role="tab" onclick="cambiarVistaPrevia('texto')">✏️ Editar texto</button>
+        <span class="vp-estado" id="docPreviewEstado"></span>
+      </div>
+      <div id="docPreview" class="doc-preview" title="Doble clic para editar el texto">
+        <div id="docPreviewPaginas" class="doc-paginas"></div>
+      </div>
       <div class="paper-wrap">
         <div class="paper">
           <div class="stripe"></div>
@@ -10404,7 +10425,86 @@ function generarAhora(){
   renderFieldsGrid(partes, bloques);
   renderEdicionesPanel(tab, bloques);
   actualizarStatus(tab, bloques);
+  programarVistaDocumento();
 }
+
+/* ============================================================
+   VISTA PREVIA COMO DOCUMENTO
+   Dibuja, con pdf.js (incluido en el archivo, funciona sin conexión), el
+   mismo PDF que genera «Descargar PDF»: logo, encabezado, negritas,
+   sangrías, firma y saltos de página tal como quedarán al exportar.
+   ============================================================ */
+let _vpTimer = null, _vpSeq = 0;
+function vistaPreviaModo(){
+  try{ return localStorage.getItem('dl2695_vista_previa') === 'texto' ? 'texto' : 'documento'; }catch(e){ return 'documento'; }
+}
+function cambiarVistaPrevia(modo){
+  try{ localStorage.setItem('dl2695_vista_previa', modo); }catch(e){}
+  aplicarVistaPrevia();
+  if(modo === 'texto'){ const p = q('preview'); if(p) p.focus({preventScroll:true}); }
+}
+function aplicarVistaPrevia(){
+  const modo = vistaPreviaModo();
+  document.body.dataset.vistaPrevia = modo;
+  document.querySelectorAll('.vp-btn').forEach(b=>{
+    const activo = b.dataset.vista === modo;
+    b.classList.toggle('activo', activo); b.setAttribute('aria-selected', String(activo));
+  });
+  if(modo === 'documento') programarVistaDocumento(true);
+  else { const e = q('docPreviewEstado'); if(e) e.textContent = 'Lo que escribas aquí se conserva aunque cambien los datos.'; }
+}
+function programarVistaDocumento(inmediato){
+  clearTimeout(_vpTimer);
+  if(vistaPreviaModo() !== 'documento') return;
+  _vpTimer = setTimeout(renderVistaDocumento, inmediato ? 0 : 450);
+}
+async function renderVistaDocumento(){
+  const tab = activeMainTab();
+  const cont = q('docPreviewPaginas'), estado = q('docPreviewEstado');
+  if(!cont || !TABS_TEXTO.includes(tab) || !productoHabilitado(tab)) return;
+  if(cont.offsetParent === null) return;              // pestaña no visible
+  const seq = ++_vpSeq;
+  try{
+    if(estado && !cont.childElementCount) estado.textContent = 'Preparando vista…';
+    const blob = await pdfBlobDocumentoB(tab);
+    const datos = new Uint8Array(await blob.arrayBuffer());
+    const pdfjs = await cargarPdfJsB();
+    const doc = await pdfjs.getDocument({data: datos}).promise;
+    if(seq !== _vpSeq) return;
+    const ancho = Math.max(320, Math.min(cont.clientWidth - 8, 880));
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const hojas = [];
+    for(let i = 1; i <= doc.numPages; i++){
+      const pagina = await doc.getPage(i);
+      const escala = ancho / pagina.getViewport({scale: 1}).width;
+      const vp = pagina.getViewport({scale: escala * dpr});
+      const c = document.createElement('canvas');
+      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      c.style.width = Math.round(vp.width / dpr) + 'px';
+      c.style.height = Math.round(vp.height / dpr) + 'px';
+      c.className = 'doc-pagina';
+      c.setAttribute('aria-label', 'Página ' + i + ' de ' + doc.numPages);
+      await pagina.render({canvasContext: c.getContext('2d'), viewport: vp}).promise;
+      if(seq !== _vpSeq) return;
+      hojas.push(c);
+    }
+    // se cambia todo de una vez, sin que la página salte
+    cont.style.minHeight = cont.offsetHeight + 'px';
+    cont.replaceChildren(...hojas);
+    cont.style.minHeight = '';
+    if(estado) estado.textContent = doc.numPages + (doc.numPages === 1 ? ' página' : ' páginas') + ' · así queda al exportar · doble clic para editar el texto';
+    doc.destroy();
+  } catch(err){
+    console.error(err);
+    if(estado) estado.textContent = 'No se pudo dibujar la vista del documento (' + err.message + '). Usa «Editar texto».';
+  }
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  const dp = q('docPreview');
+  if(dp) dp.addEventListener('dblclick', ()=> cambiarVistaPrevia('texto'));
+  aplicarVistaPrevia();
+});
+window.addEventListener('resize', ()=> programarVistaDocumento());
 
 function actualizarStatus(tab, bloques){
   const editados = bloques.filter(b=>b.editado).length;
