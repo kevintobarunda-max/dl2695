@@ -10042,7 +10042,19 @@ function datosListaRect(){
   try { return JSON.parse(q('rectListaDatos').value || '[]'); } catch { return []; }
 }
 
+/* El punto 1 del RESUELVO se arma con TODAS las partes marcadas. Si ese
+   párrafo se había editado a mano, la edición lo dejaba fijo (con las partes
+   de ese momento) y las que se marcaban después no aparecían. Por eso, al
+   cambiar la lista de partes, se descarta esa edición manual del punto 1. */
+function soltarEdicionRes1Rect(){
+  try{
+    const ed = edicionesDe('resolucionRectificatoria');
+    if(ed && ed.edits && Object.prototype.hasOwnProperty.call(ed.edits, 'res-1')) delete ed.edits['res-1'];
+  }catch(e){}
+}
+
 function guardarListaRect(datos){
+  soltarEdicionRes1Rect();
   q('rectListaDatos').value=JSON.stringify(datos);
   q('rectListaOpciones').dataset.estado=q('rectListaDatos').value;
   generar();
@@ -10082,6 +10094,7 @@ function agregarParteRect(){
   const lista=datosListaRect(), canon=[...seccionesRect,...lista.map(x=>x.nombre)].find(n=>n.toLocaleLowerCase('es')===nombre.toLocaleLowerCase('es')) || nombre;
   let item=lista.find(x=>x.nombre===canon);
   if(item) item.activo=true; else lista.push({nombre:canon,activo:true,texto:''});
+  soltarEdicionRes1Rect();
   q('rectListaDatos').value=JSON.stringify(lista);
   campo.value=''; mostrarListaRect(); generar();
 }
