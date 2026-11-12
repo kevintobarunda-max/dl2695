@@ -1688,8 +1688,14 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
             <input type="text" id="repResN" placeholder="" data-fmt="digits">
           </div>
         </div>
-        <div class="field">
-          <label>Representante legal</label>
+        <div class="check-row" id="row-repHayRepresentante">
+          <input type="checkbox" id="repHayRepresentante" onchange="aplicarRepresentanteUI(); generar();">
+          <div>
+            <div class="lbl">Hay representante legal</div>
+            <div class="hint" style="font-size:11.5px">Márcalo si el recurso lo presentó un representante: se habilitan don/doña y su nombre.</div>
+          </div>
+        </div>
+        <div class="field" id="repRepCampos" style="display:none;margin-left:22px">
           <div class="grid2">
             <div class="field">
               <label for="repRepresentanteTrato">Tratamiento del representante</label>
@@ -7818,6 +7824,7 @@ function esRepAcoge(){ return state.tipoRep !== 'rechaza'; }
 
 function aplicarSentidoRepUI(){
   const acoge = esRepAcoge();
+  aplicarRepresentanteUI();
   const ba = q('btnRepAcoge'), br = q('btnRepRechaza');
   if(ba) ba.classList.toggle('active', acoge);
   if(br) br.classList.toggle('active', !acoge);
@@ -9685,7 +9692,16 @@ function normalizarRepresentanteReposicion(){
     campo.value = campo.value.replace(/^\s*(?:(?:don|doña)\s+)+/i, '');
   }
 }
+/* La casilla «Hay representante legal» habilita don/doña y el nombre. */
+function aplicarRepresentanteUI(){
+  const si = chk('repHayRepresentante');
+  toggleClass('row-repHayRepresentante', 'checked', si);
+  const campos = q('repRepCampos');
+  if(campos) campos.style.display = si ? '' : 'none';
+  ['repRepresentanteTrato', 'repRepresentante'].forEach(id => { const el = q(id); if(el) el.disabled = !si; });
+}
 function representanteReposicion(){
+  if(q('repHayRepresentante') && !chk('repHayRepresentante')) return '';
   const nombre = val('repRepresentante').replace(/^(?:(?:don|doña)\s+)+/i, '').trim();
   return nombre ? `${val('repRepresentanteTrato') === 'doña' ? 'doña' : 'don'} ${nombre}` : '';
 }
@@ -17952,6 +17968,8 @@ function restaurarTodo(){
     const campos = datos.campos;
     /* El apellido correcto es "Friz" (antes se escribía "Fritz"). */
     ['abogado','abogadoSelect'].forEach(k=>{ if(campos[k] === 'Rub\u00e9n Villagra Fritz') campos[k] = 'Rub\u00e9n Villagra Friz'; });
+    /* Borradores anteriores a la casilla «Hay representante legal». */
+    if(campos.repHayRepresentante === undefined && String(campos.repRepresentante || '').trim()) campos.repHayRepresentante = true;
     /* Noviembre 2026: firma el Seremi subrogante. La casilla (S) se marca una
        sola vez en los borradores antiguos; después se respeta lo que elijas. */
     if(!localStorage.getItem('dl2695_subrogancia_2026')){
