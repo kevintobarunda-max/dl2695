@@ -361,6 +361,13 @@
   .preview-toolbar .status{font-size:12px;color:var(--tinta-suave);}
   .paper-wrap{padding:20px;background:#e9e7df;}
   /* ---- vista previa tipo documento ---- */
+  .rep-formas{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  @media (max-width:900px){ .rep-formas{grid-template-columns:1fr;} }
+  .rep-forma{display:flex;gap:8px;align-items:flex-start;border:1px solid #ddd6c4;border-radius:8px;padding:7px 9px;background:#fff;cursor:pointer;font-size:12.5px;line-height:1.35;}
+  .rep-forma input{width:auto;margin-top:2px;}
+  .rep-forma small{color:var(--tinta-suave);font-size:11.5px;}
+  .rep-forma:has(input:checked){border-color:var(--azul-800);box-shadow:0 0 0 1px var(--azul-800) inset;background:#f2f6fc;}
+  .rep-forma.deshabilitada{opacity:.45;cursor:not-allowed;}
   .vp-barra{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 12px 0;background:#e9e7df;}
   .vp-btn{border:1px solid #c9c2ae;background:#f6f4ee;color:var(--tinta);border-radius:8px 8px 0 0;padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer;}
   .vp-btn.activo{background:#fff;border-color:#b9b19a;color:var(--azul-900);box-shadow:0 -2px 0 var(--azul-800) inset;}
@@ -1612,54 +1619,55 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
             <input type="date" id="repResDenegFecha">
           </div>
         </div>
-        <div class="grid2">
-          <div class="field">
-            <label>N° Ordinario que la notificó (después de "E-")</label>
-            <input type="text" id="repOrdNotifN" placeholder="" data-fmt="digits">
-          </div>
-          <div class="field">
-            <label>Fecha de esa notificación</label>
-            <input type="date" id="repOrdNotifFecha">
-          </div>
-        </div>
-        <div class="field" id="row-repTipoNotif">
-          <label>Cómo quedó acreditada esa notificación</label>
-          <select id="repTipoNotif" onchange="aplicarSentidoRepUI(); generar();">
-            <option value="simple">Basta el ordinario, que indicaba el plazo para recurrir</option>
-            <option value="tacita">Notificación tácita, con la sola presentación del recurso</option>
-            <option value="expresa">Notificación personal en oficinas de la SEREMI (folio SIAC)</option>
-          </select>
-          <p class="hint" style="margin:4px 0 0">
-            Fija el día desde el cual corre el plazo de 5 días hábiles del artículo 59°.
-          </p>
-        </div>
-        <div class="field" id="row-repMedioNotif">
-          <label>Cómo se practicó esa notificación (la que inicia el plazo de 5 días)</label>
-          <select id="repMedioNotif">
-            <option value="personal">Notificación personal en oficinas de la SEREMI</option>
-            <option value="correo">Notificación por correo electrónico (en la forma solicitada en el Formulario N° 1)</option>
-          </select>
-        </div>
-        <div class="grid2" id="row-repNotifPersonal">
-          <div class="field">
-            <label>Folio SIAC de la notificación</label>
-            <div class="grid2">
-              <div class="field">
-                <label for="repFolioSiac">Código (editable)</label>
-                <input type="text" id="repFolioSiac" value="SIAC-CO-P-" inputmode="text" autocomplete="off" oninput="normalizarFolioSiac(this); generar();" aria-describedby="repFolioSiacAyuda">
-              </div>
-              <div class="field">
-                <label for="repFolioSiacNumero">Número</label>
-                <input type="text" id="repFolioSiacNumero" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Solo números" oninput="normalizarNumeroFolioSiac(this); generar();">
-              </div>
+        <fieldset class="rep-notif" style="border:1px solid #e3ddcc;border-radius:8px;padding:8px 10px;margin:0 0 12px;background:#fffdf8">
+          <legend style="font-size:12.5px;font-weight:700;color:var(--azul-900);padding:0 4px">Notificación de la resolución denegatoria</legend>
+          <p class="hint" style="margin:0 0 6px;font-size:12px">Fija el día desde el cual corren los 5 días hábiles del artículo 59° de la Ley N° 19.880.</p>
+          <div class="grid2">
+            <div class="field">
+              <label>N° del Oficio Ordinario que la notificó (después de "E-")</label>
+              <input type="text" id="repOrdNotifN" placeholder="" data-fmt="digits">
             </div>
-            <p class="hint" id="repFolioSiacAyuda">El código se puede modificar; ingresa el número en la casilla contigua.</p>
+            <div class="field">
+              <label>Fecha del Oficio Ordinario</label>
+              <input type="date" id="repOrdNotifFecha">
+            </div>
           </div>
-          <div class="field">
-            <label>Fecha de la notificación personal</label>
-            <input type="date" id="repFechaNotifPersonal">
+          <div class="field" style="margin-bottom:6px">
+            <label>¿Cómo quedó notificada?</label>
+            <div class="rep-formas" role="radiogroup" aria-label="Forma de notificación">
+              <label class="rep-forma"><input type="radio" name="repForma" id="repForma_ordinario" value="ordinario" onchange="aplicarSentidoRepUI(); generar();"><span><b>Por el Oficio Ordinario</b> (carta certificada)<br><small>Basta el N° y la fecha del ordinario de arriba.</small></span></label>
+              <label class="rep-forma"><input type="radio" name="repForma" id="repForma_personal" value="personal" onchange="aplicarSentidoRepUI(); generar();"><span><b>Personal</b>, en oficinas de la SEREMI<br><small>Ingresa el folio SIAC y la fecha.</small></span></label>
+              <label class="rep-forma"><input type="radio" name="repForma" id="repForma_correo" value="correo" onchange="aplicarSentidoRepUI(); generar();"><span><b>Por correo electrónico</b> (Formulario N° 1)<br><small>Ingresa el folio SIAC y la fecha del correo.</small></span></label>
+              <label class="rep-forma" id="repFormaTacitaFila"><input type="radio" name="repForma" id="repForma_tacita" value="tacita" onchange="aplicarSentidoRepUI(); generar();"><span><b>Tácita</b>, con la sola presentación del recurso<br><small>No se ingresa nada más: vale la fecha del recurso.</small></span></label>
+            </div>
           </div>
-        </div>
+          <!-- compatibilidad con borradores anteriores -->
+          <div style="display:none">
+            <select id="repTipoNotif"><option value="simple">simple</option><option value="tacita">tacita</option><option value="expresa">expresa</option></select>
+            <select id="repMedioNotif"><option value="personal">personal</option><option value="correo">correo</option></select>
+          </div>
+          <div class="grid2" id="row-repNotifPersonal">
+            <div class="field">
+              <label id="lblFolioSiac">Folio SIAC de la notificación</label>
+              <div class="grid2">
+                <div class="field">
+                  <label for="repFolioSiac">Código (editable)</label>
+                  <input type="text" id="repFolioSiac" value="SIAC-CO-P-" inputmode="text" autocomplete="off" oninput="normalizarFolioSiac(this); generar();" aria-describedby="repFolioSiacAyuda">
+                </div>
+                <div class="field">
+                  <label for="repFolioSiacNumero">Número</label>
+                  <input type="text" id="repFolioSiacNumero" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Solo números" oninput="normalizarNumeroFolioSiac(this); generar();">
+                </div>
+              </div>
+              <p class="hint" id="repFolioSiacAyuda" style="font-size:11.5px;margin:2px 0 0">Ej.: SIAC-CO-P-<b>123456</b>. El código se puede modificar; el número va en la casilla contigua.</p>
+            </div>
+            <div class="field">
+              <label id="lblFechaNotifPersonal">Fecha de la notificación personal</label>
+              <input type="date" id="repFechaNotifPersonal">
+            </div>
+          </div>
+          <p class="hint" id="repFormaResumen" style="margin:4px 0 0;font-size:12px"></p>
+        </fieldset>
         <div class="field">
           <label>Fundamentos en que se apoyó el rechazo</label>
           <textarea id="repFundamentos" rows="12" style="min-height:260px;resize:vertical;line-height:1.6" placeholder="Pega aquí los fundamentos del rechazo, con letras a.-, b.-, c.-… Se incorporarán al considerando 3 como un solo párrafo."></textarea>
@@ -7816,13 +7824,27 @@ function aplicarSentidoRepUI(){
 
   /* Cuando se rechaza no hay nada que elegir: la notificación tácita nace de la
      propia presentación del recurso, así que nunca podría estar fuera de plazo. */
-  const filaTipo = q('row-repTipoNotif');
-  if(filaTipo) filaTipo.style.display = acoge ? '' : 'none';
-
+  /* Forma de notificación: se marca la opción vigente y se muestran sólo
+     los campos que esa forma necesita. */
+  const forma = formaNotifRep();
+  const radio = q('repForma_' + forma); if(radio && !radio.checked) radio.checked = true;
+  const tacitaNo = !acoge && esRepExtemporaneo();
+  const filaTac = q('repFormaTacitaFila'), radTac = q('repForma_tacita');
+  if(filaTac){ filaTac.classList.toggle('deshabilitada', tacitaNo); filaTac.title = tacitaNo ? 'No cabe en el rechazo por extemporáneo: la notificación tácita nace con el propio recurso.' : ''; }
+  if(radTac) radTac.disabled = tacitaNo;
+  if(q('repTipoNotif')) q('repTipoNotif').value = forma === 'tacita' ? 'tacita' : (forma === 'ordinario' ? 'simple' : 'expresa');
+  if(q('repMedioNotif')) q('repMedioNotif').value = forma === 'correo' ? 'correo' : 'personal';
   const filaFolio = q('row-repNotifPersonal');
-  if(filaFolio) filaFolio.style.display = (!acoge || val('repTipoNotif') === 'expresa') ? '' : 'none';
-  const filaMedio = q('row-repMedioNotif');
-  if(filaMedio) filaMedio.style.display = (!acoge && esRepExtemporaneo()) ? '' : 'none';
+  if(filaFolio) filaFolio.style.display = (forma === 'personal' || forma === 'correo') ? '' : 'none';
+  if(q('lblFolioSiac')) q('lblFolioSiac').textContent = forma === 'correo' ? 'Folio SIAC del correo electrónico' : 'Folio SIAC de la notificación personal';
+  if(q('lblFechaNotifPersonal')) q('lblFechaNotifPersonal').textContent = forma === 'correo' ? 'Fecha del correo electrónico' : 'Fecha de la notificación personal';
+  const resumen = q('repFormaResumen');
+  if(resumen) resumen.innerHTML = {
+    ordinario: 'El plazo se cuenta desde la notificación por carta certificada del <b>Oficio Ordinario</b>.',
+    personal: 'El plazo se cuenta desde la <b>notificación personal</b> (folio SIAC y fecha).',
+    correo: 'El plazo se cuenta desde el <b>correo electrónico</b> (folio SIAC y fecha).',
+    tacita: 'Se entiende notificado el día en que presentó el recurso (<b>notificación tácita</b>).'
+  }[forma];
   const filaMotivo = q('row-repMotivoRechazo');
   if(filaMotivo) filaMotivo.style.display = acoge ? 'none' : '';
 
@@ -9770,8 +9792,32 @@ function recursoDeducido(){
    cuanto al fondo, el acto vuelve a llamarse «Rechaza». */
 function esRepExtemporaneo(){ return !esRepAcoge() && val('repMotivoRechazo') !== 'fondo'; }
 
+/* Forma en que quedó notificada la resolución denegatoria:
+   'ordinario' | 'personal' | 'correo' | 'tacita'. Si aún no se eligió (o el
+   borrador es anterior), se deduce de los campos antiguos. */
+function formaNotifRep(){
+  const marcada = document.querySelector('input[name="repForma"]:checked');
+  let f = marcada ? marcada.value : '';
+  if(!f){
+    if(val('repTipoNotif') === 'tacita') f = 'tacita';
+    else if(val('repMedioNotif') === 'correo') f = 'correo';
+    else if(val('repTipoNotif') === 'expresa' || !esRepAcoge()) f = 'personal';
+    else f = 'ordinario';
+  }
+  // en el rechazo por extemporáneo no cabe la tácita (nace del propio recurso)
+  if(f === 'tacita' && !esRepAcoge() && esRepExtemporaneo()) f = 'personal';
+  return f;
+}
+/* Fecha desde la que corre el plazo, según la forma de notificación. */
+function fechaNotifRep(){
+  const f = formaNotifRep();
+  if(f === 'personal' || f === 'correo') return val('repFechaNotifPersonal') || val('repOrdNotifFecha');
+  if(f === 'tacita') return val('repFechaRecurso');
+  return val('repOrdNotifFecha');
+}
+
 function medioNotificacionRepTexto(){
-  return val('repMedioNotif') === 'correo'
+  return formaNotifRep() === 'correo'
     ? {tipo: 'notificación por correo electrónico', lugar: 'en la forma solicitada en Formulario N° 1'}
     : {tipo: 'notificación personal', lugar: 'en oficinas de esta SEREMI'};
 }
@@ -9783,26 +9829,24 @@ function considerandoNotificacionRep(n){
 
   /* El rechazo por extemporaneidad se apoya en la notificación que fijó el inicio del plazo:
      se constata en el expediente (Folio SIAC) y se cuentan los 5 días hábiles desde ahí. */
+  const forma = formaNotifRep();
+  const medio = medioNotificacionRepTexto();
+  const expresa = `consta en expediente administrativo, bajo el Folio N° ${folioSiacReposicion()}, ${medio.tipo} realizada con fecha ${fechaProsa(val('repFechaNotifPersonal'))} ${medio.lugar}, informándole ${alALa()} que ${v('tenía','tenían')} el plazo de 5 días hábiles para presentar ${recursoDeducido()}`;
+
   if(!esRepAcoge() && esRepExtemporaneo()){
-    const medio = medioNotificacionRepTexto();
-    const personalRechazo = `consta en expediente administrativo, bajo el Folio N° ${folioSiacReposicion()}, ${medio.tipo} realizada con fecha ${fechaProsa(val('repFechaNotifPersonal'))} ${medio.lugar}, informándole ${alALa()} que ${v('tenía','tenían')} el plazo de 5 días hábiles para presentar ${recursoDeducido()}`;
-    return `${preambulo}, sin embargo ${personalRechazo}, siendo presentado el mismo fuera de plazo legal, esto es, con fecha ${fechaRecurso}.`;
+    if(forma === 'ordinario')
+      return `${preambulo}, notificación que, de acuerdo al artículo 46 de la Ley N° 19.880, se entiende practicada a contar del tercer día siguiente a su recepción en la oficina de Correos que corresponda, siendo presentado el recurso fuera de plazo legal, esto es, con fecha ${fechaRecurso}.`;
+    return `${preambulo}, sin embargo ${expresa}, siendo presentado el mismo fuera de plazo legal, esto es, con fecha ${fechaRecurso}.`;
   }
 
-  const personal = `consta en expediente administrativo, bajo el Folio N° ${folioSiacReposicion()}, notificación personal realizada con fecha ${fechaProsa(val('repFechaNotifPersonal'))} en oficinas de esta SEREMI, informándole ${alALa()} que ${v('tenía','tenían')} el plazo de 5 días hábiles para presentar ${recursoDeducido()}`;
-
-  /* Rechazo en cuanto al fondo: el recurso sí llegó dentro de plazo, así que la
-     notificación se narra igual que cuando se acoge por la vía expresa. */
-  if(!esRepAcoge()){
-    return `${preambulo}, ${sinCarta}, sin embargo, ${personal}, siendo presentado el mismo dentro de plazo legal con fecha ${fechaRecurso}.`;
-  }
-
-  const modo = val('repTipoNotif');
+  const modo = forma === 'tacita' ? 'tacita' : (forma === 'ordinario' ? 'simple' : 'expresa');
+  /* Rechazo en cuanto al fondo: el recurso llegó dentro de plazo. */
+  if(!esRepAcoge() && modo === 'simple') return `${preambulo}, siendo presentado el recurso dentro de plazo legal con fecha ${fechaRecurso}.`;
   if(modo === 'tacita'){
     return `${preambulo}, pero, consultado el seguimiento de la notificación en Correos de Chile, no consta notificación por carta certificada ${g('al recurrente','a la recurrente','a los recurrentes','a las recurrentes')}, y consultados los sistemas informáticos de este Servicio, tampoco consta notificación expresa por parte ${g('del requirente','de la requirente','de los requirentes','de las requirentes')}, sin embargo, debemos entender que existe una notificación tácita con la sola presentación del recurso, esto es con fecha ${fechaRecurso}.`;
   }
   if(modo === 'expresa'){
-    return `${preambulo}, ${sinCarta}, sin embargo, ${personal}, siendo presentado el mismo dentro de plazo legal con fecha ${fechaRecurso}.`;
+    return `${preambulo}, ${sinCarta}, sin embargo, ${expresa}, siendo presentado el mismo dentro de plazo legal con fecha ${fechaRecurso}.`;
   }
   return `${preambulo}.`;
 }
@@ -9866,7 +9910,10 @@ function partesResolucionRep(){
     /* El rechazo no entra al fondo: basta constatar el plazo legal y su
        vencimiento. */
     bloques.push(bl('cons-4', `4.- Que, de acuerdo al Artículo 59° de la Ley 19.880 que Establece Bases de los Procedimientos Administrativos que Rigen los Actos de los Órganos de la Administración del Estado, el recurso de reposición y jerárquico deben ser interpuestos dentro de 5 días hábiles desde la notificación de la resolución pertinente.`));
-    bloques.push(bl('cons-5', `5.- Que, habiéndose efectuado la notificación expresa por parte ${g('del solicitante','de la solicitante','de los solicitantes','de las solicitantes')} con fecha ${fechaProsa(val('repFechaNotifPersonal'))}, y siendo presentado su recurso administrativo de reposición${conJerarquico ? ' y jerárquico en subsidio' : ''} el ${fechaRecurso}, el plazo de 5 días hábiles señalado previamente se encontraba totalmente vencido.`));
+    const notifTxt = formaNotifRep() === 'ordinario'
+      ? `la notificación mediante Oficio Ordinario Nº E-${blank(val('repOrdNotifN'),'______')} de fecha ${fechaProsa(val('repOrdNotifFecha'))}`
+      : `la notificación ${formaNotifRep() === 'correo' ? 'por correo electrónico' : 'expresa'} por parte ${g('del solicitante','de la solicitante','de los solicitantes','de las solicitantes')} con fecha ${fechaProsa(val('repFechaNotifPersonal'))}`;
+    bloques.push(bl('cons-5', `5.- Que, habiéndose efectuado ${notifTxt}, y siendo presentado su recurso administrativo de reposición${conJerarquico ? ' y jerárquico en subsidio' : ''} el ${fechaRecurso}, el plazo de 5 días hábiles señalado previamente se encontraba totalmente vencido.`));
   } else {
     /* Rechazo en cuanto al fondo: el recurso llegó dentro de plazo, pero los
        antecedentes acompañados no alcanzan a desvirtuar la Resolución Denegatoria. */
@@ -14425,7 +14472,7 @@ function sincronizarMinutaReposicion(){
     jqRecurrente: representanteReposicion() ? recurrenteIndividualizado() : nombresSolicitantes(),
     /* La notificación del acto recurrido: la personal (folio SIAC) si se
        indicó; si no, la fecha del ordinario que notificó la denegatoria. */
-    jqFechaNotif: val('repFechaNotifPersonal') || val('repOrdNotifFecha'),
+    jqFechaNotif: fechaNotifRep(),
     jqFechaInterp: val('repFechaRecurso'),
     jqResN: val('repResDenegN'),
     jqResFecha: val('repResDenegFecha'),
