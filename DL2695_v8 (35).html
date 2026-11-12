@@ -14283,7 +14283,9 @@ function sincronizarMinutaReposicion(){
   const compartidos = {
     jqCaso: val('expN'),
     jqRecurrente: representanteReposicion() ? recurrenteIndividualizado() : nombresSolicitantes(),
-    jqFechaNotif: val('repFechaNotifPersonal'),
+    /* La notificación del acto recurrido: la personal (folio SIAC) si se
+       indicó; si no, la fecha del ordinario que notificó la denegatoria. */
+    jqFechaNotif: val('repFechaNotifPersonal') || val('repOrdNotifFecha'),
     jqFechaInterp: val('repFechaRecurso'),
     jqResN: val('repResDenegN'),
     jqResFecha: val('repResDenegFecha'),
