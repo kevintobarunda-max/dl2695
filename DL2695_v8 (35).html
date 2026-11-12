@@ -8052,18 +8052,21 @@ function sincronizarNotarioCesion(i){
    Herencia. Normalmente es el mismo título aparente que cita la inscripción conservatoria,
    así que si se dejan vacíos se usan los datos de esa inscripción. */
 function camposHerenciaHtml(){
+  const abierto = (typeof CH !== 'undefined' && CH.activo && CH.activo()) ? ' open' : '';
   return `<div class="field"><label>Causante(s) (nombre)</label><input type="text" id="modoContraparte" placeholder=""></div>
-    <p class="hint" style="margin:6px 0 4px;"><b>Inscripción Especial de Herencia</b> — normalmente es el título aparente que cita la inscripción conservatoria. Si dejas estos campos vacíos se usan los de la inscripción conservatoria del expediente.</p>
+    <div style="border:1px solid #e3ddcc;border-radius:8px;padding:8px 10px;margin-top:6px;background:#fffdf8">
+    <p class="hint" style="margin:0 0 4px;"><b>Inscripción Especial de Herencia</b> — normalmente es el título aparente que cita la inscripción conservatoria. Si dejas estos campos vacíos se usan los de la inscripción conservatoria del expediente.</p>
     <div class="grid3">
       <div class="field"><label>Fojas</label><input type="text" id="modoHerFojas"></div>
       <div class="field"><label>N°</label><input type="text" id="modoHerNum"></div>
       <div class="field"><label>Año</label><input type="text" id="modoHerAnio"></div>
     </div>
     <div class="field"><label>Conservador de Bienes Raíces de</label><input type="text" id="modoHerCbr" placeholder="(igual al de la inscripción conservatoria)"></div>
-    <details class="ch-embebido" open style="margin-top:8px;border:1px solid #e3ddcc;border-radius:8px;padding:6px 8px;background:#fffdf8">
-      <summary style="cursor:pointer;font-size:12.5px;font-weight:700;color:var(--azul-900)">Herederos y cuotas (calculadora)</summary>
+    <details class="ch-embebido"${abierto} style="margin-top:6px;border-top:1px dashed #d8d0bb;padding-top:6px">
+      <summary style="cursor:pointer;font-size:12.5px;font-weight:700;color:var(--azul-900)">Herederos y cuotas · calcular y redactar en el párrafo</summary>
       <div id="chEmbebido" style="margin-top:6px"></div>
-    </details>`;
+    </details>
+    </div>`;
 }
 function inscripcionHerencia(){
   return {
@@ -14087,6 +14090,24 @@ const CH = (()=>{
   const PLUR = {conyuge: 'cónyuges', hijo: 'hijos/as', nieto: 'nietos/as', padre: 'padres', hermano: 'hermanos/as',
     mediohermano: 'medio hermanos/as', sobrino: 'sobrinos/as', otro: 'otros parientes'};
   const conRep = c => c === 'nieto' || c === 'sobrino';
+  /* Sociedad conyugal: 'si' | 'no' | '' (antes era un sí/no booleano). */
+  const scValor = H => H.sc === true ? 'si' : (H.sc === false ? '' : (H.sc || ''));
+  const scSi = H => scValor(H) === 'si';
+  /* Superficie en m²: la de la calculadora o, si no, la del expediente. */
+  function superficieExpedienteM2(){
+    try{
+      const n = parseNum(val('superficie'));
+      if(isNaN(n) || n <= 0) return 0;
+      return unidadSup() === 'ha' ? n * M2_POR_HA : n;
+    }catch(e){ return 0; }
+  }
+  function superficieM2(){
+    const H = datosH();
+    const n = H.superficie ? parseNum(H.superficie) : NaN;
+    return (!isNaN(n) && n > 0) ? n : superficieExpedienteM2();
+  }
+  const m2De = qq => { const s2 = superficieM2(); return (s2 && qq) ? s2 * Number(qq.n) / Number(qq.d) : 0; };
+  const m2Txt = n => numeroALocal(Math.round(n * 100) / 100) + ' ' + ETIQUETA_SUPERFICIE;
 
   function datosH(){
     const d = state.cuotaHer;
@@ -14104,7 +14125,7 @@ const CH = (()=>{
 
   /* Pasa los datos al formato del motor. */
   function aMotor(H){
-    const D = Object.assign(sucVacia(), {regimen: H.sc ? 'sc' : 'sep', bien: 'social', renuncia: false, cuotaInmueble: '1'});
+    const D = Object.assign(sucVacia(), {regimen: scSi(H) ? 'sc' : 'sep', bien: 'social', renuncia: false, cuotaInmueble: '1'});
     const grupos = {}, avisos = [], filas = [];
     solicitantesExp().forEach(p => { const c = condSol(p.i); if(c.cond) filas.push({nombre: p.nombre, cond: c.cond, de: c.de, sol: true}); });
     H.otros.forEach((o, r) => { for(let k = 0; k < Math.min(50, +o.cant || 0); k++) filas.push({nombre: `__otro_${r}_${k}`, cond: o.cond, de: o.de, fila: r}); });
@@ -14151,7 +14172,8 @@ const CH = (()=>{
     const otros = H.otros.map((o, r2) => ({cant: Math.min(50, +o.cant || 0), cond: o.cond, de: String(o.de || '').trim(), q: cuota.get(`__otro_${r2}_0`) || null})).filter(o => o.cant > 0);
     const total = sols.filter(s => s.q).length + otros.filter(o => o.q).reduce((a, o) => a + o.cant, 0);
     const fisco = r.personas.some(p => p.nombre === 'Fisco de Chile');
-    return {r, avisos, sols, otros, total, motivo, fisco, sc: H.sc && D.conyuge.existe};
+    if(D.conyuge.existe && !scValor(H)) avisos.push('Indica si había sociedad conyugal con el cónyuge sobreviviente: cambia la cuota del cónyuge.');
+    return {r, avisos, sols, otros, total, motivo, fisco, sc: scSi(H) && D.conyuge.existe, scNo: scValor(H) === 'no' && D.conyuge.existe};
   }
 
   /* Párrafo que se agrega al texto de la herencia en los documentos. */
@@ -14160,14 +14182,15 @@ const CH = (()=>{
     const R = resultado(); if(!R) return '';
     const caus = upper(causanteNombre() || '____________');
     const condTxt = (c, de, plural) => (plural ? PLUR[c] : SING[c]) + (conRep(c) && de ? `, en representación de ${upper(de)}` : '');
-    const gan = c => (c === 'conyuge' && R.sc) ? ' (incluida la mitad que le corresponde como gananciales)' : '';
+    const gan = c => c !== 'conyuge' ? '' : (R.sc ? ' (incluida la mitad que le corresponde como gananciales de la sociedad conyugal)' : (R.scNo ? ', sin que existiera sociedad conyugal sobre el inmueble' : ''));
+    const sup = (qq, cada) => { const m = m2De(qq); return m ? `, equivalente a ${m2Txt(m)}${cada ? ' cada uno' : ''}` : ''; };
     const condSolTxt = s => GEN[s.cond][s.fem ? 1 : 0] + (conRep(s.cond) && s.de ? `, en representación de ${upper(s.de)}` : '');
     const partes = R.sols.map(s => s.q
-      ? `${upper(s.nombre)}, en calidad de ${condSolTxt(s)}, con una cuota de ${txt(s.q)}${gan(s.cond)}`
+      ? `${upper(s.nombre)}, en calidad de ${condSolTxt(s)}, con una cuota de ${txt(s.q)}${sup(s.q)}${gan(s.cond)}`
       : `${upper(s.nombre)}, en calidad de ${condSolTxt(s)}, quien no es ${s.fem ? 'heredera' : 'heredero'}, pues ${R.motivo}`);
     const otrosP = R.otros.filter(o => o.q).map(o => o.cond === 'conyuge'
-      ? `el o la cónyuge sobreviviente, con una cuota de ${txt(o.q)}${gan(o.cond)}`
-      : `${o.cant} ${condTxt(o.cond, o.de, o.cant > 1)}, con una cuota de ${txt(o.q)}${o.cant > 1 ? ' cada uno' : ''}`);
+      ? `el o la cónyuge sobreviviente, con una cuota de ${txt(o.q)}${sup(o.q)}${gan(o.cond)}`
+      : `${o.cant} ${condTxt(o.cond, o.de, o.cant > 1)}, con una cuota de ${txt(o.q)}${o.cant > 1 ? ' cada uno' : ''}${sup(o.q, o.cant > 1)}`);
     if(R.fisco) otrosP.push('el Fisco de Chile, a falta de otros herederos');
     let lista = partes.slice();
     if(otrosP.length) lista.push((partes.length ? 'además, ' : '') + (otrosP.length > 1 ? otrosP.slice(0, -1).join('; ') + '; y ' + otrosP[otrosP.length - 1] : otrosP[0]));
@@ -14182,6 +14205,7 @@ const CH = (()=>{
     const selCond = (path, v)=> `<select data-chw="${path}" data-redibujar style="font-size:12.5px;padding:4px 6px;min-width:0;width:100%">${Object.entries(CONDICIONES).map(([k, t]) => opt(k, t, v)).join('')}</select>`;
     const inDe = (path, v, c)=> conRep(c) ? `<input type="text" data-chw="${path}" value="${esc(v)}" placeholder="Hijo/a de… (${c === 'nieto' ? 'hijo/a' : 'hermano/a'} fallecido/a)" style="font-size:12px;padding:4px 6px;margin-top:4px;width:100%">` : '';
     const hayCony = solsE.some(p => condSol(p.i).cond === 'conyuge') || H.otros.some(o => o.cond === 'conyuge' && +o.cant > 0);
+    const supExp = superficieExpedienteM2();
     return `
       <p class="ch-sub-tit" style="margin:0 0 4px">Condición del solicitante</p>
       ${solsE.length ? `<table class="ch-tabla" style="margin-bottom:8px"><tbody>${solsE.map(p => {
@@ -14196,17 +14220,20 @@ const CH = (()=>{
           + `<td><button type="button" class="btn btn-outline btn-sm" style="padding:2px 7px" title="Quitar" data-chw-quitar="${r}">✕</button></td></tr>`).join('')}</tbody></table>`
         : `<p class="hint" style="font-size:12px;margin:0 0 6px">Si hay otros herederos (cónyuge, hermanos del solicitante, etc.), agrégalos por cantidad.</p>`}
       <div class="btn-row" style="margin:0 0 6px"><button type="button" class="btn btn-outline btn-sm" data-chw-agregar>＋ Agregar herederos</button></div>
-      ${hayCony ? `<label style="display:flex;gap:6px;align-items:flex-start;font-size:12px;margin-top:4px"><input type="checkbox" style="width:auto;margin-top:2px" data-chw="sc" ${H.sc ? 'checked' : ''}>
-        Casados en sociedad conyugal y el inmueble se adquirió durante el matrimonio (el cónyuge se queda con la mitad como gananciales)</label>` : ''}`;
+      ${hayCony ? `<div class="field" style="margin:6px 0"><label>¿Había sociedad conyugal con el cónyuge sobreviviente?</label>
+        <select data-chw="sc" data-redibujar style="font-size:12.5px;padding:4px 6px">${opt('', '— elegir —', scValor(H))}${opt('si', 'Sí: sociedad conyugal y el inmueble se adquirió durante el matrimonio (la mitad son gananciales del cónyuge)', scValor(H))}${opt('no', 'No: separación de bienes, participación, o el inmueble era propio del causante', scValor(H))}</select></div>` : ''}
+      <div class="field" style="margin:6px 0 0"><label>Superficie del inmueble (m²) <span class="hint">· para ver cuánto le corresponde a cada heredero</span></label>
+        <input type="text" inputmode="decimal" data-chw="superficie" value="${esc(H.superficie || '')}" placeholder="${supExp ? numeroALocal(supExp) + ' (la del expediente)' : 'Ej.: 5.000'}" style="font-size:12.5px;padding:4px 6px;max-width:220px"></div>`;
   }
 
   function htmlResumen(){
     const R = resultado();
     if(!R) return '<p class="hint" style="font-size:12px;margin:6px 0 0">Indica la condición del solicitante para ver el cálculo.</p>';
-    const fila = (n, c, qq, extra)=> `<tr${qq ? '' : ' style="color:#8a8378"'}><td>${n}</td><td>${c}${extra || ''}</td><td class="num">${qq ? '<b>' + txt(qq) + '</b>' : '—'}</td><td class="num">${qq ? pct(qq) : '—'}</td></tr>`;
+    const conSup = !!superficieM2();
+    const fila = (n, c, qq, extra)=> `<tr${qq ? '' : ' style="color:#8a8378"'}><td>${n}</td><td>${c}${extra || ''}</td><td class="num">${qq ? '<b>' + txt(qq) + '</b>' : '—'}</td><td class="num">${qq ? pct(qq) : '—'}</td>${conSup ? `<td class="num">${qq ? m2Txt(m2De(qq)) : '—'}</td>` : ''}</tr>`;
     return R.avisos.map(a => `<div class="ch-aviso">⚠ ${esc(a)}</div>`).join('')
       + `<p style="font-size:13px;margin:8px 0 6px"><b>${R.total}</b> ${R.total === 1 ? 'heredero' : 'herederos'} con derecho</p>`
-      + `<table class="ch-tabla"><thead><tr><th>Heredero</th><th>Condición</th><th class="num">Cuota c/u</th><th class="num">%</th></tr></thead><tbody>`
+      + `<table class="ch-tabla"><thead><tr><th>Heredero</th><th>Condición</th><th class="num">Cuota c/u</th><th class="num">%</th>${conSup ? '<th class="num">Superficie c/u</th>' : ''}</tr></thead><tbody>`
       + R.sols.map(s => fila(esc(s.nombre) + ' <span class="hint">(solicitante)</span>', esc(SING[s.cond]) + (s.de && conRep(s.cond) ? ' de ' + esc(s.de) : ''), s.q, s.q ? '' : `<br><span style="font-size:11.5px">No hereda: ${esc(R.motivo)}.</span>`)).join('')
       + R.otros.map(o => fila(o.cant + ' ' + esc(o.cant === 1 ? SING[o.cond] : PLUR[o.cond]), 'demás herederos' + (o.de && conRep(o.cond) ? ' (de ' + esc(o.de) + ')' : ''), o.q, o.q ? '' : `<br><span style="font-size:11.5px">No heredan: ${esc(R.motivo)}.</span>`)).join('')
       + (R.fisco ? fila('Fisco de Chile', 'sin otros herederos', R.r.personas.find(p => p.nombre === 'Fisco de Chile').q) : '')
@@ -14284,7 +14311,7 @@ const CH = (()=>{
       const valor = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? Math.max(0, Math.min(50, +el.value || 0)) : el.value);
       fijar(datosH(), el.dataset.chw, valor);
       if(!el.hasAttribute('data-redibujar')) caja._chHtml = htmlWidget();
-      if(el.hasAttribute('data-redibujar') || el.dataset.chw === 'sc') refrescarTodo();
+      if(el.hasAttribute('data-redibujar')) refrescarTodo();
       else if(caja.id !== 'chEmbebido') renderResultado();
       guardar(); actualizarDoc();
     });
@@ -14309,7 +14336,7 @@ const CH = (()=>{
     enlazar(vista);
   }
 
-  return {init, render, renderEmbebido, textoDocumento, calcular, aMotor, datosH, _txt: txt};
+  return {init, render, renderEmbebido, textoDocumento, calcular, aMotor, datosH, activo, _txt: txt};
 
 
 })();
