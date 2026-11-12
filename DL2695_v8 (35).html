@@ -1730,6 +1730,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
 
     <!-- ---- SUPERIOR JERÁRQUICO: MINUTA DE DESCARGOS DEL RECURSO JERÁRQUICO ---- -->
     <div class="panel-body" id="tab-jerarquico" style="display:none">
+      <div class="ch-aviso" id="jqAvisoCorresponde" hidden style="font-size:12.5px;margin:0 0 10px"></div>
       <fieldset>
         <legend>Minuta de descargos · Recurso jerárquico</legend><p class="hint">Vinculada a la reposición negativa con recurso jerárquico en subsidio. Los datos comunes se actualizan desde Reposición. Las alegaciones y fundamentos se incorporan como base de la primera fila; sus ediciones y los demás descargos se conservan.</p>
         <p class="hint" style="margin:0 0 10px;">
@@ -7605,7 +7606,7 @@ mainTabs.forEach(btn=>{
     if(TABS_TEXTO.indexOf(tab) >= 0) state.ultimaTabDoc = tab;
     if(tab.endsWith('Rectificatoria')) q('tab-'+tab).prepend(q('rectReferencia'));
     moverOrigenPosesion(tab);
-    if(tab === 'jerarquico') renderJqFilas();
+    if(tab === 'jerarquico'){ renderJqFilas(); if(!correspondeMinutaJerarquica()) setTimeout(()=> flashStatus('⚠ ' + motivoNoCorrespondeJerarquico()), 50); }
 
     if(esOficios){
       if(!state.oficiosInit){ initOficios(); state.oficiosInit = true; }
@@ -7776,7 +7777,7 @@ function verificacionHabilitada(){
 
 function productoHabilitado(tab){
   if(tab === 'posesion') return verificacionHabilitada();
-  if(tab === 'jerarquico') return puedeMinutaJerarquica();
+  // la minuta del jerárquico nunca se bloquea: sólo avisa si no corresponde
   return true;
 }
 
@@ -10284,7 +10285,7 @@ function partesDe(tab){
   if(tab === 'notificacionB') return partesNotificacionB();
   if(tab === 'resolucionRep') return partesResolucionRep();
   if(tab === 'notificacionRep') return partesNotificacionRep();
-  if(tab === 'jerarquico') return puedeMinutaJerarquica() ? partesJerarquico() : null;
+  if(tab === 'jerarquico') return partesJerarquico();
   return null;
 }
 
@@ -10456,10 +10457,6 @@ function generarAhora(){
   actualizarModelosCRepo();
   if(activeMainTab() === 'posesion' && !verificacionHabilitada()){
     document.querySelector('#mainTabs [data-tab="informeB"]').click();
-    return;
-  }
-  if(activeMainTab() === 'jerarquico' && !puedeMinutaJerarquica()){
-    document.querySelector('#mainTabs [data-tab="resolucionRep"]').click();
     return;
   }
   actualizarProvinciaFallecimiento();
@@ -14475,36 +14472,51 @@ function jqPlazo(){          // 'si' | 'no' | '' (sin datos)
 function puedeMinutaJerarquica(){
   return !esRepAcoge() && chk('repJerarquico');
 }
+/* La minuta corresponde cuando la reposición se rechaza DENTRO de plazo y
+   se interpuso el jerárquico en subsidio. Si no, no se bloquea: sólo se avisa. */
+function correspondeMinutaJerarquica(){
+  return !esRepAcoge() && !esRepExtemporaneo() && chk('repJerarquico');
+}
+function motivoNoCorrespondeJerarquico(){
+  const razones = [];
+  if(esRepAcoge()) razones.push('la reposición está marcada como acogida');
+  else if(esRepExtemporaneo()) razones.push('la reposición se rechaza por extemporánea (fuera de plazo)');
+  if(!chk('repJerarquico')) razones.push('no está marcado «Se interpuso además Recurso Jerárquico en subsidio»');
+  return 'La minuta del Recurso Jerárquico corresponde cuando la reposición se rechaza dentro de plazo y se interpuso recurso jerárquico en subsidio'
+    + (razones.length ? '. En Reposición: ' + razones.join(' y ') + '.' : '.');
+}
 
 /* Sólo habilita/deshabilita el botón «Minuta Jerárquico»: se llama al
    comienzo de cada actualización y al cambiar Acoge/Rechaza o la casilla del
    jerárquico, para que nunca quede deshabilitado por un error en otra parte. */
 function sincronizarBotonJerarquico(){
-  const habilitada = puedeMinutaJerarquica();
+  const corresponde = correspondeMinutaJerarquica();
   const boton = document.querySelector('#mainTabs button[data-tab="jerarquico"]');
-  if(boton){ boton.hidden = false; boton.disabled = !habilitada; boton.style.display = 'block'; }
+  if(boton){
+    boton.hidden = false; boton.disabled = false; boton.style.display = 'block';
+    boton.title = corresponde ? 'Minuta del Recurso Jerárquico' : '⚠ ' + motivoNoCorrespondeJerarquico();
+  }
   const ayuda = q('navJerarquicoAyuda');
-  if(ayuda) ayuda.hidden = habilitada;
+  if(ayuda) ayuda.hidden = true;
+  const aviso = q('jqAvisoCorresponde');
+  if(aviso){ aviso.hidden = corresponde; aviso.textContent = corresponde ? '' : '⚠ ' + motivoNoCorrespondeJerarquico(); }
 }
 
 function sincronizarMinutaReposicion(){
   const habilitada = puedeMinutaJerarquica();
-  const boton = document.querySelector('#mainTabs button[data-tab="jerarquico"]');
-  if(boton){
-    boton.hidden = false;
-    boton.disabled = !habilitada;
-    boton.style.display = 'block';
-    boton.ariaDescription = habilitada ? 'Abrir minuta de Recurso Jerárquico' : 'Requiere reposición negativa y recurso jerárquico en subsidio';
-    const ayuda = q('navJerarquicoAyuda');
-    if(ayuda) ayuda.hidden = habilitada;
-  }
+  sincronizarBotonJerarquico();
   const aviso = q('avisoMinutaJerarquica');
-  if(aviso) aviso.textContent = habilitada
-    ? 'Recurso Jerárquico habilitado: la minuta se completa con estos datos de Reposición.'
-    : 'Recurso Jerárquico se habilita al rechazar la reposición y marcar recurso jerárquico en subsidio.';
+  if(aviso) aviso.textContent = correspondeMinutaJerarquica()
+    ? 'Recurso Jerárquico: la minuta se completa con estos datos de Reposición.'
+    : 'La minuta del Recurso Jerárquico corresponde al rechazar la reposición dentro de plazo y marcar recurso jerárquico en subsidio (puedes abrirla igual).';
   const alegacion = q('row-repAlegacion');
   if(alegacion) alegacion.style.display = habilitada || esRepAcoge() || !esRepExtemporaneo() ? '' : 'none';
-  if(!habilitada) return;
+  if(!habilitada){
+    // sin datos que traer de Reposición: los campos de la minuta quedan editables
+    ['jqCaso','jqRecurrente','jqFechaNotif','jqFechaInterp','jqResN','jqResFecha','jqFundFecha','jqDecision'].forEach(id=>{ const c = q(id); if(c){ c.readOnly = false; c.title = ''; } });
+    if(q('jqPlazo')) q('jqPlazo').disabled = false;
+    return;
+  }
   const fundamentos = fundamentosTextualesSinNumero();
   const compartidos = {
     jqCaso: val('expN'),
@@ -14555,7 +14567,6 @@ function actualizarJqUI(){
 
 /* ---------- el documento, como bloques (los mismos que usan la vista previa y el PDF) ---------- */
 function partesJerarquico(){
-  if(!puedeMinutaJerarquica()) return null;
   sincronizarMinutaReposicion();
   const d = encabezadoComun();
   const nombres = sols().map(x => upper((x.nombre || '').trim())).filter(Boolean);
@@ -14776,7 +14787,6 @@ async function paginasJerarquicoPdf(bloques, meta){
 }
 
 async function pdfBlobJerarquico(){
-  if(!puedeMinutaJerarquica()) throw new Error('La minuta requiere reposición negativa y recurso jerárquico en subsidio.');
   sincronizarMinutaReposicion();
   const partes = partesDe('jerarquico');
   const finales = bloquesFinales('jerarquico', partes.bloques);
@@ -15599,7 +15609,7 @@ async function documentoGeneralExportarDocx(){
 }
 
 async function minutaJerarquicoExportarDocx(){
-  if(!puedeMinutaJerarquica()) { flashStatus('La minuta requiere reposición negativa y recurso jerárquico en subsidio.'); return; }
+  if(!correspondeMinutaJerarquica()) flashStatus('⚠ ' + motivoNoCorrespondeJerarquico());
   sincronizarMinutaReposicion();
   const est = q('bImgEstado') || null;    // (no se usa; el estado va en statusLine)
   if(!soportaZip()){ flashStatus(AVISO_NAVEGADOR); return; }
