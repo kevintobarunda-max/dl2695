@@ -14458,7 +14458,7 @@ async function paginasJerarquicoPdf(bloques, meta){
 
   /* Tabla de descargos: encabezado que se repite, filas que no se cortan salvo que no quepan. */
   const tabla = (filas)=>{
-    const fT = P.fuente, iT = 11, pad = 3, anchoC1 = P.col1w - 2 * pad, anchoC2 = P.col2w - 2 * pad;
+    const fT = P.fuente, iT = 11, pad = 4, anchoC1 = P.col1w - 2 * pad, anchoC2 = P.col2w - 2 * pad;
     const cab = ()=>{
       const h = 15;
       if(topY + h > P.limite) nueva();
@@ -14470,9 +14470,22 @@ async function paginasJerarquicoPdf(bloques, meta){
       topY += h;
     };
     cab();
+    /* Cada párrafo de la celda: sangría en la primera línea y una línea en
+       blanco entre párrafos; el texto parte arriba de la celda. */
+    const SANGRIA = 14;
+    const lineasCelda = (texto, ancho)=>{
+      const out = [];
+      String(texto || '').split(/\n+/).map(t => t.trim()).filter(Boolean).forEach((t, n)=>{
+        if(n) out.push({lt: [], ult: true});
+        const tk = [{texto: '', ancho: SANGRIA, esEspacio: false, cursiva: true}].concat(runsATokensPdf([{texto: t, cursiva: true}], fT));
+        const ls = envolverTokensPdf(tk, ancho);
+        ls.forEach((lt, i)=> out.push({lt, ult: i === ls.length - 1}));
+      });
+      return out.length ? out : [{lt: [], ult: true}];
+    };
     filas.forEach(f=>{
-      const l1 = envolverTokensPdf(runsATokensPdf([{texto: f.arg, cursiva: true}], fT), anchoC1);
-      const l2 = envolverTokensPdf(runsATokensPdf([{texto: f.desc, cursiva: true}], fT), anchoC2);
+      const L1 = lineasCelda(f.arg, anchoC1), L2 = lineasCelda(f.desc, anchoC2);
+      const l1 = L1.map(x => x.lt), l2 = L2.map(x => x.lt);
       let i1 = 0, i2 = 0;
       while(i1 < l1.length || i2 < l2.length){
         const disp = Math.floor((P.limite - topY - 2 * pad) / iT);
@@ -14481,10 +14494,10 @@ async function paginasJerarquicoPdf(bloques, meta){
         const c1 = l1.slice(i1, i1 + k), c2 = l2.slice(i2, i2 + k), h = k * iT + 2 * pad;
         ops += caja(P.col1x, topY, P.col1w, h) + caja(P.col2x, topY, P.col2w, h);
         c1.forEach((lt, j)=>{
-          ops += dibujarLineaPdf(lt, xAlineadaPdf(lt, 'justify', P.col1x + pad, anchoC1), yPdf(topY + pad + j * iT, fT), fT, 'justify', anchoC1, i1 + j === l1.length - 1);
+          ops += dibujarLineaPdf(lt, xAlineadaPdf(lt, 'justify', P.col1x + pad, anchoC1), yPdf(topY + pad + j * iT, fT), fT, 'justify', anchoC1, L1[i1 + j].ult);
         });
         c2.forEach((lt, j)=>{
-          ops += dibujarLineaPdf(lt, xAlineadaPdf(lt, 'justify', P.col2x + pad, anchoC2), yPdf(topY + pad + j * iT, fT), fT, 'justify', anchoC2, i2 + j === l2.length - 1);
+          ops += dibujarLineaPdf(lt, xAlineadaPdf(lt, 'justify', P.col2x + pad, anchoC2), yPdf(topY + pad + j * iT, fT), fT, 'justify', anchoC2, L2[i2 + j].ult);
         });
         topY += h; i1 += c1.length; i2 += c2.length;
         if(i1 < l1.length || i2 < l2.length){ nueva(); cab(); }
@@ -15000,14 +15013,23 @@ function documentoJerarquicoWordXml(bloques, meta, relIdLogo, relIdFooter, cxLog
     return '<w:tc><w:tcPr><w:tcW w:w="' + ancho + '" w:type="dxa"/>' + bordes + '<w:vAlign w:val="center"/></w:tcPr>'
       + wordParrafo(runsXml, {align: o.align || 'both', before: 40, after: 40}) + '</w:tc>';
   };
+  /* Celda de argumento/descargo: el texto parte arriba de la celda y cada
+     párrafo comienza con sangría (0,5 cm), separado del siguiente. */
+  const celdaTexto = (texto, ancho)=>{
+    const parrafos = String(texto || '').split(/\n+/).map(t => t.trim()).filter(Boolean);
+    const xml = (parrafos.length ? parrafos : ['']).map((t, i, arr)=>
+      wordParrafo(wordRuns([{texto: t, cursiva: true}]), {align: 'both', before: i ? 0 : 60, after: i === arr.length - 1 ? 60 : 120})
+        .replace('<w:pPr>', '<w:pPr><w:ind w:firstLine="284"/>')).join('');
+    return '<w:tc><w:tcPr><w:tcW w:w="' + ancho + '" w:type="dxa"/>' + bordes + '<w:vAlign w:val="top"/></w:tcPr>' + xml + '</w:tc>';
+  };
   const tabla = (filas)=>{
     const cab = '<w:tr><w:trPr><w:tblHeader/></w:trPr>'
       + celda(wordRuns(Bd('Argumento del Recurrente (Resumen)')), col1, {align: 'center'})
       + celda(wordRuns(Bd('Descargos de la Unidad (Refutación)')), col2, {align: 'center'})
       + '</w:tr>';
     const filasXml = filas.map(f=>'<w:tr>'
-      + celda(wordRuns([{texto: f.arg, cursiva: true}]), col1)
-      + celda(wordRuns([{texto: f.desc, cursiva: true}]), col2)
+      + celdaTexto(f.arg, col1)
+      + celdaTexto(f.desc, col2)
       + '</w:tr>').join('');
     return '<w:tbl><w:tblPr><w:tblW w:w="' + anchoTotal + '" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr>'
       + '<w:tblGrid><w:gridCol w:w="' + col1 + '"/><w:gridCol w:w="' + col2 + '"/></w:tblGrid>'
