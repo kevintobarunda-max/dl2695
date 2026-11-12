@@ -1038,11 +1038,15 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
           <label>SEREMI de Bienes Nacionales</label>
           <input type="text" id="seremi" value="Flavio Esteban Bazzi Pezoa">
         </div>
-        <div data-lateral="subrogancia" class="check-row" id="rowSubrogancia">
-          <input type="checkbox" id="subrogancia" onchange="toggleClass('rowSubrogancia','checked',this.checked); generar();">
+        <div data-lateral="subrogancia" class="check-row checked" id="rowSubrogancia">
+          <input type="checkbox" id="subrogancia" checked onchange="toggleClass('rowSubrogancia','checked',this.checked); generar();">
           <div>
             <div class="lbl">Firma en calidad de subrogante (S)</div>
           </div>
+        </div>
+        <div data-lateral="subrogancia" class="field" id="fieldSeremiSubrogante">
+          <label>SEREMI subrogante <span class="hint">· firma cuando está marcada la casilla (S)</span></label>
+          <input type="text" id="seremiSubrogante" value="Octavio Fredes Fuenzalida" oninput="generar()">
         </div>
       </fieldset>
 
@@ -1392,7 +1396,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
       </fieldset>
     </div>
 
-<div class="panel-body" id="tab-resolucionC" style="display:none"><fieldset><legend>Sentido de la resolución C</legend><select id="cSentido" onchange="generar()"><option value="positiva">Positiva · acepta y ordena inscripción</option><option value="negativa">Negativa · deniega la solicitud</option></select><p class="hint">La resolución y su notificación comparten este resultado.</p></fieldset><fieldset id="cBloqueNegativo"><legend>Fundamentos de C negativa</legend><p class="hint">Según los modelos de resolución y notificación C negativas del repositorio. Completa los antecedentes del expediente; no se copian los hechos ni las personas del ejemplo.</p><div class="field"><label for="cNegCons3">Considerando 3 · adquisición de la posesión y antecedentes analizados</label><textarea id="cNegCons3" rows="5"></textarea><p class="hint">Escribe el texto completo del considerando, sin el número 3.</p></div><div class="field"><label for="cNegCons4">Considerando 4 · fundamento específico de la denegación</label><textarea id="cNegCons4" rows="5"></textarea><p class="hint">Escribe el texto completo del considerando, sin el número 4.</p></div><div class="field"><label for="vTexto_resolucionCNegativa">Visto completo de C negativa (opcional)</label><textarea id="vTexto_resolucionCNegativa" rows="5"></textarea><p class="hint">En blanco usa la base normativa del modelo con los antecedentes variables de C; no cita el certificado de publicaciones de C positiva.</p></div></fieldset><input type="hidden" id="vCgrN" value="36"><input type="hidden" id="vCgrAnio" value="2024"><input type="hidden" id="vDelegacion" value="1917, 107 y 108"><input type="hidden" id="vDelegacionAnio" value="1996"><input type="hidden" id="vNomN" value="30"><input type="hidden" id="vNomFecha" value="2026-03-26"><input type="hidden" id="vSubrogancia" value=""><fieldset id="cDatosPositivos"><legend>Datos variables del inmueble · C</legend><p class="hint">Completa estos recuadros con los antecedentes de cada expediente. Dirección, Comuna y Provincia se toman del panel izquierdo; la identidad y domicilio de cada solicitante, de su ficha.</p><div class="grid2"><div class="field"><label for="cPlano">Número de plano</label><input type="text" id="cPlano" autocomplete="off"></div><div class="field"><label for="cRol">Rol de Avalúo</label><input type="text" id="cRol" autocomplete="off"></div><div class="field"><label for="cSuperficie">Superficie y unidad</label><input type="text" id="cSuperficie" autocomplete="off"></div><div class="field"><label for="cCbrMenu">Conservador de Bienes Raíces para la inscripción</label><select id="cCbrMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cCbr" oninput="generar()" autocomplete="off"></div><div class="field"><label for="cModoAdqMenu">Forma de adquisición de la posesión</label><select id="cModoAdqMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cModoAdq" oninput="generar()" autocomplete="off"></div></div></fieldset><fieldset id="cMinutaPositiva"><legend>Minuta de deslindes · B y C</legend><p class="hint">El mismo recuadro y contenido de la etapa B. Los cambios se aplican a ambos procedimientos.</p><div id="slotMinutaC"></div></fieldset><fieldset id="cInscripcionSelector"><legend>Inscripción conservatoria · C positiva</legend><select id="cTieneInscripcion" onchange="generar()"><option value="con">Con inscripción anterior · ordenar cancelación</option><option value="sin">Sin inscripción conservatoria · ordenar primera inscripción</option></select></fieldset><fieldset id="cInscripcionAnteriorCampos"><legend>Inscripción anterior y cancelación · C</legend><div class="grid2"><div class="field"><label for="cFojas">Fojas de la inscripción anterior</label><input type="text" id="cFojas" autocomplete="off"></div><div class="field"><label for="cNumeroInsc">Número de la inscripción anterior</label><input type="text" id="cNumeroInsc" autocomplete="off"></div><div class="field"><label for="cAnioInsc">Año de la inscripción anterior</label><input type="text" id="cAnioInsc" autocomplete="off"></div><div class="field"><label for="cCbrAnteriorMenu">Conservador de la inscripción anterior</label><select id="cCbrAnteriorMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cCbrAnterior" oninput="generar()" autocomplete="off"></div></div><div class="field"><label for="cAlcanceCancelacion">Alcance de la cancelación · completa si es parcial o total según el expediente</label><textarea id="cAlcanceCancelacion" rows="3"></textarea></div></fieldset><fieldset><legend>Resolución C · Datos del acto</legend><p class="hint">Basada en «Resolución C tipo Positiva.html.pdf». Completa los recuadros de esta pestaña con el plano, deslindes e inscripción anterior de cada expediente. La profesión, estado civil y domicilio de cada persona se completan en su ficha.</p><div class="field"><label for="resCN">Número de resolución C (después de E-)</label><input type="text" id="resCN" value=""></div><div class="field"><label for="resCFecha">Fecha de resolución C</label><input type="date" id="resCFecha" value=""></div></fieldset><fieldset id="cVistoPositivo"><legend>Visto C · antecedentes del expediente</legend><div class="field"><label for="cResPreviaN">Resolución previa que ordenó publicaciones · número (después de E-)</label><input type="text" id="cResPreviaN" value=""></div><div class="field"><label for="cResPreviaFecha">Fecha de la resolución previa</label><input type="date" id="cResPreviaFecha" value=""></div><div class="field"><label for="cCertN">Certificado de publicaciones, carteles y no oposición · número (si tiene)</label><input type="text" id="cCertN" value=""></div><div class="field"><label for="cCertFecha">Fecha del certificado (si consta)</label><input type="date" id="cCertFecha" value=""></div><div class="field"><label for="cCertTexto">Contenido del certificado citado en el Visto</label><textarea id="cCertTexto" rows="4"></textarea><p class="hint">Comprueba su correspondencia con el certificado del expediente.</p></div><div class="field"><label for="vTexto_resolucionC">Visto completo (opcional)</label><textarea id="vTexto_resolucionC" rows="4"></textarea><p class="hint">En blanco se construye con los antecedentes anteriores y los datos variables del panel izquierdo.</p></div></fieldset></div><div class="panel-body" id="tab-notificacionC" style="display:none"><fieldset><legend>Resultado que se notifica</legend><select id="cNotSentido" onchange="q('cSentido').value=this.value; generar();"><option value="positiva">C positiva</option><option value="negativa">C negativa</option></select></fieldset><fieldset><legend>Notificación C · Resultado de la solicitud</legend><p class="hint">Basada en los modelos C positivos y negativos del repositorio. Comparte el resultado y los solicitantes con la resolución C. Usa la fecha general del documento.</p><div class="field"><label for="ordCN">Número de ordinario (después de E-)</label><input type="text" id="ordCN" value=""></div><div class="field"><label for="cDestDireccion">Dirección de notificación (opcional; incluye Comuna, Provincia y Región)</label><input type="text" id="cDestDireccion" value=""></div></fieldset></div>
+<div class="panel-body" id="tab-resolucionC" style="display:none"><fieldset><legend>Sentido de la resolución C</legend><select id="cSentido" onchange="generar()"><option value="positiva">Positiva · acepta y ordena inscripción</option><option value="negativa">Negativa · deniega la solicitud</option></select><p class="hint">La resolución y su notificación comparten este resultado.</p></fieldset><fieldset id="cBloqueNegativo"><legend>Fundamentos de C negativa</legend><p class="hint">Según los modelos de resolución y notificación C negativas del repositorio. Completa los antecedentes del expediente; no se copian los hechos ni las personas del ejemplo.</p><div class="field"><label for="cNegCons3">Considerando 3 · adquisición de la posesión y antecedentes analizados</label><textarea id="cNegCons3" rows="5"></textarea><p class="hint">Escribe el texto completo del considerando, sin el número 3.</p></div><div class="field"><label for="cNegCons4">Considerando 4 · fundamento específico de la denegación</label><textarea id="cNegCons4" rows="5"></textarea><p class="hint">Escribe el texto completo del considerando, sin el número 4.</p></div><div class="field"><label for="vTexto_resolucionCNegativa">Visto completo de C negativa (opcional)</label><textarea id="vTexto_resolucionCNegativa" rows="5"></textarea><p class="hint">En blanco usa la base normativa del modelo con los antecedentes variables de C; no cita el certificado de publicaciones de C positiva.</p></div></fieldset><input type="hidden" id="vCgrN" value="36"><input type="hidden" id="vCgrAnio" value="2024"><input type="hidden" id="vDelegacion" value="1917, 107 y 108"><input type="hidden" id="vDelegacionAnio" value="1996"><input type="hidden" id="vNomN" value="30"><input type="hidden" id="vNomFecha" value="2026-03-26"><input type="hidden" id="vSubrogancia" value="Decreto Exento RA N° 324/88/2024 de fecha 14 de marzo de 2024 de la Subsecretaría de Bienes Nacionales, que establece orden de subrogancia para el cargo Seremi Maule."><fieldset id="cDatosPositivos"><legend>Datos variables del inmueble · C</legend><p class="hint">Completa estos recuadros con los antecedentes de cada expediente. Dirección, Comuna y Provincia se toman del panel izquierdo; la identidad y domicilio de cada solicitante, de su ficha.</p><div class="grid2"><div class="field"><label for="cPlano">Número de plano</label><input type="text" id="cPlano" autocomplete="off"></div><div class="field"><label for="cRol">Rol de Avalúo</label><input type="text" id="cRol" autocomplete="off"></div><div class="field"><label for="cSuperficie">Superficie y unidad</label><input type="text" id="cSuperficie" autocomplete="off"></div><div class="field"><label for="cCbrMenu">Conservador de Bienes Raíces para la inscripción</label><select id="cCbrMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cCbr" oninput="generar()" autocomplete="off"></div><div class="field"><label for="cModoAdqMenu">Forma de adquisición de la posesión</label><select id="cModoAdqMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cModoAdq" oninput="generar()" autocomplete="off"></div></div></fieldset><fieldset id="cMinutaPositiva"><legend>Minuta de deslindes · B y C</legend><p class="hint">El mismo recuadro y contenido de la etapa B. Los cambios se aplican a ambos procedimientos.</p><div id="slotMinutaC"></div></fieldset><fieldset id="cInscripcionSelector"><legend>Inscripción conservatoria · C positiva</legend><select id="cTieneInscripcion" onchange="generar()"><option value="con">Con inscripción anterior · ordenar cancelación</option><option value="sin">Sin inscripción conservatoria · ordenar primera inscripción</option></select></fieldset><fieldset id="cInscripcionAnteriorCampos"><legend>Inscripción anterior y cancelación · C</legend><div class="grid2"><div class="field"><label for="cFojas">Fojas de la inscripción anterior</label><input type="text" id="cFojas" autocomplete="off"></div><div class="field"><label for="cNumeroInsc">Número de la inscripción anterior</label><input type="text" id="cNumeroInsc" autocomplete="off"></div><div class="field"><label for="cAnioInsc">Año de la inscripción anterior</label><input type="text" id="cAnioInsc" autocomplete="off"></div><div class="field"><label for="cCbrAnteriorMenu">Conservador de la inscripción anterior</label><select id="cCbrAnteriorMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cCbrAnterior" oninput="generar()" autocomplete="off"></div></div><div class="field"><label for="cAlcanceCancelacion">Alcance de la cancelación · completa si es parcial o total según el expediente</label><textarea id="cAlcanceCancelacion" rows="3"></textarea></div></fieldset><fieldset><legend>Resolución C · Datos del acto</legend><p class="hint">Basada en «Resolución C tipo Positiva.html.pdf». Completa los recuadros de esta pestaña con el plano, deslindes e inscripción anterior de cada expediente. La profesión, estado civil y domicilio de cada persona se completan en su ficha.</p><div class="field"><label for="resCN">Número de resolución C (después de E-)</label><input type="text" id="resCN" value=""></div><div class="field"><label for="resCFecha">Fecha de resolución C</label><input type="date" id="resCFecha" value=""></div></fieldset><fieldset id="cVistoPositivo"><legend>Visto C · antecedentes del expediente</legend><div class="field"><label for="cResPreviaN">Resolución previa que ordenó publicaciones · número (después de E-)</label><input type="text" id="cResPreviaN" value=""></div><div class="field"><label for="cResPreviaFecha">Fecha de la resolución previa</label><input type="date" id="cResPreviaFecha" value=""></div><div class="field"><label for="cCertN">Certificado de publicaciones, carteles y no oposición · número (si tiene)</label><input type="text" id="cCertN" value=""></div><div class="field"><label for="cCertFecha">Fecha del certificado (si consta)</label><input type="date" id="cCertFecha" value=""></div><div class="field"><label for="cCertTexto">Contenido del certificado citado en el Visto</label><textarea id="cCertTexto" rows="4"></textarea><p class="hint">Comprueba su correspondencia con el certificado del expediente.</p></div><div class="field"><label for="vTexto_resolucionC">Visto completo (opcional)</label><textarea id="vTexto_resolucionC" rows="4"></textarea><p class="hint">En blanco se construye con los antecedentes anteriores y los datos variables del panel izquierdo.</p></div></fieldset></div><div class="panel-body" id="tab-notificacionC" style="display:none"><fieldset><legend>Resultado que se notifica</legend><select id="cNotSentido" onchange="q('cSentido').value=this.value; generar();"><option value="positiva">C positiva</option><option value="negativa">C negativa</option></select></fieldset><fieldset><legend>Notificación C · Resultado de la solicitud</legend><p class="hint">Basada en los modelos C positivos y negativos del repositorio. Comparte el resultado y los solicitantes con la resolución C. Usa la fecha general del documento.</p><div class="field"><label for="ordCN">Número de ordinario (después de E-)</label><input type="text" id="ordCN" value=""></div><div class="field"><label for="cDestDireccion">Dirección de notificación (opcional; incluye Comuna, Provincia y Región)</label><input type="text" id="cDestDireccion" value=""></div></fieldset></div>
 <div class="panel-body" id="tab-resolucionRectificatoria" style="display:none"><fieldset id="rectReferencia"><legend>Resolución que se rectifica</legend><div class="field"><label for="rectAnterior">Número de la resolución original (E-…)</label><input type="text" id="rectAnterior" value="" oninput="generar()"></div><div class="field"><label for="rectFechaAnterior">Fecha de la resolución original</label><input type="date" id="rectFechaAnterior" value="" oninput="generar()"></div></fieldset><fieldset><legend>Resolución rectificatoria</legend><div class="field"><label for="rectNumero">Número de la resolución rectificatoria</label><input type="text" id="rectNumero" value="" oninput="generar()"></div><div class="field"><label for="rectVistos">Vistos y antecedentes del nombramiento</label><textarea rows="4" id="rectVistos" oninput="generar()">Las normas contenidas en el D.L. N°2.695 de 1979 y su Reglamento contenido en el D.S. N° 541 del 20 de agosto del año 1996; la Resolución N°36 de 2024, de la Contraloría General de la República; el Decreto Supremo N°30 de fecha 26 de marzo de 2026 de nombramiento del Seremi.</textarea></div><div class="field"><label for="rectMotivo">Qué se debe corregir (p. ej., la denominación del inmueble)</label><input type="text" id="rectMotivo" value="" oninput="generar()"></div></fieldset><fieldset><legend>Partes de la resolución que se rectifican</legend><input id="rectListaDatos" type="hidden"><details open><summary>Seleccionar una o más partes</summary><p class="hint">Marca cada parte y escribe debajo su redacción corregida. Se incorporarán al resuelvo en el orden en que las marques.</p><div id="rectListaOpciones"></div><div class="field"><label for="rectOtraParte">Otro apartado o numeral</label><input id="rectOtraParte" data-temporal placeholder="Ej.: Considerando 12 o Anexo 2"><button type="button" onclick="agregarParteRect()">Agregar a la selección</button></div></details></fieldset></div><div class="panel-body" id="tab-notificacionRectificatoria" style="display:none"><fieldset><legend>Notificación de rectificatoria</legend><div class="field"><label for="rectOrd">Número de ordinario</label><input type="text" id="rectOrd" value="" oninput="generar()"></div><div class="field"><label for="rectDomicilio">Domicilio de notificación, si falta en los datos del solicitante</label><input type="text" id="rectDomicilio" value="" oninput="generar()"></div></fieldset></div>
 <div class="panel-body" id="tab-resolucionFallecimiento" style="display:none"><fieldset><legend>Término Anticipado por Fallecimiento · Resolución</legend><p class="hint">Basada en el modelo de resolución por muerte del repositorio. Los datos del expediente, inmueble y fecha de solicitud se toman del panel izquierdo. No contiene los datos del ejemplo.</p><div class="field"><label for="tfResN">Número de resolución exenta (después de E-)</label><input type="text" id="tfResN"><p class="hint"></p></div></fieldset><fieldset><legend>Solicitante fallecido</legend><p class="hint">Si nombre, RUT y tratamiento se dejan en blanco, se usan los del primer solicitante del expediente. Con varios solicitantes, indica expresamente a cuál corresponde este término.</p><div class="field"><label for="tfNombre">Nombre del solicitante fallecido (si difiere del primero)</label><input type="text" id="tfNombre"><p class="hint"></p></div><div class="field"><label for="tfRut">RUT del solicitante fallecido (si difiere del primero)</label><input type="text" id="tfRut"><p class="hint"></p></div><div class="field"><label for="tfGenero">Tratamiento</label><select id="tfGenero"><option value="">Usar el del primer solicitante</option><option value="M">don</option><option value="F">doña</option></select></div><div class="field"><label for="tfFechaDefuncion">Fecha de fallecimiento</label><input type="date" id="tfFechaDefuncion"><p class="hint"></p></div><div class="field"><label for="tfFolioCertificado">Número / folio del certificado de defunción</label><input type="text" id="tfFolioCertificado"><p class="hint"></p></div></fieldset></div><div class="panel-body" id="tab-notificacionFallecimiento" style="display:none"><fieldset><legend>Término Anticipado por Fallecimiento · Notificación</legend><p class="hint">Basada en QEPD-NOT168908.pdf. Se dirige a la sucesión del solicitante fallecido indicado en la resolución. Completa el domicilio que consta en el expediente.</p><div class="field"><label for="tfOrdN">Número de ordinario (después de E-)</label><input type="text" id="tfOrdN"><p class="hint"></p></div><div class="field"><label for="tfDestinatario">Destinatario (opcional; en blanco: sucesión del solicitante fallecido)</label><input type="text" id="tfDestinatario"><p class="hint"></p></div><div class="field"><label for="tfDestDireccion">Domicilio de notificación · calle / sector</label><input type="text" id="tfDestDireccion"><p class="hint"></p></div><div class="field"><label for="tfDestComuna">Comuna del domicilio · Región del Maule</label><select id="tfDestComuna" onchange="actualizarProvinciaFallecimiento(); generar();"><option value="">Selecciona la Comuna</option></select></div><div class="field"><label for="tfDestProvincia">Provincia (según la Comuna)</label><input type="text" id="tfDestProvincia" readonly><p class="hint"></p></div></fieldset></div>
     <!-- ---- RESOLUCIÓN specific fields ---- -->
@@ -8602,7 +8606,7 @@ function encabezadoComun(){
     ampara: val('ampara') || 'parcial',
     postulante: val('postulante') || 'Kevin Tobar Unda',
     abogado: val('abogado') || 'Mario Brevis Morales',
-    seremi: val('seremi') || 'Flavio Esteban Bazzi Pezoa',
+    seremi: seremiFirmante(),
     subrogancia: q('subrogancia').checked,
     fecha: val('fecha'),
     fechaSolicitud: val('fechaSolicitud')
@@ -8726,12 +8730,39 @@ function partesInforme(){
 }
 
 
+/* Seremi que firma: el subrogante cuando está marcada la casilla (S). */
+function seremiFirmante(){
+  return chk('subrogancia')
+    ? (val('seremiSubrogante') || 'Octavio Fredes Fuenzalida')
+    : (val('seremi') || 'Flavio Esteban Bazzi Pezoa');
+}
+
+/* Antecedente que inviste al Seremi en los VISTOS. Con subrogancia se cita
+   el orden de subrogancia en vez del decreto de nombramiento del titular. */
+const VISTO_SUBROGANCIA = 'Decreto Exento RA N° 324/88/2024 de fecha 14 de marzo de 2024 de la Subsecretaría de Bienes Nacionales, que establece orden de subrogancia para el cargo Seremi Maule';
+const RE_VISTO_NOMBRAMIENTO = /(el )?Decreto Supremo N[º°]\s?30,? (?:de fecha |de )?26 de marzo de 2026,? de nombramiento del (?:SEREMI|Seremi)/g;
+/* Firma del subrogante en tres líneas, igual en todos los documentos:
+     NOMBRE
+     SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES (S)
+     REGIÓN DEL MAULE */
+function firmaSubrogante(id, texto){
+  if(id !== 'firma' || !chk('subrogancia') || !/SECRETARIO\s+REGIONAL\s+MINISTERIAL/i.test(texto)) return texto;
+  const nombre = String(texto).split('\n')[0].trim();
+  return [nombre, 'SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES (S)', 'REGIÓN DEL MAULE'].join('\n');
+}
+
+function vistoInvestidura(texto){
+  if(!chk('subrogancia')) return texto;
+  return String(texto).replace(RE_VISTO_NOMBRAMIENTO, (m, el) => (el || '') + VISTO_SUBROGANCIA)
+    .replace(/Artículo 80 de la Ley N° 18\.834, sobre Estatuto Administrativo, que establece subrogancia del SEREMI/g, VISTO_SUBROGANCIA);
+}
+
 function vistoConfigurable(tab, base, campoTexto){
   if(tab !== 'resolucionC') return base;
   if(val(campoTexto || 'vTexto_' + tab)) return val(campoTexto || 'vTexto_' + tab);
   const nombramiento = `Decreto Supremo Nº ${blank(val('vNomN'))}, de ${fechaProsa(val('vNomFecha'))}, de nombramiento del SEREMI.`;
   const investidura = chk('subrogancia')
-    ? (val('vSubrogancia') || '[PENDIENTE: antecedente de subrogancia del SEREMI]')
+    ? (val('vSubrogancia') || VISTO_SUBROGANCIA + '.')
     : nombramiento;
   return base
     .replace(/Resolución Nº 36, de 2024,?/g, `Resolución Nº ${blank(val('vCgrN'))}, de ${blank(val('vCgrAnio'))},`)
@@ -9761,7 +9792,7 @@ function partesResolucionRep(){
      investidura no viene del decreto de nombramiento sino del artículo 80 del
      Estatuto Administrativo. */
   const investidura = d.subrogancia
-    ? 'Artículo 80 de la Ley N° 18.834, sobre Estatuto Administrativo, que establece subrogancia del SEREMI.'
+    ? VISTO_SUBROGANCIA + '.'
     : 'Decreto Supremo Nº 30, de 26 de marzo de 2026, de nombramiento del SEREMI.';
   const vistos = `Lo dispuesto en el Decreto Ley Nº 3.274, de 1980, que establece la Ley Orgánica del Ministerio, y su reglamento aprobado por Decreto Supremo Nº 386, de 1981; Ley N° 18.575 de Bases Generales de la Administración del Estado y sus modificaciones; el Decreto Ley Nº 2.695, de 1979, y su reglamento aprobado mediante Decreto Supremo Nº 541, de 1996 y sus modificaciones, los artículos 15 y 59 de la Ley Nº 19.880, que aprueba las Bases de los Procedimientos Administrativos que rigen los actos de los Órganos de la Administración del Estado; la Resolución Nº 36, de 2024, de la Contraloría General de la República, la delegación de facultades efectuadas mediante las Resoluciones Exentas Nº 1917, Nº 107 y N° 108, todas de 1996, del Ministerio de Bienes Nacionales; ${investidura}`;
 
@@ -9942,7 +9973,7 @@ function inicialesDistribucion(){
   };
   const siglaAbog = SIGLAS_ABOGADOS[(val('abogado') || '').trim().toLowerCase()] || ini(val('abogado'));
   const siglaPost = modoAbogadoSolo() ? '' : (SIGLAS_POSTULANTES[(val('postulante') || '').trim().toLowerCase()] || ini(val('postulante')));
-  const trio = [ini(val('seremi')), siglaAbog, siglaPost].filter(Boolean);
+  const trio = [ini(seremiFirmante()), siglaAbog, siglaPost].filter(Boolean);
   return trio.length ? trio.join('/') : '____/____/____';
 }
 
@@ -10102,7 +10133,7 @@ function partesRectificatoria(tab){
       bl('res-3',`3.-\tNOTIFÍQUESE la presente resolución ${alALa()} de autos, ${nombres}, al domicilio establecido en el expediente administrativo N°${d.expN}, comuna de ${d.comuna}.`),
       bl('res-4',"4.-\tPUBLÍQUESE la presente resolución en el sitio electrónico del Gobierno Transparente del Ministerio de Bienes Nacionales en la sección “actos y resoluciones”, en la categoría “actos con efectos sobre terceros”, a objeto de dar cumplimiento con lo previsto en el artículo 7°, de la letra g), de la Ley N°20.285 sobre Acceso a la Información Pública, teniendo presente el deber de confidencialidad acerca de los datos personales que la presente resolución pudiera contener, en virtud de lo dispuesto en la Ley N°19.628, debiendo ser estos utilizados estrictamente dentro del marco de las funciones del servicio y respetarse las demás exigencias que para su tratamiento establece el ordenamiento jurídico."),bl('cierre','Téngase la presente Resolución como parte integrante de la modificada, para todos los efectos legales.\nArchívese en su oportunidad.'));
   }
-  bloques.push(bl('firma',upper(d.seremi)+'\n'+(notifica ? 'ABOGADO\n' : '')+de.replace(/ REGIÓN DEL MAULE$/,'\nREGIÓN DEL MAULE')),bl('distribucion',notifica
+  bloques.push(bl('firma',upper(d.seremi)+'\n'+(notifica && !d.subrogancia ? 'ABOGADO\n' : '')+de.replace(/ REGIÓN DEL MAULE$/,'\nREGIÓN DEL MAULE')),bl('distribucion',notifica
     ? `Distribución:\n${v('Destinatario','Destinatarios')}\nExpediente ${d.expN}\nOficina de Partes\n${inicialesDistribucion()}`
     : `DISTRIBUCIÓN:\n${Interesados()}\nExpediente\nOf. de Partes\n${inicialesDistribucion()}`));
   return {materia,fecha,de,a,cabecera,bloques};
@@ -10218,10 +10249,10 @@ function bloquesFinales(tab, base){
     }
     if(b.id === 'firma') texto = texto.replace(/^.*SECRETARIO(?:\/A)?\s+REGIONAL\s+MINISTERIAL.*$/im, linea =>
       `SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES${/\(S\)/i.test(linea) ? ' (S)' : ''} REGIÓN DEL MAULE`);
-    return {...b,texto:textoSegunContexto(tab,b.id,texto)};
+    return {...b,texto:firmaSubrogante(b.id, vistoInvestidura(textoSegunContexto(tab,b.id,texto)))};
     });
   }
-  const final = salida.map(b => ({...b, texto: textoSegunContexto(tab,b.id,b.texto)}));
+  const final = salida.map(b => ({...b, texto: firmaSubrogante(b.id, vistoInvestidura(textoSegunContexto(tab,b.id,b.texto)))}));
   if(/Rectificatoria$/.test(tab)) return final.map(b => ({...b, texto: ajustarTextoRectificatoria(b.id, b.texto)}));
   return final;
 }
@@ -11908,7 +11939,7 @@ function autocompletarOficios(){
   q('ofCbr').value = val('cbr');
   sincronizarCbrSelect('ofCbrSelect','ofCbr');
   q('ofRolAvaluo').value = val('rolAvaluo');
-  q('ofSeremi').value = val('seremi') || 'Flavio Esteban Bazzi Pezoa';
+  q('ofSeremi').value = seremiFirmante();
 
   generarOficioPreview();
 }
@@ -11961,7 +11992,7 @@ function datosOficioActuales(){
     registro: blank(val('ofRegistro'),'Propiedad'),
     email_contacto: blank(val('ofEmailContacto'),'____________'),
     rol_avaluo: blank(val('ofRolAvaluo'),'____________'),
-    seremi_mayus: upper(blank(val('ofSeremi'),'____________________')),
+    seremi_mayus: upper(chk('subrogancia') ? seremiFirmante() : blank(val('ofSeremi'),'____________________')),
     iniciales: val('ofIniciales') || inicialesDistribucion()
   };
 }
@@ -12387,6 +12418,19 @@ function materiaReiteraOficio(xml){
 const OFICIO_DE_TEXTO = 'SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES REGIÓN DEL MAULE.';
 const OFICIO_DE_A_SANGRIA = 1134; // 2 cm
 
+/* Oficios firmados por el subrogante: "(S)" tras el cargo en la firma y sin
+   la línea "ABOGADO" del titular. */
+function firmaSubroganteOficio(xml){
+  const textoP = (p)=> (p.match(/<w:t(?:\s[^>]*)?>[^<]*<\/w:t>/g) || []).map(t => t.replace(/<[^>]+>/g, '')).join('').trim();
+  return xml.replace(/<w:p(?=[\s>])[^>]*>[\s\S]*?<\/w:p>/g, p => {
+    const t = textoP(p);
+    if(/^abogado$/i.test(t)) return '';
+    if(/^SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES(?: REGI[ÓO]N DEL MAULE)?\.?$/i.test(t) && !/\(S\)/.test(t))
+      return p.replace(/(SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES)(\s*)/i, '$1 (S)$2');
+    return p;
+  });
+}
+
 function alinearDeYA(xml){
   const textoDe = (p)=> (p.match(/<w:t(?:\s[^>]*)?>[^<]*<\/w:t>/g) || []).map(t => t.replace(/<[^>]+>/g, '')).join('');
   let quitarSiguienteRegion = false;
@@ -12401,7 +12445,7 @@ function alinearDeYA(xml){
     let contenido = m[2].trim();
     if(m[1] === 'DE'){
       if(!/REGI[OÓ]N DEL MAULE/i.test(contenido)) quitarSiguienteRegion = true;
-      contenido = OFICIO_DE_TEXTO;
+      contenido = chk('subrogancia') ? OFICIO_DE_TEXTO.replace(' REGIÓN DEL MAULE', ' (S) REGIÓN DEL MAULE') : OFICIO_DE_TEXTO;
     }
     const apertura = parrafo.match(/^<w:p(?=[\s>])[^>]*>/)[0];
     const rPrM = parrafo.match(/<w:r(?:\s[^>]*)?>\s*(<w:rPr>[\s\S]*?<\/w:rPr>)/);
@@ -12478,6 +12522,7 @@ async function construirOficioXml(tipo, datos){
      (las plantillas traían "Abogado" / "Región del Maule"). */
   xml = xml.replace(/(<w:t(?:\s[^>]*)?>)(\s*)(abogado|regi[oó]n del maule)(\s*)(<\/w:t>)/gi,
     (_, ini, a, t, b, fin) => ini + a + t.toUpperCase() + b + fin);
+  if(chk('subrogancia')) xml = firmaSubroganteOficio(xml);
   if(q('ofReitera') && q('ofReitera').checked) xml = materiaReiteraOficio(xml);
   ({entradas, xml} = await logoSoloEnPrimeraPagina(entradas, xml));
   return {entradas, docPath, xml};
@@ -13604,7 +13649,7 @@ function nuevoExpediente(){
     state.tipoB = 'positivo'; state.sentidoBConfirmado = false; state.tipoRep = 'acoge';
     if(q('repMotivoCons5')) q('repMotivoCons5').value = ''; if(q('repCons5Detalle')) q('repCons5Detalle').value = ''; ['repCons5ExpRelacionado','repCons5OrdDom','repCons5AnioDom','repCons5ComunaDom'].forEach(id=>{if(q(id)) q(id).value='';});
 
-    const MANTENER = {vCgrN:1, vCgrAnio:1, vDelegacion:1, vDelegacionAnio:1, vNomN:1, vNomFecha:1, vSubrogancia:1, seremi:1, subrogancia:1, abogado:1, abogadoSelect:1, postulante:1, postulanteSelect:1, modoFirmaUnidad:1, region:1};
+    const MANTENER = {vCgrN:1, vCgrAnio:1, vDelegacion:1, vDelegacionAnio:1, vNomN:1, vNomFecha:1, vSubrogancia:1, seremi:1, seremiSubrogante:1, subrogancia:1, abogado:1, abogadoSelect:1, postulante:1, postulanteSelect:1, modoFirmaUnidad:1, region:1};
     camposGuardables().forEach(el => {
       if(MANTENER[el.id] || el.closest('#oficiosView')) return;
       if(el.type === 'checkbox' || el.type === 'radio') el.checked = el.defaultChecked;
@@ -17645,6 +17690,14 @@ function restaurarTodo(){
     const campos = datos.campos;
     /* El apellido correcto es "Friz" (antes se escribía "Fritz"). */
     ['abogado','abogadoSelect'].forEach(k=>{ if(campos[k] === 'Rub\u00e9n Villagra Fritz') campos[k] = 'Rub\u00e9n Villagra Friz'; });
+    /* Noviembre 2026: firma el Seremi subrogante. La casilla (S) se marca una
+       sola vez en los borradores antiguos; después se respeta lo que elijas. */
+    if(!localStorage.getItem('dl2695_subrogancia_2026')){
+      campos.subrogancia = true;
+      if(!campos.seremiSubrogante) campos.seremiSubrogante = 'Octavio Fredes Fuenzalida';
+      if(!campos.vSubrogancia) delete campos.vSubrogancia;
+      try{ localStorage.setItem('dl2695_subrogancia_2026', '1'); }catch(e){}
+    }
     if(!campos.rectListaDatos && campos.rectTexto?.trim()){
       campos.rectListaDatos=JSON.stringify([{nombre:campos.rectPunto?.trim() || 'Apartado por identificar',activo:true,texto:campos.rectTexto}]);
     }
