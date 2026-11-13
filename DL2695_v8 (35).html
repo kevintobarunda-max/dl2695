@@ -5554,9 +5554,34 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
         }
     }
 
+    /* Cada fila tiene un dueño (el perfil que la agregó). Las asignaciones
+       que venían en el archivo son de Kevin Tobar Unda. Cada perfil ve,
+       cuenta y exporta sólo las suyas. */
+    const DUENO_INICIAL = &#x27;Kevin Tobar Unda&#x27;;
+    function normDueno(s){ return String(s || &#x27;&#x27;).normalize(&#x27;NFD&#x27;).replace(/[\u0300-\u036f]/g, &#x27;&#x27;).toLowerCase().trim(); }
+    function perfilNombre(){ try{ return (parent.perfilActual &amp;&amp; parent.perfilActual().nombre) || &#x27;&#x27;; }catch(e){ return &#x27;&#x27;; } }
+    function esMia(fila){ return normDueno(fila.dataset.dueno || DUENO_INICIAL) === normDueno(perfilNombre()); }
+    function aplicarFiltroPerfil(){
+        document.querySelectorAll(&#x27;table[data-table-id]&#x27;).forEach(tabla =&gt; {
+            let n = 0;
+            Array.from(tabla.tBodies[0].rows).forEach(fila =&gt; {
+                const mia = esMia(fila);
+                fila.style.display = mia ? &#x27;&#x27; : &#x27;none&#x27;;
+                if(mia) fila.cells[1].textContent = ++n;
+            });
+            const caja = tabla.closest(&#x27;.table-responsive&#x27;) || tabla.parentElement;
+            let vacio = caja.nextElementSibling &amp;&amp; caja.nextElementSibling.classList.contains(&#x27;sin-asignaciones&#x27;) ? caja.nextElementSibling : null;
+            if(!vacio){ vacio = document.createElement(&#x27;p&#x27;); vacio.className = &#x27;sin-asignaciones&#x27;; vacio.style.cssText = &#x27;margin:10px 0;padding:10px 12px;border:1px dashed #b9c3d0;border-radius:8px;color:#4b5868;font-size:14px;background:#f7f9fc&#x27;; caja.after(vacio); }
+            vacio.hidden = n &gt; 0;
+            vacio.textContent = &#x27;No tienes asignaciones en esta tabla&#x27; + (perfilNombre() ? &#x27; (&#x27; + perfilNombre() + &#x27;)&#x27; : &#x27;&#x27;) + &#x27;. Agrégalas con «Agregar manualmente» o «Agregar expedientes desde fotos o PDF».&#x27;;
+        });
+        calcularEstadisticas();
+    }
+    window.aplicarFiltroPerfil = aplicarFiltroPerfil;
+
     function calcularEstadisticas() {
         // 1. Estadísticas Tramitación B
-        const filasB = document.querySelectorAll(&quot;#tablaTramitaciones tbody tr&quot;);
+        const filasB = Array.from(document.querySelectorAll(&quot;#tablaTramitaciones tbody tr&quot;)).filter(esMia);
         const totalB = filasB.length;
         let listosB = 0;
         let sinCerrarB = 0;
@@ -5584,7 +5609,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
         document.getElementById(&quot;t-pendientes-val&quot;).innerText = `${pendientesB} (${pctPendientesB}%)`;
 
         // 2. Estadísticas Reposiciones
-        const filasR = document.querySelectorAll(&quot;#tablaReposiciones tbody tr&quot;);
+        const filasR = Array.from(document.querySelectorAll(&quot;#tablaReposiciones tbody tr&quot;)).filter(esMia);
         const totalR = filasR.length;
         let listosR = 0;
         let sinCerrarR = 0;
@@ -5653,6 +5678,8 @@ function agregarFilaAsignada(tabla, item){
   fila.cells[10].querySelectorAll(&#x27;button&#x27;).forEach(b=&gt;b.remove());
   delete fila.dataset.origen;
   fila.dataset.nueva = &#x27;1&#x27;;
+  fila.dataset.dueno = item.dueno || perfilNombre() || DUENO_INICIAL;
+  fila.style.display = &#x27;&#x27;;
   fila.dataset.adjunto = item.adjunto || &#x27;&#x27;;
   fila.dataset.archivo = item.archivo || &#x27;&#x27;;
   fila.cells[1].textContent = cuerpo.rows.length + 1;
@@ -5668,6 +5695,7 @@ function agregarFilaAsignada(tabla, item){
   botonEditarFila(tabla,fila);
   cuerpo.append(fila);
   actualizarFilaVisualmente(fila);
+  if(document.readyState === &#x27;complete&#x27;) aplicarFiltroPerfil();
   return fila;
 }
 function prepararImportacion(tabla){
@@ -5760,6 +5788,7 @@ function prepararImportacion(tabla){
 
                 datosTabla.push({
                     codigo: fila.cells[2].textContent.trim(),
+                    dueno: fila.dataset.dueno || DUENO_INICIAL,
                     origen:fila.dataset.origen, nueva:!!fila.dataset.nueva, estado:fila.cells[3].textContent, comuna:fila.cells[4].textContent, nombre:fila.cells[5].textContent, unidad:fila.cells[6].textContent, adjunto:fila.dataset.adjunto, archivo:fila.dataset.archivo,
                     checked: checkbox ? checkbox.checked : false,
                     evaluacion: select ? select.value : &quot;&quot;,
@@ -5786,7 +5815,8 @@ function prepararImportacion(tabla){
 
                 datosTabla.forEach(item =&gt; {
                     let fila = item.nueva ? null : Array.from(filas).find(r =&gt; r.dataset.origen === (item.origen || item.codigo));
-                    if(!fila &amp;&amp; item.nueva) fila=agregarFilaAsignada(tabla,item);
+                    if(!fila &amp;&amp; item.nueva) fila=agregarFilaAsignada(tabla,{...item, dueno: item.dueno || DUENO_INICIAL});
+                    if(fila &amp;&amp; item.dueno) fila.dataset.dueno = item.dueno;
                     if (fila) {
                         camposFicha.forEach((k,i)=&gt;{if(item[k] !== undefined) fila.cells[i+2].textContent=item[k];});
                         const checkbox = fila.querySelector(&quot;.autocheck&quot;);
@@ -5841,7 +5871,7 @@ function prepararImportacion(tabla){
         table.querySelectorAll(&quot;th&quot;).forEach(th =&gt; headers.push(th.innerText.trim()));
         data.push(headers);
         
-        table.querySelectorAll(&quot;tbody tr&quot;).forEach(row =&gt; {
+        Array.from(table.querySelectorAll(&quot;tbody tr&quot;)).filter(esMia).forEach(row =&gt; {
             const rowData = [];
             row.querySelectorAll(&quot;td&quot;).forEach((td) =&gt; {
                 const checkbox = td.querySelector(&quot;input[type=&#x27;checkbox&#x27;]&quot;);
@@ -5867,10 +5897,11 @@ function prepararImportacion(tabla){
 
     window.onload = function() {
         document.querySelectorAll(&#x27;table&#x27;).forEach(tabla=&gt;Array.from(tabla.tBodies[0].rows).forEach(fila=&gt;{
-          fila.dataset.origen=fila.cells[2].textContent.trim();botonEditarFila(tabla,fila);
+          fila.dataset.origen=fila.cells[2].textContent.trim();fila.dataset.dueno=DUENO_INICIAL;botonEditarFila(tabla,fila);
         }));
         cargarDatos();
         document.querySelectorAll(&quot;table&quot;).forEach(prepararImportacion);
+        aplicarFiltroPerfil();
     };
 &lt;/script&gt;
 
@@ -14666,6 +14697,7 @@ function aplicarPerfil(cambio){
     const b = document.querySelector('#mainTabs button[data-tab="informe"]'); if(b) b.click();
   }
   if(typeof RP !== 'undefined') RP.render();
+  try{ const w = q('asignacionesFrame') && q('asignacionesFrame').contentWindow; if(w && w.aplicarFiltroPerfil) w.aplicarFiltroPerfil(); }catch(e){}
 }
 
 window.addEventListener('load', ()=>{
