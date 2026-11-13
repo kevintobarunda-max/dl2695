@@ -729,7 +729,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
       </div>
       <div class="reloj-display" title="Horas y minutos trabajados">
         <div><span>Horas hoy</span><b id="relojDia" role="timer">--:--</b></div>
-        <div><span>Horas semanales</span><b id="relojSemana" role="timer">--:--</b></div>
+        <div><span id="relojSemanaLbl">Horas semanales</span><b id="relojSemana" role="timer">--:--</b></div>
       </div>
     </div>
   </div>
@@ -754,7 +754,6 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
   .perfil-ultimo{margin:0 0 12px;}
   .perfil-chip{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:#fff;border-radius:999px;padding:2px 10px;font-size:11px;cursor:pointer;white-space:nowrap;}
   body:not([data-perfil="abogado"]) [data-solo-abogado]{display:none !important;}
-  body[data-perfil="abogado"] .reloj-mini, body[data-perfil="abogado"] #mainTabs button[data-tab="reloj"]{display:none !important;}
   @media (max-width:520px){ .perfil-roles,.perfil-nombres{grid-template-columns:1fr;} }
 </style>
 <div class="perfil-ovl" id="perfilOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="perfilTitulo">
@@ -763,8 +762,8 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
     <p>Elige tu perfil. Con él se completan las firmas de los documentos; si eres postulante, también tu Reloj Control. Queda guardado: la próxima vez entrarás directo (puedes cambiarlo con el botón 👤 del encabezado).</p>
     <div class="perfil-ultimo" id="perfilUltimo"></div>
     <div class="perfil-roles">
-      <button type="button" class="perfil-rol" data-rol="postulante"><span>🎓</span>Postulante<small>CAJ · Reloj Control</small></button>
-      <button type="button" class="perfil-rol" data-rol="abogado"><span>⚖️</span>Abogado/a<small>Unidad · Reporte</small></button>
+      <button type="button" class="perfil-rol" data-rol="postulante"><span>🎓</span>Postulante<small>CAJ · Reloj Control 20 h</small></button>
+      <button type="button" class="perfil-rol" data-rol="abogado"><span>⚖️</span>Abogado/a<small>Unidad · Reporte · Reloj 44 h</small></button>
     </div>
     <div id="perfilPaso2" hidden>
       <p style="margin:0 0 6px;font-weight:600;color:var(--azul-900)" id="perfilPregunta"></p>
@@ -2184,7 +2183,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
                 &lt;/div&gt;
 
                 &lt;!-- Internship Period Info --&gt;
-                &lt;div class=&quot;bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs space-y-1 w-full md:w-auto&quot;&gt;
+                &lt;div id=&quot;cajaPractica&quot; class=&quot;bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs space-y-1 w-full md:w-auto&quot;&gt;
                     &lt;div class=&quot;flex justify-between gap-6&quot;&gt;
                         &lt;span class=&quot;text-slate-500 font-semibold&quot;&gt;Fecha Inicio Práctica:&lt;/span&gt;
                         &lt;span id=&quot;internStartDate&quot; class=&quot;font-bold text-slate-800&quot;&gt;14/07/2025&lt;/span&gt;
@@ -2197,7 +2196,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
             &lt;/div&gt;
 
             &lt;!-- Internship Days Progress Bar --&gt;
-            &lt;div class=&quot;mt-5 pt-4 border-t border-slate-100 space-y-2&quot;&gt;
+            &lt;div id=&quot;barraPractica&quot; class=&quot;mt-5 pt-4 border-t border-slate-100 space-y-2&quot;&gt;
                 &lt;div class=&quot;flex flex-col sm:flex-row justify-between text-xs font-semibold gap-1&quot;&gt;
                     &lt;span class=&quot;text-slate-600&quot;&gt;Progreso Período de Práctica: &lt;strong id=&quot;internProgressPercent&quot; class=&quot;text-gobBlue&quot;&gt;0%&lt;/strong&gt;&lt;/span&gt;
                     &lt;span id=&quot;internDaysDetail&quot; class=&quot;text-gobBlue font-bold&quot;&gt;0 de 0 días transcurridos&lt;/span&gt;
@@ -2222,7 +2221,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
                     &lt;p class=&quot;text-xs text-slate-500 mt-1&quot;&gt;Practicante: &lt;strong id=&quot;printUserName&quot; class=&quot;text-slate-800&quot;&gt;--&lt;/strong&gt; | Periodo: &lt;span id=&quot;printUserPeriod&quot;&gt;--&lt;/span&gt;&lt;/p&gt;
                 &lt;/div&gt;
                 &lt;div class=&quot;text-right text-xs text-slate-500&quot;&gt;
-                    &lt;p&gt;Meta Semanal: 20 Horas&lt;/p&gt;
+                    &lt;p&gt;Meta Semanal: &lt;span class=&quot;metaHorasTxt&quot;&gt;20&lt;/span&gt; Horas&lt;/p&gt;
                     &lt;p id=&quot;printDate&quot;&gt;Fecha de emisión: --/--/----&lt;/p&gt;
                 &lt;/div&gt;
             &lt;/div&gt;
@@ -2335,7 +2334,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
                 &lt;/div&gt;
                 &lt;div class=&quot;text-left sm:text-right&quot;&gt;
                     &lt;span class=&quot;text-xs text-slate-500 block&quot;&gt;Meta Requerida&lt;/span&gt;
-                    &lt;span class=&quot;text-lg font-bold text-gobBlue&quot;&gt;20 Horas Semanales&lt;/span&gt;
+                    &lt;span class=&quot;text-lg font-bold text-gobBlue&quot;&gt;&lt;span class=&quot;metaHorasTxt&quot;&gt;20&lt;/span&gt; Horas Semanales&lt;/span&gt;
                 &lt;/div&gt;
             &lt;/div&gt;
 
@@ -2440,7 +2439,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
         &lt;div class=&quot;max-w-7xl mx-auto px-4 text-center sm:text-left flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-300&quot;&gt;
             &lt;div&gt;
                 &lt;p class=&quot;font-bold text-white font-display&quot;&gt;Ministerio de Bienes Nacionales - Gobierno de Chile&lt;/p&gt;
-                &lt;p&gt;Sistema de Control de Horario y Práctica Profesional (Meta 20 Horas)&lt;/p&gt;
+                &lt;p&gt;Sistema de Control de Horario y Práctica Profesional (Meta &lt;span class=&quot;metaHorasTxt&quot;&gt;20&lt;/span&gt; Horas)&lt;/p&gt;
             &lt;/div&gt;
             &lt;div class=&quot;text-slate-400 text-end&quot;&gt;
                 &lt;p&gt;Plataforma Institucional Web&lt;/p&gt;
@@ -2455,38 +2454,57 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
     &lt;/div&gt;
 
     &lt;script&gt;
-        const WEEKLY_TARGET_MINUTES = 20 * 60; // 20 hours in minutes
+        // Meta semanal de cada perfil: postulantes 20 h, abogados/as 44 h
+        const metaHoras = () =&gt; (USERS[currentUserKey] &amp;&amp; USERS[currentUserKey].metaHoras) || 20;
         const SPANISH_DAYS = [&#x27;Domingo&#x27;, &#x27;Lunes&#x27;, &#x27;Martes&#x27;, &#x27;Miércoles&#x27;, &#x27;Jueves&#x27;, &#x27;Viernes&#x27;, &#x27;Sábado&#x27;];
         const SPANISH_MONTHS = [&#x27;Ene&#x27;, &#x27;Feb&#x27;, &#x27;Mar&#x27;, &#x27;Abr&#x27;, &#x27;May&#x27;, &#x27;Jun&#x27;, &#x27;Jul&#x27;, &#x27;Ago&#x27;, &#x27;Sep&#x27;, &#x27;Oct&#x27;, &#x27;Nov&#x27;, &#x27;Dic&#x27;];
 
         // USER PROFILES CONFIGURATION WITH UPDATED DATES
         const USERS = {
             kevin: {
+                metaHoras: 20,
                 name: &#x27;Kevin&#x27;,
                 startDate: &#x27;2026-07-14&#x27;,
                 endDate: &#x27;2027-01-14&#x27;
             },
             javiera: {
+                metaHoras: 20,
                 name: &#x27;Javiera&#x27;,
                 startDate: &#x27;2026-07-14&#x27;,
                 endDate: &#x27;2027-01-14&#x27;
             },
             lucas: {
+                metaHoras: 20,
                 name: &#x27;Lucas&#x27;,
                 startDate: &#x27;2026-09-14&#x27;,
                 endDate: &#x27;2027-03-14&#x27;
             },
             ramiro: {
+                metaHoras: 20,
                 name: &#x27;Ramiro&#x27;,
                 startDate: &#x27;2026-09-14&#x27;,
                 endDate: &#x27;2027-03-14&#x27;
             },
             marcelo: {
+                metaHoras: 20,
                 name: &#x27;Marcelo&#x27;,
                 startDate: &#x27;2026-09-14&#x27;,
                 endDate: &#x27;2027-03-14&#x27;
             }
         };
+
+        /* Abogados/as de la Unidad: se agregan desde las firmas del generador,
+           con meta de 44 horas semanales y sin período de práctica. */
+        function registrarUsuario(key, nombre, meta){
+            if(!key || USERS[key]) return;
+            USERS[key] = {name: nombre, metaHoras: meta || 44, abogado: true, startDate: &#x27;&#x27;, endDate: &#x27;&#x27;};
+            const sel = document.getElementById(&#x27;userSelect&#x27;);
+            let grupo = sel.querySelector(&#x27;optgroup[data-abogados]&#x27;);
+            if(!grupo){ grupo = document.createElement(&#x27;optgroup&#x27;); grupo.label = &#x27;Abogados/as (44 h)&#x27;; grupo.setAttribute(&#x27;data-abogados&#x27;, &#x27;1&#x27;); sel.appendChild(grupo); }
+            const o = document.createElement(&#x27;option&#x27;); o.value = key; o.textContent = nombre; grupo.appendChild(o);
+        }
+        window.registrarUsuario = registrarUsuario;
+        try{ ((parent.abogadosParaReloj &amp;&amp; parent.abogadosParaReloj()) || []).forEach(a =&gt; registrarUsuario(a.key, a.nombre, 44)); }catch(e){}
 
         let currentUserKey = &#x27;kevin&#x27;;
         let userRecords = {};
@@ -2566,6 +2584,15 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
         function updateInternshipProgress() {
             const user = USERS[currentUserKey];
             const name = user.name;
+            document.querySelectorAll(&#x27;.metaHorasTxt&#x27;).forEach(el =&gt; { el.textContent = metaHoras(); });
+            [&#x27;cajaPractica&#x27;, &#x27;barraPractica&#x27;, &#x27;internshipStatusBadge&#x27;].forEach(id =&gt; { const el = document.getElementById(id); if(el) el.style.display = user.abogado ? &#x27;none&#x27; : &#x27;&#x27;; });
+            if(user.abogado){
+                document.getElementById(&#x27;clockUserName&#x27;).innerText = name;
+                document.getElementById(&#x27;tableUserName&#x27;).innerText = name;
+                document.getElementById(&#x27;printUserName&#x27;).innerText = name;
+                document.getElementById(&#x27;printUserPeriod&#x27;).innerText = &#x27;Jornada semanal de &#x27; + metaHoras() + &#x27; horas&#x27;;
+                return;
+            }
 
             document.getElementById(&#x27;clockUserName&#x27;).innerText = name;
             document.getElementById(&#x27;tableUserName&#x27;).innerText = name;
@@ -2703,7 +2730,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
             const lunes=new Date(hoy);lunes.setDate(lunes.getDate()-(lunes.getDay()+6)%7);
             const rs=getUserRecords(), abierto=rs.some(r=&gt;r.timeIn&amp;&amp;!r.timeOut);
             const sumar=desde=&gt;rs.reduce((v,r)=&gt;v+duracionPeriodoMs(r,desde,d,d),0);
-            const resumen={hora:d.toTimeString().slice(0,5),dia:tiempoDigital(sumar(hoy)),semana:tiempoDigital(sumar(lunes)),nombre:USERS[currentUserKey].name,abierto};
+            const resumen={hora:d.toTimeString().slice(0,5),dia:tiempoDigital(sumar(hoy)),semana:tiempoDigital(sumar(lunes)),nombre:USERS[currentUserKey].name,meta:metaHoras(),abierto};
             document.querySelectorAll(&#x27;button[onclick^=&quot;quickPunch&quot;]&#x27;).forEach(b=&gt;b.disabled=b.getAttribute(&#x27;onclick&#x27;).includes(&quot;&#x27;in&#x27;&quot;)?abierto:!abierto);
             parent.mostrarResumenReloj(resumen);
         }
@@ -2747,12 +2774,12 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
                 totalWorkedMins += calculateMinutes(r);
             });
 
-            const remainingMins = Math.max(0, WEEKLY_TARGET_MINUTES - totalWorkedMins);
-            const progressPercent = Math.min(100, (totalWorkedMins / WEEKLY_TARGET_MINUTES) * 100);
+            const remainingMins = Math.max(0, metaHoras() * 60 - totalWorkedMins);
+            const progressPercent = Math.min(100, (totalWorkedMins / (metaHoras() * 60)) * 100);
 
             document.getElementById(&#x27;statWorkedHours&#x27;).innerText = formatMinutes(totalWorkedMins);
             document.getElementById(&#x27;badgeWorked&#x27;).innerText = formatMinutes(totalWorkedMins);
-            document.getElementById(&#x27;statRemainingHours&#x27;).innerText = remainingMins &gt; 0 ? `Faltan ${formatMinutes(remainingMins)}` : &#x27;¡Meta de 20 hrs Cumplida!&#x27;;
+            document.getElementById(&#x27;statRemainingHours&#x27;).innerText = remainingMins &gt; 0 ? `Faltan ${formatMinutes(remainingMins)}` : `¡Meta de ${metaHoras()} hrs Cumplida!`;
             document.getElementById(&#x27;badgeRemaining&#x27;).innerText = formatMinutes(remainingMins);
             document.getElementById(&#x27;badgeDays&#x27;).innerText = `${filteredRecords.length} jornada(s)`;
 
@@ -14584,12 +14611,22 @@ function fijarFirma(selId, inputId, nombre){
   else { sel.value = 'otro'; inp.style.display = 'block'; inp.value = nombre; }
 }
 
-/* Reloj Control: sus perfiles son el primer nombre (kevin, javiera, …). */
-function fijarPerfilReloj(nombre){
-  const clave = normPerfil(String(nombre).split(/\s+/)[0]);
+/* Reloj Control: los postulantes por su primer nombre (kevin, javiera, …);
+   los abogados/as con clave propia y meta de 44 horas semanales. */
+const claveRelojAbogado = nombre => 'abg_' + normPerfil(nombre).replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+function abogadosParaReloj(){
+  const lista = nombresDePerfil('abogado').map(n => ({key: claveRelojAbogado(n.nombre), nombre: n.nombre}));
+  const p = perfilActual();
+  if(p.rol === 'abogado' && p.nombre && !lista.some(a => a.key === claveRelojAbogado(p.nombre))) lista.push({key: claveRelojAbogado(p.nombre), nombre: p.nombre});
+  return lista;
+}
+function fijarPerfilReloj(nombre, rol){
+  const esAbg = (rol || perfilActual().rol) === 'abogado';
+  const clave = esAbg ? claveRelojAbogado(nombre) : normPerfil(String(nombre).split(/\s+/)[0]);
   if(!clave) return;
   try{
     const w = q('relojFrame') && q('relojFrame').contentWindow;
+    if(esAbg && w && w.registrarUsuario) w.registrarUsuario(clave, nombre, 44);
     const sel = w && w.document && w.document.getElementById('userSelect');
     if(sel && Array.from(sel.options).some(o => o.value === clave)){
       if(sel.value !== clave){ sel.value = clave; w.changeUser && w.changeUser(); }
@@ -14606,13 +14643,12 @@ function aplicarPerfil(cambio){
   const chip = q('perfilChip');
   if(chip) chip.textContent = p.nombre ? `👤 ${p.nombre.split(/\s+/).slice(0, 2).join(' ')} · ${p.rol === 'abogado' ? 'Abogado/a' : 'Postulante'}` : '👤 Elegir perfil';
   if(!p.rol) return;
-  // el Reloj Control siempre queda en el perfil del postulante
-  if(p.rol === 'postulante') setTimeout(()=> fijarPerfilReloj(p.nombre), 300);
+  // el Reloj Control siempre queda en el perfil elegido (postulante 20 h, abogado/a 44 h)
+  setTimeout(()=> fijarPerfilReloj(p.nombre, p.rol), 300);
   if(cambio){
     if(p.rol === 'postulante'){
       if(q('modoFirmaUnidad')) q('modoFirmaUnidad').value = 'postulante';
       fijarFirma('postulanteSelect', 'postulante', p.nombre);
-      fijarPerfilReloj(p.nombre);
     } else {
       if(q('modoFirmaUnidad')) q('modoFirmaUnidad').value = 'abogado';
       fijarFirma('abogadoSelect', 'abogado', p.nombre);
@@ -17432,6 +17468,7 @@ function mostrarResumenReloj(r){
   q('relojNombre').textContent=r.nombre;
   q('relojDia').textContent=r.dia;
   q('relojSemana').textContent=r.semana;
+  if(q('relojSemanaLbl')) q('relojSemanaLbl').textContent = 'Horas semanales' + (r.meta ? ' · meta ' + r.meta + ' h' : '');
   q('relojEntrada').disabled=r.abierto;
   q('relojSalida').disabled=!r.abierto;
 }
