@@ -760,7 +760,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
 <div class="perfil-ovl" id="perfilOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="perfilTitulo">
   <div class="perfil-box">
     <h2 id="perfilTitulo">¿Quién eres?</h2>
-    <p>Elige tu perfil. Con él se completan las firmas de los documentos; si eres postulante, también tu Reloj Control.</p>
+    <p>Elige tu perfil. Con él se completan las firmas de los documentos; si eres postulante, también tu Reloj Control. Queda guardado: la próxima vez entrarás directo (puedes cambiarlo con el botón 👤 del encabezado).</p>
     <div class="perfil-ultimo" id="perfilUltimo"></div>
     <div class="perfil-roles">
       <button type="button" class="perfil-rol" data-rol="postulante"><span>🎓</span>Postulante<small>CAJ · Reloj Control</small></button>
@@ -14606,6 +14606,8 @@ function aplicarPerfil(cambio){
   const chip = q('perfilChip');
   if(chip) chip.textContent = p.nombre ? `👤 ${p.nombre.split(/\s+/).slice(0, 2).join(' ')} · ${p.rol === 'abogado' ? 'Abogado/a' : 'Postulante'}` : '👤 Elegir perfil';
   if(!p.rol) return;
+  // el Reloj Control siempre queda en el perfil del postulante
+  if(p.rol === 'postulante') setTimeout(()=> fijarPerfilReloj(p.nombre), 300);
   if(cambio){
     if(p.rol === 'postulante'){
       if(q('modoFirmaUnidad')) q('modoFirmaUnidad').value = 'postulante';
@@ -14637,7 +14639,9 @@ window.addEventListener('load', ()=>{
   });
   q('perfilOtro').addEventListener('keydown', e=>{ if(e.key === 'Enter') elegirPerfil(_perfilRol, val('perfilOtro')); });
   aplicarPerfil(false);
-  abrirPerfil();      // se pregunta cada vez que se abre el archivo
+  /* Sólo se pregunta la primera vez: después se entra directo con el perfil
+     guardado (se cambia desde el botón 👤 del encabezado). */
+  if(!perfilGuardado()) abrirPerfil();
 });
 
 /* ============================================================
