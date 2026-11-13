@@ -1863,6 +1863,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
           <button class="btn btn-outline btn-sm" onclick="regenerarDesdeFormulario()" title="Descarta TODAS tus ediciones manuales de este documento y lo regenera desde el formulario">↻ Regenerar todo</button>
           <button class="btn btn-outline btn-sm" id="btnErrores" onclick="revisarErrores()" title="Detecta datos que no calzan entre sí (comuna, provincia, nombre, domicilio, N° de expediente…)">🔍 Revisar errores</button>
           <button class="btn btn-outline btn-sm" onclick="copiar()">⧉ Copiar todo</button>
+          <button class="btn btn-primary btn-sm" data-solo-abogado onclick="RP.agregarFinalizada()" title="Anota este expediente en el Reporte como tarea terminada, con su tarea (A, B, C, Reposición…) y su resultado">📊 Agregar al Reporte (finalizada)</button>
           <button class="btn btn-primary btn-sm" id="btnTareaProducto" onclick="alternarProductosTarea()" aria-expanded="false" aria-controls="panelProductosTarea">➕ Agregar como tarea a la bitácora</button>
           <button type="button" class="btn btn-outline btn-sm" onclick="masivoAgregarExpediente('expN','statusLine')">Agregar expediente al oficio masivo</button>
           <button class="btn btn-red btn-sm" onclick="descargar()">⬇ Descargar .txt</button>
@@ -14809,8 +14810,8 @@ const RP = (()=>{
     render(); guardar();
     const ult = q('rpTabla').querySelector('tbody tr:last-child input'); if(ult) ult.focus();
   }
-  function tareaActual(){
-    const tab = state.ultimaTabDoc || activeMainTab();
+  function tareaActual(tabElegida){
+    const tab = tabElegida || state.ultimaTabDoc || activeMainTab();
     if(/Rectificatoria/.test(tab)) return 'RECTIFICATORIA';
     if(/Fallecimiento/.test(tab)) return 'FALLECIMIENTO';
     if(/Rep$/.test(tab)) return 'REPOSICIÓN';
@@ -14827,6 +14828,27 @@ const RP = (()=>{
       if(t === 'REPOSICIÓN') return esRepAcoge() ? 'Positiva' : 'Negativa';
     }catch(e){}
     return '';
+  }
+  /* Botón de la barra de cada documento: anota el expediente actual en el
+     Reporte como tarea terminada. Si ya estaba (mismo folio y tarea), se
+     actualiza esa fila en vez de repetirla. */
+  function agregarFinalizada(){
+    const folio = String(val('expN') || '').trim();
+    if(!folio){ flashStatus('Escribe primero el N° de expediente en «Datos del expediente».'); return; }
+    const t = tareaActual(activeMainTab());
+    const res = resultadoActual(t);
+    const previa = filas().find(x => String(x.folio).trim() === folio && normPerfil(x.tarea) === normPerfil(t));
+    if(previa){
+      previa.estado = 'Terminada';
+      if(res) previa.resultado = res;
+      if(!previa.abogado) previa.abogado = yo();
+      render(); guardar();
+      flashStatus('✓ Reporte: expediente ' + folio + ' (' + t + ') actualizado como Terminada' + (res ? ' · ' + res : '') + '.');
+      return;
+    }
+    filas().push({folio, convenio: 'FNDR', tarea: t, asignacion: hoyISO(), abogado: yo(), estado: 'Terminada', resultado: res, envio: ''});
+    render(); guardar();
+    flashStatus('✓ Reporte: expediente ' + folio + ' agregado como tarea Terminada (' + t + (res ? ' · ' + res : '') + ').');
   }
   function agregarExpedienteActual(){
     const folio = String(val('expN') || '').trim();
@@ -15035,7 +15057,7 @@ const RP = (()=>{
     state.reporte = []; render(); guardar();
   }
 
-  return {init, render, agregarFila, agregarExpedienteActual, importarExcel, exportar, vaciar, marcarEnviada, seleccion, _rango: rango};
+  return {init, render, agregarFila, agregarExpedienteActual, agregarFinalizada, importarExcel, exportar, vaciar, marcarEnviada, seleccion, _rango: rango};
 })();
 
 /* ============================================================
