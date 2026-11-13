@@ -10232,8 +10232,10 @@ function partesResolucionRep(){
     bloques.push(bl('cons-6', `6.- Que, en razón de lo expuesto y en uso de las facultades que me han sido otorgadas.`));
   }
 
+  // el representante, en mayúsculas igual que el solicitante: «don CLAUDIO GONZÁLEZ BRICEÑO»
+  const representanteMay = representante.replace(/^(don|doña)\s+(.+)$/i, (m, t, n) => t + ' ' + upper(n));
   const individualizacionResuelvo = representante
-    ? `${representante}, en representación de ${nombresRep}`
+    ? `${representanteMay}, en representación de ${nombresRep}`
     : nombresRep;
   bloques.push(bl('resuelvo-titulo', 'RESUELVO:'));
   if(acoge){
@@ -10250,7 +10252,7 @@ function partesResolucionRep(){
   } else {
     /* Rechazo en el fondo: si se dedujo jerárquico en subsidio, corresponde elevar
        los antecedentes para que lo resuelva el superior. */
-    bloques.push(bl('res-1', `1.- Deniégase el recurso de reposición presentado por ${individualizacionResuelvo}, el día ${fechaRecurso}; manteniéndose firme la ${resDeneg}.`));
+    bloques.push(bl('res-1', `1.- Deniégase el recurso de reposición presentado por ${individualizacionResuelvo}, el día ${fechaRecurso}.`));
     if(conJerarquico){
       bloques.push(bl('res-2', '2.- Elévense los antecedentes al superior jerárquico, para que conozca del recurso interpuesto en subsidio, eximiéndose esta parte de seguir conociendo de la solicitud.'));
     }
