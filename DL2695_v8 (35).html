@@ -10019,6 +10019,40 @@ function quitarNumeracion(texto){
 
 /* Para la minuta del Recurso Jerárquico: la redacción textual de los
    numerales que fundaron el rechazo, uno por párrafo y sin su número. */
+/* Decisión de la minuta, resumida: de cada fundamento se toma su título
+   (p. ej. «SUBDIVISIÓN DE HECHO.») o, si no tiene, su primera idea,
+   acortada a unas 22 palabras. Los fundamentos completos siguen en la
+   tabla de descargos. */
+function resumenFundamento(p){
+  let t = String(p || '').replace(/\s+/g, ' ').trim();
+  if(!t) return '';
+  const titulo = t.match(/^([A-ZÁÉÍÓÚÑÜ0-9][A-ZÁÉÍÓÚÑÜ0-9 ,()°º\/-]{4,90})\.\s/);
+  if(titulo) return '\u0002' + titulo[1].toLowerCase();   // marca: es un título
+  t = t.replace(/^que,?\s+/i, '');
+  // se protegen abreviaturas para no cortar en «D.L.», «N°», «art.», etc.
+  const prot = t.replace(/\b(D\.L|D\.S|C\.C|Res|Ex|art|Art|Arts|inc|Inc|N|Sr|Sra|Exp)\./g, (m, a) => a + '\u0001');
+  let primera = (prot.match(/^[^;]+?(?:\.(?=\s+[A-ZÁÉÍÓÚÑ¿"“])|;|$)/) || [prot])[0].replace(/[.;]$/, '').replace(/\u0001/g, '.');
+  const palabras = primera.split(' ');
+  if(palabras.length > 22){
+    const corte = palabras.slice(0, 22).join(' ');
+    const coma = corte.lastIndexOf(',');
+    primera = (coma > 40 ? corte.slice(0, coma) : corte).replace(/[\s,;:]+$/, '');
+  }
+  return primera.charAt(0).toLowerCase() + primera.slice(1);
+}
+function resumenDecisionJq(fundamentos){
+  const partes = String(fundamentos || '').split(/\n+/).map(resumenFundamento).filter(Boolean)
+    .filter(x => !/^\[/.test(x));
+  if(!partes.length) return 'Deniega la solicitud de regularización.';
+  const titulos = partes.filter(x => x.startsWith('\u0002')).map(x => x.slice(1));
+  const frases = partes.filter(x => !x.startsWith('\u0002'));
+  const enLista = (arr, sep) => arr.length === 1 ? arr[0] : arr.slice(0, -1).join(sep) + (sep === '; ' ? '; y ' : ' y ') + arr[arr.length - 1];
+  const trozos = [];
+  if(titulos.length) trozos.push((titulos.length === 1 ? 'por el motivo de ' : 'por los siguientes motivos: ') + enLista(titulos, ', '));
+  if(frases.length) trozos.push('por cuanto ' + enLista(frases, '; '));
+  return 'Deniega la solicitud de regularización ' + trozos.join('; además, ') + '.';
+}
+
 function fundamentosTextualesSinNumero(){
   const propio = val('repFundamentos');
   let parrafos;
@@ -15421,7 +15455,7 @@ function sincronizarMinutaReposicion(){
     jqResN: val('repResDenegN'),
     jqResFecha: val('repResDenegFecha'),
     jqFundFecha: val('repResDenegFecha'),
-    jqDecision: `Deniega la solicitud de regularización. ${fundamentos}`
+    jqDecision: resumenDecisionJq(fundamentos)
   };
   Object.entries(compartidos).forEach(([id,valor])=>{
     const campo = q(id); if(!campo) return;
