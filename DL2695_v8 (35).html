@@ -15384,13 +15384,15 @@ const CAMP = (()=>{
    (con encabezado repetido si pasa de página), firmas y «Página X de N».
    ============================================================ */
 const JQ = {
-  ancho: 612, alto: 936, mIzq: 33.75, mDer: 33.75,
-  fuente: 9.6, inter: 11.5, fTitulo: 11, interTitulo: 13,
-  topP1: 154, topPn: 158, limite: 896,
-  logoX: LOGO_RESOLUCION.x / 12700, logoTop: LOGO_RESOLUCION.y / 12700, logoAncho: LOGO_RESOLUCION.cx / 12700,
+  /* Formato del modelo «MINUTA RECURSO JERARQUICO 108973»: márgenes de
+     2,5 cm, logo alineado al texto sólo en la 1ª página, interlineado
+     de 13,4 pt y tabla de descargos a todo el ancho con columnas iguales. */
+  ancho: 612, alto: 936, mIzq: 70.9, mDer: 70.9,
+  fuente: 9.6, inter: 13.4, fTitulo: 11, interTitulo: 14,
+  topP1: 144, topPn: 40, limite: 884,
+  logoX: 70.9, logoTop: 36, logoAncho: LOGO_RESOLUCION.cx / 12700,
   bullet1: 18, texto1: 36, bullet2: 54, texto2: 72,
-  // tabla de descargos 0,5 cm (≈14,17 pt) más angosta por cada lado
-  col1x: 87.17, col1w: 214.83, col2x: 306.5, col2w: 219.33
+  col1x: 70.9, col1w: 235.1, col2x: 306, col2w: 235.1
 };
 
 
@@ -15637,7 +15639,7 @@ async function paginasJerarquicoPdf(bloques, meta){
   const yPdf = (top, f) => P.alto - (top + f * 0.85);
   const paginas = [];
   let ops = logoOps, topY = P.topP1;
-  const nueva = ()=>{ paginas.push(ops); ops = logoOps; topY = P.topPn; };
+  const nueva = ()=>{ paginas.push(ops); ops = ''; topY = P.topPn; };   // el logo sólo va en la 1ª página
   const caja = (x, top, w, h) => `0 G 0.75 w ${x.toFixed(2)} ${(P.alto - top - h).toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re S\n`;
 
   /* Párrafo; con símbolo (viñeta) a la izquierda si se pide. */
@@ -15659,7 +15661,7 @@ async function paginasJerarquicoPdf(bloques, meta){
 
   /* Tabla de descargos: encabezado que se repite, filas que no se cortan salvo que no quepan. */
   const tabla = (filas)=>{
-    const fT = P.fuente, iT = 11, pad = 7, anchoC1 = P.col1w - 2 * pad, anchoC2 = P.col2w - 2 * pad;
+    const fT = P.fuente, iT = 13, pad = 4, anchoC1 = P.col1w - 2 * pad, anchoC2 = P.col2w - 2 * pad;
     const cab = ()=>{
       const h = 15;
       if(topY + h > P.limite) nueva();
@@ -15675,7 +15677,7 @@ async function paginasJerarquicoPdf(bloques, meta){
     cab();
     /* Cada párrafo de la celda: sangría en la primera línea y una línea en
        blanco entre párrafos; el texto parte arriba de la celda. */
-    const SANGRIA = 14;
+    const SANGRIA = 0;   // como el modelo: sin sangría
     const lineasCelda = (texto, ancho)=>{
       const out = [];
       String(texto || '').split(/\n+/).map(t => t.trim()).filter(Boolean).forEach((t, n)=>{
@@ -16205,8 +16207,7 @@ function documentoJerarquicoWordXml(bloques, meta, relIdLogo, relIdFooter, cxLog
   const pt = n => Math.round(n * 20);                 // puntos -> twips
   const sz = n => Math.round(n * 2);                   // puntos -> medios-puntos
   const anchoTotal = pt(P.ancho - P.mIzq - P.mDer);
-  /* La tabla de descargos va 0,5 cm (283 twips) más angosta por cada lado, centrada. */
-  const anchoTabla = anchoTotal - 2 * 283;
+  const anchoTabla = anchoTotal;   // a todo el ancho del texto, como el modelo
   const col1 = Math.round(anchoTabla * P.col1w / (P.col1w + P.col2w));
   const col2 = anchoTabla - col1;
   const N = t => [{texto: t}], Bd = t => [{texto: t, negrita: true}];
@@ -16223,7 +16224,7 @@ function documentoJerarquicoWordXml(bloques, meta, relIdLogo, relIdFooter, cxLog
     const parrafos = String(texto || '').split(/\n+/).map(t => t.trim()).filter(Boolean);
     const xml = (parrafos.length ? parrafos : ['']).map((t, i, arr)=>
       wordParrafo(wordRuns([{texto: t, cursiva: true}]), {align: 'both', before: i ? 0 : 60, after: i === arr.length - 1 ? 60 : 120})
-        .replace('<w:pPr>', '<w:pPr><w:ind w:firstLine="284"/>')).join('');
+        .replace('<w:pPr>', '<w:pPr><w:ind w:firstLine="0"/>')).join('');
     return '<w:tc><w:tcPr><w:tcW w:w="' + ancho + '" w:type="dxa"/>' + bordes + '<w:vAlign w:val="top"/></w:tcPr>' + xml + '</w:tc>';
   };
   const tabla = (filas)=>{
@@ -16236,7 +16237,7 @@ function documentoJerarquicoWordXml(bloques, meta, relIdLogo, relIdFooter, cxLog
       + celdaTexto(f.desc, col2)
       + '</w:tr>').join('');
     return '<w:tbl><w:tblPr><w:tblW w:w="' + anchoTabla + '" w:type="dxa"/><w:jc w:val="center"/><w:tblLayout w:type="fixed"/>'
-      + '<w:tblCellMar><w:left w:w="142" w:type="dxa"/><w:right w:w="142" w:type="dxa"/></w:tblCellMar></w:tblPr>'
+      + '<w:tblCellMar><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr>'
       + '<w:tblGrid><w:gridCol w:w="' + col1 + '"/><w:gridCol w:w="' + col2 + '"/></w:tblGrid>'
       + cab + filasXml + '</w:tbl>';
   };
@@ -16253,7 +16254,7 @@ function documentoJerarquicoWordXml(bloques, meta, relIdLogo, relIdFooter, cxLog
     + '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>'
     + '</a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';
 
-  let out = bloques.length ? anclarLogoWord(logoParrafo).replace('w:after="200"', 'w:after="1694"') : logoParrafo, prev = '', filasTabla = [], primeraFirma = true;
+  let out = bloques.length ? anclarLogoWord(logoParrafo, Math.round(P.logoX * 12700), Math.round(P.logoTop * 12700)).replace('w:after="200"', 'w:after="1934"') : logoParrafo, prev = '', filasTabla = [], primeraFirma = true;
   const volcarTabla = ()=>{ if(filasTabla.length){ out += tabla(filasTabla); filasTabla = []; prev = 'tabla'; } };
 
   bloques.forEach(b=>{
@@ -16288,6 +16289,8 @@ function documentoJerarquicoWordXml(bloques, meta, relIdLogo, relIdFooter, cxLog
   const footerXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
     + '<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' + pie + '</w:ftr>';
 
+  // interlineado del modelo: 13,4 pt (al menos)
+  out = out.replace(/<w:spacing w:before="(\d+)" w:after="(\d+)"\/>/g, '<w:spacing w:before="$1" w:after="$2" w:line="268" w:lineRule="atLeast"/>');
   const sect = '<w:sectPr><w:footerReference w:type="default" r:id="' + relIdFooter + '"/>'
     + '<w:pgSz w:w="' + pt(P.ancho) + '" w:h="' + pt(P.alto) + '"/>'
     + '<w:pgMar w:top="680" w:right="' + pt(P.mDer) + '" w:bottom="800" w:left="' + pt(P.mIzq) + '" w:header="360" w:footer="500" w:gutter="0"/>'
