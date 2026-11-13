@@ -9232,7 +9232,7 @@ function decisionConsiderando5(bloques){
   const partes = ['cons-5', 'cons-5a', 'cons-5b', 'cons-5c'];
   const textos = bloques.filter(b => partes.includes(b.id)).map(b => String(b.texto).replace(/\s*\n\s*/g, ' ').trim());
   if(!textos.length) return bloques;
-  let unido = textos.join(' ').replace(/:\s+a\)/, ': a)');
+  let unido = textos.join(' ').replace(/:\s*a\)\s*/i, ' ').replace(/\s[a-c]\)\s+/g, ' ').replace(/\s{2,}/g, ' ');
   unido = unido.replace(/\s*\[[^\]]*\]\s*/g, ' ').trim();          // sin los textos de ayuda entre corchetes
   if(!/[.;:]-?$/.test(unido)) unido += '.';
   const texto = unido + ' ' + extra.charAt(0).toUpperCase() + extra.slice(1) + (/[.]$/.test(extra) ? '' : '.');
@@ -10172,9 +10172,8 @@ function partesResolucionRep(){
 
   if(acoge){
     bloques.push(bl('cons-4', `4.- Que, con fecha ${fechaRecurso}, y dentro de plazo legal, ${solicitanteMin()} ${v('interpone','interponen')} ${recursoDeducido()}. ${blank(val('repAlegacion'),'[Describe aquí lo que alega y los documentos que acompaña.]')}`));
-    bloques.push(bl('cons-5', `5.- Que, a la luz de esta información y mediante una nueva lectura de los antecedentes acompañados en el expediente, es posible colegir que:`));
-    bloques.push(bl('cons-5a', `a) En virtud de los documentos acompañados en autos por ${solicitanteMin()}, se acredita que ${g('el recurrente','la recurrente','los recurrentes','las recurrentes')} ${v('tiene','tienen')} la posesión del inmueble por más de cinco años, acompañándose documentos que acreditan y reconocen la posesión del inmueble para regularizar.`));
-    bloques.push(bl('cons-5b', `b) Por lo anterior, ${g('el recurrente logra','la recurrente logra','los recurrentes logran','las recurrentes logran')} desvirtuar las razones del rechazo de su solicitud, toda vez que los antecedentes asociados al inmueble a regularizar concuerdan con la información entregada, conforme a lo señalado en el Decreto Ley N° 2.695/79.-`));
+    /* Considerando 5 en un solo párrafo, sin letras. */
+    bloques.push(bl('cons-5', `5.- Que, a la luz de esta información y mediante una nueva lectura de los antecedentes acompañados en el expediente, es posible colegir que, en virtud de los documentos acompañados en autos por ${solicitanteMin()}, se acredita que ${g('el recurrente','la recurrente','los recurrentes','las recurrentes')} ${v('tiene','tienen')} la posesión del inmueble por más de cinco años, acompañándose documentos que acreditan y reconocen la posesión del inmueble para regularizar. Por lo anterior, ${g('el recurrente logra','la recurrente logra','los recurrentes logran','las recurrentes logran')} desvirtuar las razones del rechazo de su solicitud, toda vez que los antecedentes asociados al inmueble a regularizar concuerdan con la información entregada, conforme a lo señalado en el Decreto Ley N° 2.695/79.`));
   } else if(extemp){
     /* El rechazo no entra al fondo: basta constatar el plazo legal y su
        vencimiento. */
