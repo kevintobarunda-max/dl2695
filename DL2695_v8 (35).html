@@ -1625,7 +1625,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
     <!-- ================= RECURSO DE REPOSICIÓN (Art. 59 Ley N° 19.880) ================= -->
 
     <!-- ---- RESOLUCIÓN QUE ACOGE LA REPOSICIÓN ---- -->
-    <div class="panel-body" id="tab-resolucionRep" style="display:none"><fieldset id="repRechazoFondoCampos"><legend>Rechazo en cuanto al fondo</legend><div class="field"><label for="repFundamentoRechazoFondo">Motivación respuesta del servicio</label><textarea id="repFundamentoRechazoFondo" rows="5"></textarea></div></fieldset><fieldset id="repFormaAcogerBloque" style="display:none"><select id="repFormaAcoger" hidden aria-hidden="true" tabindex="-1"><option value="general">General · nuevos y mejores antecedentes</option><option value="loteo5000">Modelo predio menor a 5.000 m²</option></select><div id="repLoteoCampos"><div class="field"><label for="repLoteoOrigen">Antecedentes nuevos sobre el origen de la posesión</label><textarea id="repLoteoOrigen" rows="4"></textarea></div><div class="field"><label for="repLoteoAnalisis">Motivación respuesta del servicio · Considerando 5</label><textarea id="repLoteoAnalisis" rows="5"></textarea></div></div></fieldset>
+    <div class="panel-body" id="tab-resolucionRep" style="display:none"><fieldset id="repDecision5Campos"><legend>Decisión · considerando 5</legend><div class="field"><label for="repDecision5">Texto de la decisión <span class="hint">· se agrega al considerando 5 que ya viene por defecto, en un solo párrafo</span></label><textarea id="repDecision5" rows="5" style="min-height:120px;resize:vertical" placeholder="Ej.: Atendido lo anterior, se concluye que los antecedentes aportados acreditan la posesión material exclusiva por más de cinco años, por lo que procede acoger el recurso." oninput="generar()"></textarea></div><p class="hint" style="margin:0;font-size:12px">Si lo dejas vacío, el considerando 5 sale como siempre.</p></fieldset><fieldset id="repRechazoFondoCampos"><legend>Rechazo en cuanto al fondo</legend><div class="field"><label for="repFundamentoRechazoFondo">Motivación respuesta del servicio</label><textarea id="repFundamentoRechazoFondo" rows="5"></textarea></div></fieldset><fieldset id="repFormaAcogerBloque" style="display:none"><select id="repFormaAcoger" hidden aria-hidden="true" tabindex="-1"><option value="general">General · nuevos y mejores antecedentes</option><option value="loteo5000">Modelo predio menor a 5.000 m²</option></select><div id="repLoteoCampos"><div class="field"><label for="repLoteoOrigen">Antecedentes nuevos sobre el origen de la posesión</label><textarea id="repLoteoOrigen" rows="4"></textarea></div><div class="field"><label for="repLoteoAnalisis">Motivación respuesta del servicio · Considerando 5</label><textarea id="repLoteoAnalisis" rows="5"></textarea></div></div></fieldset>
 
       <fieldset>
         <legend>Sentido del recurso</legend>
@@ -9222,6 +9222,28 @@ function partesCNegativa(tab){
   return {materia,fecha,de,a:notifica?a:'',bloques,cabecera:notifica?cabecera:''};
 }
 
+/* Recuadro «Decisión · considerando 5»: lo que se escribe se agrega al
+   texto que ya trae por defecto el considerando 5, y todo (incluidas sus
+   letras a) y b) o el párrafo de cierre, si los hay) queda en un solo
+   párrafo. Sin texto en el recuadro, el considerando 5 queda como siempre. */
+function decisionConsiderando5(bloques){
+  const extra = String(val('repDecision5') || '').replace(/\s+/g, ' ').trim();
+  if(!extra) return bloques;
+  const partes = ['cons-5', 'cons-5a', 'cons-5b', 'cons-5c'];
+  const textos = bloques.filter(b => partes.includes(b.id)).map(b => String(b.texto).replace(/\s*\n\s*/g, ' ').trim());
+  if(!textos.length) return bloques;
+  let unido = textos.join(' ').replace(/:\s+a\)/, ': a)');
+  unido = unido.replace(/\s*\[[^\]]*\]\s*/g, ' ').trim();          // sin los textos de ayuda entre corchetes
+  if(!/[.;:]-?$/.test(unido)) unido += '.';
+  const texto = unido + ' ' + extra.charAt(0).toUpperCase() + extra.slice(1) + (/[.]$/.test(extra) ? '' : '.');
+  const salida = [];
+  bloques.forEach(b => {
+    if(b.id === 'cons-5') salida.push(bl('cons-5', texto));
+    else if(!partes.includes(b.id)) salida.push(b);
+  });
+  return salida;
+}
+
 function aplicarModeloLoteoReposicion(bloques){
   const motivo = val('repMotivoCons5');
   if(motivo && (esRepAcoge() || !esRepExtemporaneo()) && (motivo !== 'menor5000' || !esRepAcoge())){
@@ -10165,7 +10187,7 @@ function partesResolucionRep(){
     /* Rechazo en cuanto al fondo: el recurso llegó dentro de plazo, pero los
        antecedentes acompañados no alcanzan a desvirtuar la Resolución Denegatoria. */
     bloques.push(bl('cons-4', `4.- Que, con fecha ${fechaRecurso}, y dentro de plazo legal, ${solicitanteMin()} ${v('interpone','interponen')} ${recursoDeducido()}, exponiendo los argumentos y antecedentes que, a su juicio, desvirtuarían lo resuelto en la ${resDeneg}. ${blank(val('repAlegacion'),'[Describe aquí lo que alega y los documentos que acompaña.]')}`));
-    bloques.push(bl('cons-5', `5.- Que, examinados los antecedentes acompañados, estos no logran desvirtuar los fundamentos de la Resolución Denegatoria, por lo que corresponde mantenerla firme. ${blank(val('repFundamentoRechazoFondo'),'[Explica aquí por qué los antecedentes acompañados no son suficientes.]')}`));
+    bloques.push(bl('cons-5', `5.- Que, examinados los antecedentes acompañados, estos no logran desvirtuar los fundamentos de la Resolución Denegatoria, por lo que corresponde mantenerla firme. ${val('repFundamentoRechazoFondo').trim() ? val('repFundamentoRechazoFondo').trim().charAt(0).toUpperCase() + val('repFundamentoRechazoFondo').trim().slice(1) : '[Explica aquí por qué los antecedentes acompañados no son suficientes.]'}`));
   }
   if(acoge){
     bloques.push(bl('cons-6', `6.- Que, en razón de lo expuesto y en uso de las facultades que me han sido otorgadas.`));
@@ -10212,7 +10234,7 @@ function partesResolucionRep(){
   bloques.push(bl('firma', firma));
   bloques.push(bl('distribucion', `DISTRIBUCIÓN:\n${Interesados()}\nExpediente\nOf. De Partes\n${inicialesDistribucion()}`));
 
-  return {materia, fecha, de: firma, a:'', bloques: aplicarModeloLoteoReposicion(bloques)};
+  return {materia, fecha, de: firma, a:'', bloques: decisionConsiderando5(aplicarModeloLoteoReposicion(bloques))};
 }
 
 function partesNotificacionRep(){
