@@ -711,9 +711,10 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
       <button type="button" data-tab="notificacionRectificatoria">Notificación</button>
     </div>
 </div>
-<button type="button" data-tab="oficios">Oficios</button><button type="button" data-tab="bitacora">Bitácora</button><button type="button" data-tab="asignaciones">Asignaciones</button><button type="button" data-tab="reloj">Reloj Control</button>
+<button type="button" data-tab="oficios">Oficios</button><button type="button" data-tab="bitacora">Bitácora</button><button type="button" data-tab="reporte" data-solo-abogado>Reporte</button><button type="button" data-tab="asignaciones">Asignaciones</button><button type="button" data-tab="reloj">Reloj Control</button>
 </nav>
     <div class="save-bar">
+      <button type="button" class="perfil-chip" id="perfilChip" onclick="abrirPerfil()" title="Cambiar de perfil (postulante o abogado/a)">👤 Elegir perfil</button>
       <span id="avisoGuardado" title="Todo lo que escribes se guarda en este navegador.">Sin cambios guardados aún</span>
       <span id="respaldoArchivo" class="hint"></span>
       <button type="button" onclick="nuevoExpediente()" title="Vacía los datos del expediente actual y deja las firmas, la bitácora y el padrón">➕ Nuevo expediente</button>
@@ -733,6 +734,48 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
     </div>
   </div>
 </header>
+
+<!-- ================= PERFIL (Postulante / Abogado/a) ================= -->
+<style>
+  .perfil-ovl{position:fixed;inset:0;z-index:5000;background:rgba(10,22,40,.72);display:flex;align-items:center;justify-content:center;padding:16px;}
+  .perfil-ovl[hidden]{display:none;}
+  .perfil-box{background:#fff;border-radius:14px;max-width:560px;width:100%;padding:22px 24px;box-shadow:0 20px 50px rgba(0,0,0,.4);}
+  .perfil-box h2{margin:0 0 4px;font-size:19px;color:var(--azul-900);}
+  .perfil-box p{margin:0 0 14px;font-size:13px;color:var(--tinta-suave);}
+  .perfil-roles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .perfil-rol{border:2px solid #d8d2c2;border-radius:12px;background:#faf8f2;padding:14px 10px;cursor:pointer;text-align:center;font-size:14px;font-weight:700;color:var(--azul-900);}
+  .perfil-rol span{display:block;font-size:26px;margin-bottom:4px;}
+  .perfil-rol small{display:block;font-weight:400;font-size:11.5px;color:var(--tinta-suave);margin-top:3px;}
+  .perfil-rol.activo{border-color:var(--azul-800);background:#eef3fb;}
+  .perfil-nombres{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 10px;}
+  .perfil-nombre{border:1px solid #d8d2c2;border-radius:8px;background:#fff;padding:8px 10px;cursor:pointer;text-align:left;font-size:13px;}
+  .perfil-nombre:hover,.perfil-nombre:focus{border-color:var(--azul-800);background:#f2f6fc;}
+  .perfil-nombre b{font-size:11px;color:var(--tinta-suave);font-weight:600;margin-left:4px;}
+  .perfil-ultimo{margin:0 0 12px;}
+  .perfil-chip{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:#fff;border-radius:999px;padding:2px 10px;font-size:11px;cursor:pointer;white-space:nowrap;}
+  body:not([data-perfil="abogado"]) [data-solo-abogado]{display:none !important;}
+  body[data-perfil="abogado"] .reloj-mini, body[data-perfil="abogado"] #mainTabs button[data-tab="reloj"]{display:none !important;}
+  @media (max-width:520px){ .perfil-roles,.perfil-nombres{grid-template-columns:1fr;} }
+</style>
+<div class="perfil-ovl" id="perfilOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="perfilTitulo">
+  <div class="perfil-box">
+    <h2 id="perfilTitulo">¿Quién eres?</h2>
+    <p>Elige tu perfil. Con él se completan las firmas de los documentos; si eres postulante, también tu Reloj Control.</p>
+    <div class="perfil-ultimo" id="perfilUltimo"></div>
+    <div class="perfil-roles">
+      <button type="button" class="perfil-rol" data-rol="postulante"><span>🎓</span>Postulante<small>CAJ · Reloj Control</small></button>
+      <button type="button" class="perfil-rol" data-rol="abogado"><span>⚖️</span>Abogado/a<small>Unidad · Reporte</small></button>
+    </div>
+    <div id="perfilPaso2" hidden>
+      <p style="margin:0 0 6px;font-weight:600;color:var(--azul-900)" id="perfilPregunta"></p>
+      <div class="perfil-nombres" id="perfilNombres"></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="perfilOtro" data-temporal placeholder="Otro: escribe tu nombre completo" style="flex:1;font-size:13px;padding:7px 8px">
+        <button type="button" class="btn btn-primary btn-sm" id="perfilOtroOk">Entrar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ================= Revisión de posibles errores ================= -->
 <div id="modalErrores" class="modal-ovl" style="display:none" onclick="if(event.target===this) cerrarModalErrores()">
@@ -1866,6 +1909,65 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
 
 <!-- ================= OFICIOS (Word) ================= -->
 <!-- ================= BITÁCORA Y PADRÓN DE EXPEDIENTES ================= -->
+<!-- ================= REPORTE (sólo perfil Abogado/a) ================= -->
+<style>
+  #reporteView{padding:14px 16px;}
+  .rp-barra{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:0 0 10px;}
+  .rp-barra .field{margin:0;}
+  .rp-barra label{font-size:11.5px;}
+  .rp-tabla{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .rp-tabla th{background:#2c3e50;color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:6px 5px;text-align:center;border:1px solid #2c3e50;}
+  .rp-tabla td{border:1px solid #d8d2c2;padding:2px;vertical-align:middle;}
+  .rp-tabla td input,.rp-tabla td select{width:100%;min-width:0;border:none;background:transparent;font-size:12.5px;padding:5px 4px;text-align:center;}
+  .rp-tabla td input:focus,.rp-tabla td select:focus{outline:2px solid #9bb4d6;background:#fff;}
+  .rp-tabla tr.fuera td{opacity:.45;}
+  .rp-tabla tr.pos td:nth-child(7){background:#e8f5e9;} .rp-tabla tr.neg td:nth-child(7){background:#fdecea;}
+  .rp-resumen{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0;}
+  .rp-resumen div{border:1px solid #e3ddcc;border-radius:8px;padding:6px 10px;background:#faf8f2;font-size:12px;}
+  .rp-resumen b{font-size:16px;display:block;color:var(--azul-900);}
+</style>
+<section id="reporteView" hidden>
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Reporte de expedientes</h2>
+      <span class="hint" id="rpAbogadoLbl">formato «reporte»: folio, convenio, tarea, fechas, estado y resultado</span>
+    </div>
+    <div class="panel-body">
+      <div class="rp-barra">
+        <button type="button" class="btn btn-primary btn-sm" onclick="RP.agregarFila()">＋ Agregar fila</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="RP.agregarExpedienteActual()" title="Toma el N° de expediente, la tarea y el resultado del documento en que estás trabajando">＋ Agregar expediente actual</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="q('rpArchivo').click()" title="Agrega las filas de un Excel con el mismo formato (FOLIO, CONVENIO, TAREA, …)">📥 Importar Excel</button>
+        <input type="file" id="rpArchivo" data-temporal accept=".xlsx" style="display:none" onchange="RP.importarExcel(this)">
+        <button type="button" class="btn btn-outline btn-sm" onclick="RP.vaciar()">🗑 Vaciar</button>
+      </div>
+      <div class="rp-barra" style="border-top:1px solid #e6e2d3;padding-top:10px">
+        <div class="field"><label>Reporte</label>
+          <select id="rpPeriodo" data-temporal onchange="RP.render()">
+            <option value="semanal">Semanal</option><option value="mensual">Mensual</option><option value="todo">Todo</option>
+          </select></div>
+        <div class="field" id="rpSemanaCampo"><label>Semana</label><input type="week" id="rpSemana" data-temporal onchange="RP.render()"></div>
+        <div class="field" id="rpMesCampo" hidden><label>Mes</label><input type="month" id="rpMes" data-temporal onchange="RP.render()"></div>
+        <div class="field"><label>Según la fecha de</label>
+          <select id="rpSegun" data-temporal onchange="RP.render()">
+            <option value="envio">envío a firma (o asignación si no hay)</option><option value="asignacion">asignación</option>
+          </select></div>
+        <div class="field"><label>Abogado/a</label>
+          <select id="rpQuien" data-temporal onchange="RP.render()"><option value="yo">Sólo mis expedientes</option><option value="todos">Todos</option></select></div>
+        <span style="flex:1"></span>
+        <button type="button" class="btn btn-red btn-sm" onclick="RP.exportar('xlsx')">⬇ Excel</button>
+        <button type="button" class="btn btn-red btn-sm" onclick="RP.exportar('pdf')">⬇ PDF</button>
+        <button type="button" class="btn btn-red btn-sm" onclick="RP.exportar('docx')">⬇ Word</button>
+      </div>
+      <p class="status" id="rpStatus" style="margin:0 0 8px"></p>
+      <div style="overflow-x:auto"><table class="rp-tabla" id="rpTabla"></table></div>
+      <div class="rp-resumen" id="rpResumen"></div>
+      <datalist id="rpConvenios"><option value="FNDR"><option value="EMPEDRADO"><option value="GORE MAULE"></datalist>
+      <datalist id="rpTareas"><option value="A"><option value="B"><option value="C"><option value="REPOSICIÓN"><option value="RECTIFICATORIA"><option value="FALLECIMIENTO"><option value="JERÁRQUICO"></datalist>
+      <datalist id="rpEnvios"><option value="PENDIENTE DE ENVIO"><option value="informe juridico listo"></datalist>
+    </div>
+  </section>
+</section>
+
 <!-- ================= CALCULADORA DE CUOTA HEREDITARIA ================= -->
 <style>
   #cuotaView{padding:14px 16px;}
@@ -6296,6 +6398,7 @@ const state = {
   masivoFilas: [],
   conservadorFilas: [],
   cuotaHer: null,
+  reporte: [],
   /* --- superficies de la calculadora, SIEMPRE en mt2 (la unidad elegida solo
          cambia cómo se muestran, así no se pierde precisión al convertir) --- */
   calcSup: { totales: null, reg: null },
@@ -7592,9 +7695,11 @@ mainTabs.forEach(btn=>{
     const esAsignaciones = tab === 'asignaciones';
     const esReloj = tab === 'reloj';
     const esCuota = tab === 'cuotaHereditaria';
+    const esReporte = tab === 'reporte';
     q('relojView').hidden = !esReloj;
     q('cuotaView').hidden = !esCuota;
-    const esDoc = !esOficios && !esBitacora && !esAsignaciones && !esReloj && !esCuota;
+    q('reporteView').hidden = !esReporte;
+    const esDoc = !esOficios && !esBitacora && !esAsignaciones && !esReloj && !esCuota && !esReporte;
     q('asignacionesView').hidden = !esAsignaciones;
     document.querySelector('.layout').style.display = esDoc ? 'grid' : 'none';
     q('oficiosView').style.display   = esOficios  ? 'grid'  : 'none';
@@ -7617,6 +7722,8 @@ mainTabs.forEach(btn=>{
       if(!frame.hasAttribute('srcdoc')) frame.srcdoc = frame.dataset.contenido;
     } else if(esBitacora){
       initBitacora();
+    } else if(esReporte){
+      RP.init(); RP.render();
     } else if(esCuota){
       abrirGrupoNavegacion(q('navGrupo-otros'), false);
       CH.init(); CH.render();
@@ -14414,6 +14521,483 @@ const CH = (()=>{
 })();
 
 /* ============================================================
+   PERFIL: Postulante o Abogado/a
+   Al abrir el archivo se pregunta quién eres y eliges tu nombre de las
+   listas de firmas. El perfil:
+     · Postulante: queda como postulante en las firmas (con abogado/a tutor/a)
+       y se elige su perfil en el Reloj Control.
+     · Abogado/a: queda como abogado/a que firma, sin Reloj Control, y se
+       habilita la pestaña «Reporte».
+   ============================================================ */
+const PERFIL_CLAVE = 'dl2695_perfil';
+function perfilGuardado(){ try{ return JSON.parse(localStorage.getItem(PERFIL_CLAVE) || 'null'); }catch(e){ return null; } }
+function perfilActual(){ return perfilGuardado() || {rol: '', nombre: ''}; }
+function normPerfil(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+
+function nombresDePerfil(rol){
+  const sel = q(rol === 'abogado' ? 'abogadoSelect' : 'postulanteSelect');
+  if(!sel) return [];
+  return Array.from(sel.options).filter(o => o.value && o.value !== 'otro')
+    .map(o => ({nombre: o.value, sigla: (o.textContent.match(/\(([^)]+)\)\s*$/) || [,''])[1]}));
+}
+
+let _perfilRol = '';
+function abrirPerfil(){
+  const ovl = q('perfilOverlay'); if(!ovl) return;
+  const p = perfilGuardado();
+  q('perfilUltimo').innerHTML = (p && p.nombre)
+    ? `<button type="button" class="btn btn-primary" id="perfilContinuar" style="width:100%">Continuar como <b>${escaparHtml(p.nombre)}</b> · ${p.rol === 'abogado' ? 'Abogado/a' : 'Postulante'}</button>`
+    : '';
+  const cont = q('perfilContinuar');
+  if(cont) cont.onclick = ()=> elegirPerfil(p.rol, p.nombre);
+  _perfilRol = '';
+  q('perfilPaso2').hidden = true;
+  ovl.querySelectorAll('.perfil-rol').forEach(b => b.classList.remove('activo'));
+  ovl.hidden = false;
+  (cont || ovl.querySelector('.perfil-rol')).focus();
+}
+function elegirRolPerfil(rol){
+  _perfilRol = rol;
+  const ovl = q('perfilOverlay');
+  ovl.querySelectorAll('.perfil-rol').forEach(b => b.classList.toggle('activo', b.dataset.rol === rol));
+  q('perfilPregunta').textContent = rol === 'abogado' ? 'Elige tu nombre (abogado/a de la Unidad):' : 'Elige tu nombre (postulante CAJ):';
+  q('perfilNombres').innerHTML = nombresDePerfil(rol).map(n =>
+    `<button type="button" class="perfil-nombre" data-nombre="${escaparHtml(n.nombre)}">${escaparHtml(n.nombre)}${n.sigla ? '<b>' + escaparHtml(n.sigla) + '</b>' : ''}</button>`).join('');
+  q('perfilPaso2').hidden = false;
+  q('perfilOtro').value = '';
+}
+
+function elegirPerfil(rol, nombre){
+  nombre = String(nombre || '').trim();
+  if(!rol || !nombre) return;
+  try{ localStorage.setItem(PERFIL_CLAVE, JSON.stringify({rol, nombre})); }catch(e){}
+  q('perfilOverlay').hidden = true;
+  aplicarPerfil(true);
+}
+
+/* Elige en una lista de firmas el nombre (o «Otro» y lo escribe). */
+function fijarFirma(selId, inputId, nombre){
+  const sel = q(selId), inp = q(inputId);
+  if(!sel || !inp) return;
+  const op = Array.from(sel.options).find(o => normPerfil(o.value) === normPerfil(nombre));
+  if(op){ sel.value = op.value; inp.style.display = 'none'; inp.value = op.value; }
+  else { sel.value = 'otro'; inp.style.display = 'block'; inp.value = nombre; }
+}
+
+/* Reloj Control: sus perfiles son el primer nombre (kevin, javiera, …). */
+function fijarPerfilReloj(nombre){
+  const clave = normPerfil(String(nombre).split(/\s+/)[0]);
+  if(!clave) return;
+  try{
+    const w = q('relojFrame') && q('relojFrame').contentWindow;
+    const sel = w && w.document && w.document.getElementById('userSelect');
+    if(sel && Array.from(sel.options).some(o => o.value === clave)){
+      if(sel.value !== clave){ sel.value = clave; w.changeUser && w.changeUser(); }
+      return;
+    }
+  }catch(e){}
+  // el reloj aún no carga: queda elegido para cuando cargue
+  try{ localStorage.setItem('gob_bienes_nacionales_active_user', clave); }catch(e){}
+}
+
+function aplicarPerfil(cambio){
+  const p = perfilActual();
+  document.body.dataset.perfil = p.rol || '';
+  const chip = q('perfilChip');
+  if(chip) chip.textContent = p.nombre ? `👤 ${p.nombre.split(/\s+/).slice(0, 2).join(' ')} · ${p.rol === 'abogado' ? 'Abogado/a' : 'Postulante'}` : '👤 Elegir perfil';
+  if(!p.rol) return;
+  if(cambio){
+    if(p.rol === 'postulante'){
+      if(q('modoFirmaUnidad')) q('modoFirmaUnidad').value = 'postulante';
+      fijarFirma('postulanteSelect', 'postulante', p.nombre);
+      fijarPerfilReloj(p.nombre);
+    } else {
+      if(q('modoFirmaUnidad')) q('modoFirmaUnidad').value = 'abogado';
+      fijarFirma('abogadoSelect', 'abogado', p.nombre);
+    }
+    try{ aplicarModoFirmaUnidad(); }catch(e){}
+    try{ generar(); }catch(e){}
+    try{ guardarTodo(); }catch(e){}
+    flashStatus('Perfil: ' + p.nombre + ' (' + (p.rol === 'abogado' ? 'Abogado/a' : 'Postulante') + ')');
+  }
+  // si estaba en una pestaña que el perfil no usa, se vuelve al Informe
+  const tab = activeMainTab();
+  if((p.rol === 'abogado' && tab === 'reloj') || (p.rol !== 'abogado' && tab === 'reporte')){
+    const b = document.querySelector('#mainTabs button[data-tab="informe"]'); if(b) b.click();
+  }
+  if(typeof RP !== 'undefined') RP.render();
+}
+
+window.addEventListener('load', ()=>{
+  const ovl = q('perfilOverlay'); if(!ovl) return;
+  ovl.addEventListener('click', e=>{
+    const rol = e.target.closest('.perfil-rol'); if(rol){ elegirRolPerfil(rol.dataset.rol); return; }
+    const nom = e.target.closest('.perfil-nombre'); if(nom){ elegirPerfil(_perfilRol, nom.dataset.nombre); return; }
+    if(e.target.closest('#perfilOtroOk')) elegirPerfil(_perfilRol, val('perfilOtro'));
+  });
+  q('perfilOtro').addEventListener('keydown', e=>{ if(e.key === 'Enter') elegirPerfil(_perfilRol, val('perfilOtro')); });
+  aplicarPerfil(false);
+  abrirPerfil();      // se pregunta cada vez que se abre el archivo
+});
+
+/* ============================================================
+   REPORTE (perfil Abogado/a)
+   Mismo formato del Excel «reporte»: FOLIO · CONVENIO · TAREA · FECHA
+   ASIGNACIÓN · ABOGADO · ESTADO · RESULTADO · FECHA ENVÍO A FIRMA.
+   Filas a mano, desde el expediente actual o importadas de un Excel con
+   ese formato; exporta a Excel, PDF o Word, semanal, mensual o todo.
+   ============================================================ */
+const RP = (()=>{
+  const COLS = [
+    {k: 'folio', t: 'FOLIO', ancho: 11, w: 1300},
+    {k: 'convenio', t: 'CONVENIO', ancho: 17.3, w: 1700},
+    {k: 'tarea', t: 'TAREA', ancho: 22, w: 1900},
+    {k: 'asignacion', t: 'FECHA ASIGNACIÓN', ancho: 23.1, w: 1900},
+    {k: 'abogado', t: 'ABOGADO', ancho: 27, w: 2700},
+    {k: 'estado', t: 'ESTADO', ancho: 18, w: 1500},
+    {k: 'resultado', t: 'RESULTADO', ancho: 16.1, w: 1500},
+    {k: 'envio', t: 'FECHA ENVÍO A FIRMA', ancho: 45.7, w: 3100}
+  ];
+  const filas = ()=> (Array.isArray(state.reporte) ? state.reporte : (state.reporte = []));
+  const yo = ()=> (perfilActual().nombre || val('abogado') || '').trim();
+  const hoyISO = ()=> new Date().toISOString().slice(0, 10);
+  const ddmm = iso => iso ? iso.slice(8, 10) + '-' + iso.slice(5, 7) : '';
+  const fechaTxt = iso => iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.slice(8, 10) + '-' + iso.slice(5, 7) + '-' + iso.slice(0, 4) : (iso || '');
+  const guardar = ()=>{ try{ guardarTodo(); }catch(e){} };
+  const estado = t => { const s = q('rpStatus'); if(s) s.textContent = t; };
+
+  /* «enviada 10-11», «10/11/2026»… -> fecha ISO (el año, de la asignación). */
+  function fechaEnvio(f){
+    const m = String(f.envio || '').match(/(\d{1,2})[-\/.](\d{1,2})(?:[-\/.](\d{2,4}))?/);
+    if(!m) return '';
+    let anio = m[3] ? +m[3] : (f.asignacion ? +f.asignacion.slice(0, 4) : new Date().getFullYear());
+    if(anio < 100) anio += 2000;
+    const d = new Date(anio, +m[2] - 1, +m[1]);
+    if(isNaN(d) || d.getMonth() !== +m[2] - 1) return '';
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function fechaPeriodo(f){
+    return val('rpSegun') === 'asignacion' ? (f.asignacion || '') : (fechaEnvio(f) || f.asignacion || '');
+  }
+  /* Semana ISO «2026-W46» -> [lunes, domingo] */
+  function rangoSemana(v){
+    const m = String(v || '').match(/^(\d{4})-W(\d{2})$/); if(!m) return null;
+    const ene4 = new Date(Date.UTC(+m[1], 0, 4));
+    const lunes = new Date(ene4); lunes.setUTCDate(ene4.getUTCDate() - ((ene4.getUTCDay() + 6) % 7) + (+m[2] - 1) * 7);
+    const dom = new Date(lunes); dom.setUTCDate(lunes.getUTCDate() + 6);
+    return [lunes.toISOString().slice(0, 10), dom.toISOString().slice(0, 10)];
+  }
+  function semanaDe(d){
+    const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dia = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - dia + 3);
+    const ene = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+    const n = 1 + Math.round(((t - ene) / 864e5 - 3 + ((ene.getUTCDay() + 6) % 7)) / 7);
+    return t.getUTCFullYear() + '-W' + String(n).padStart(2, '0');
+  }
+  function rango(){
+    const p = val('rpPeriodo');
+    if(p === 'semanal') return rangoSemana(val('rpSemana'));
+    if(p === 'mensual'){
+      const m = String(val('rpMes')).match(/^(\d{4})-(\d{2})$/); if(!m) return null;
+      const fin = new Date(Date.UTC(+m[1], +m[2], 0)).toISOString().slice(0, 10);
+      return [m[1] + '-' + m[2] + '-01', fin];
+    }
+    return null;
+  }
+  function textoPeriodo(){
+    const r = rango(), p = val('rpPeriodo');
+    if(!r) return 'Todos los registros';
+    if(p === 'mensual'){
+      const [a, m] = r[0].split('-');
+      const mes = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][+m - 1];
+      return 'Mes de ' + mes + ' de ' + a;
+    }
+    return 'Semana del ' + fechaTxt(r[0]) + ' al ' + fechaTxt(r[1]);
+  }
+  function enPeriodo(f){
+    if(val('rpQuien') !== 'todos' && yo() && normPerfil(f.abogado || '') !== normPerfil(yo())) return false;
+    const r = rango(); if(!r) return true;
+    const d = fechaPeriodo(f);
+    return !!d && d >= r[0] && d <= r[1];
+  }
+  const seleccion = ()=> filas().filter(enPeriodo);
+
+  /* ---------- pantalla ---------- */
+  function render(){
+    const tabla = q('rpTabla'); if(!tabla) return;
+    if(!val('rpSemana')) q('rpSemana').value = semanaDe(new Date());
+    if(!val('rpMes')) q('rpMes').value = new Date().toISOString().slice(0, 7);
+    const p = val('rpPeriodo');
+    q('rpSemanaCampo').hidden = p !== 'semanal';
+    q('rpMesCampo').hidden = p !== 'mensual';
+    q('rpAbogadoLbl').textContent = 'Abogado/a: ' + (yo() || '—') + ' · formato del Excel «reporte»';
+    const esc = escaparHtml;
+    const opt = (v, sel) => `<option value="${esc(v)}"${v === sel ? ' selected' : ''}>${esc(v || '—')}</option>`;
+    tabla.innerHTML = '<thead><tr>' + COLS.map(c => `<th>${c.t}</th>`).join('') + '<th style="width:34px"></th></tr></thead><tbody>'
+      + filas().map((f, i)=>{
+        const cls = [enPeriodo(f) ? '' : 'fuera', /^pos/i.test(f.resultado) ? 'pos' : (/^neg/i.test(f.resultado) ? 'neg' : '')].join(' ');
+        return `<tr class="${cls}" data-i="${i}">`
+          + `<td><input data-rp="folio" value="${esc(f.folio)}" inputmode="numeric"></td>`
+          + `<td><input data-rp="convenio" value="${esc(f.convenio)}" list="rpConvenios"></td>`
+          + `<td><input data-rp="tarea" value="${esc(f.tarea)}" list="rpTareas"></td>`
+          + `<td><input type="date" data-rp="asignacion" value="${esc(f.asignacion)}"></td>`
+          + `<td><input data-rp="abogado" value="${esc(f.abogado)}"></td>`
+          + `<td><select data-rp="estado">${['', 'Terminada', 'En proceso', 'Pendiente'].map(v => opt(v, f.estado)).join('')}${f.estado && !['Terminada','En proceso','Pendiente'].includes(f.estado) ? opt(f.estado, f.estado) : ''}</select></td>`
+          + `<td><select data-rp="resultado">${['', 'Positiva', 'Negativa'].map(v => opt(v, f.resultado)).join('')}</select></td>`
+          + `<td style="display:flex;gap:2px"><input data-rp="envio" value="${esc(f.envio)}" list="rpEnvios" placeholder="enviada dd-mm"><button type="button" class="btn btn-outline btn-sm" style="padding:2px 6px" title="Enviada hoy" data-rp-hoy="${i}">hoy</button></td>`
+          + `<td><button type="button" class="btn btn-outline btn-sm" style="padding:2px 7px" title="Quitar" data-rp-quitar="${i}">✕</button></td></tr>`;
+      }).join('') + '</tbody>';
+    resumen();
+  }
+  function resumen(){
+    const s = seleccion();
+    const cuenta = fn => s.filter(fn).length;
+    const tareas = {};
+    s.forEach(f => { const t = String(f.tarea || '—').toUpperCase().trim(); tareas[t] = (tareas[t] || 0) + 1; });
+    q('rpResumen').innerHTML = [
+      ['En el reporte', s.length], ['Terminadas', cuenta(f => /^termin/i.test(f.estado))],
+      ['Positivas', cuenta(f => /^pos/i.test(f.resultado))], ['Negativas', cuenta(f => /^neg/i.test(f.resultado))],
+      ['Enviadas a firma', cuenta(f => /envi/i.test(f.envio) && !/pendiente/i.test(f.envio))]
+    ].map(([t, n]) => `<div><b>${n}</b>${t}</div>`).join('')
+      + (Object.keys(tareas).length ? `<div style="flex:1;min-width:200px"><b style="font-size:12px">Por tarea</b>${Object.entries(tareas).map(([t, n]) => escaparHtml(t) + ': ' + n).join(' · ')}</div>` : '');
+    estado(textoPeriodo() + ' · ' + s.length + ' de ' + filas().length + ' fila(s) entran en el reporte.');
+  }
+
+  function agregarFila(datos){
+    filas().push(Object.assign({folio: '', convenio: 'FNDR', tarea: '', asignacion: hoyISO(), abogado: yo(), estado: 'Terminada', resultado: '', envio: ''}, datos || {}));
+    render(); guardar();
+    const ult = q('rpTabla').querySelector('tbody tr:last-child input'); if(ult) ult.focus();
+  }
+  function tareaActual(){
+    const tab = state.ultimaTabDoc || activeMainTab();
+    if(/Rectificatoria/.test(tab)) return 'RECTIFICATORIA';
+    if(/Fallecimiento/.test(tab)) return 'FALLECIMIENTO';
+    if(/Rep$/.test(tab)) return 'REPOSICIÓN';
+    if(tab === 'jerarquico') return 'JERÁRQUICO';
+    if(/C$/.test(tab)) return 'C';
+    if(/B$/.test(tab) || tab === 'posesion') return 'B';
+    return 'A';
+  }
+  function resultadoActual(t){
+    try{
+      if(t === 'A') return state.resultado === 'no' ? 'Negativa' : 'Positiva';
+      if(t === 'B') return esBPositivo() ? 'Positiva' : 'Negativa';
+      if(t === 'C') return esCPositiva() ? 'Positiva' : 'Negativa';
+      if(t === 'REPOSICIÓN') return esRepAcoge() ? 'Positiva' : 'Negativa';
+    }catch(e){}
+    return '';
+  }
+  function agregarExpedienteActual(){
+    const folio = String(val('expN') || '').trim();
+    if(!folio){ estado('Escribe primero el N° de expediente en «Datos del expediente».'); return; }
+    const t = tareaActual();
+    agregarFila({folio, tarea: t, resultado: resultadoActual(t)});
+    estado('✓ Expediente ' + folio + ' agregado (' + t + ').');
+  }
+
+  /* ---------- importar Excel ---------- */
+  async function importarExcel(input){
+    const archivo = input.files && input.files[0]; input.value = '';
+    if(!archivo) return;
+    try{
+      const entradas = await zipLeerBytes(new Uint8Array(await archivo.arrayBuffer()));
+      const leer = async n => { try{ return await zipTexto(entradas, n); }catch(e){ return ''; } };
+      const ss = await leer('xl/sharedStrings.xml');
+      const comunes = [...ss.matchAll(/<si>([\s\S]*?)<\/si>/g)].map(m => [...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map(x => x[1]).join(''))
+        .map(t => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&'));
+      const hoja = await leer('xl/worksheets/sheet1.xml');
+      if(!hoja) throw new Error('el archivo no tiene una hoja legible');
+      const tabla = [...hoja.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)].map(r => {
+        const fila = [];
+        [...r[1].matchAll(/<c r="([A-Z]+)\d+"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)].forEach(c => {
+          const col = c[1].split('').reduce((a, ch) => a * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+          const tipo = (c[2].match(/t="([^"]+)"/) || [])[1];
+          const v = ((c[3] || '').match(/<v>([\s\S]*?)<\/v>/) || [])[1];
+          const is = ((c[3] || '').match(/<t[^>]*>([\s\S]*?)<\/t>/) || [])[1];
+          fila[col] = tipo === 's' ? comunes[+v] : (tipo === 'inlineStr' ? is : v);
+        });
+        return fila;
+      });
+      const cab = (tabla[0] || []).map(t => normPerfil(t).replace(/\s+/g, ' ').trim());
+      const idx = k => cab.findIndex(t => t.startsWith(k));
+      const pos = {folio: idx('folio'), convenio: idx('convenio'), tarea: idx('tarea'), asignacion: idx('fecha asig'),
+        abogado: idx('abogado'), estado: idx('estado'), resultado: idx('resultado'), envio: idx('fecha envio')};
+      if(pos.folio < 0) throw new Error('no encontré la columna FOLIO en la primera fila');
+      const serial = v => { const n = +v; if(!n || isNaN(n)) return /^\d{4}-\d{2}-\d{2}/.test(v || '') ? v.slice(0, 10) : ''; return new Date(Date.UTC(1899, 11, 30) + n * 864e5).toISOString().slice(0, 10); };
+      let nuevas = 0, repetidas = 0;
+      tabla.slice(1).forEach(f => {
+        const g = k => pos[k] >= 0 ? String(f[pos[k]] == null ? '' : f[pos[k]]).trim() : '';
+        if(!g('folio')) return;
+        const fila = {folio: g('folio'), convenio: g('convenio'), tarea: g('tarea').toUpperCase(), asignacion: serial(g('asignacion')),
+          abogado: g('abogado') || yo(), estado: g('estado') ? g('estado')[0].toUpperCase() + g('estado').slice(1).toLowerCase() : '', resultado: g('resultado'), envio: g('envio')};
+        const igual = filas().some(x => x.folio === fila.folio && x.tarea === fila.tarea && x.asignacion === fila.asignacion && (x.envio || '') === fila.envio);
+        if(igual){ repetidas++; return; }
+        filas().push(fila); nuevas++;
+      });
+      render(); guardar();
+      estado('✓ Importadas ' + nuevas + ' fila(s)' + (repetidas ? ' · ' + repetidas + ' ya estaban' : '') + '.');
+    }catch(err){ console.error(err); estado('No se pudo leer el Excel: ' + err.message); }
+  }
+
+  /* ---------- exportar ---------- */
+  const titulo = ()=> 'REPORTE ' + (val('rpPeriodo') === 'semanal' ? 'SEMANAL' : val('rpPeriodo') === 'mensual' ? 'MENSUAL' : 'GENERAL');
+  const nombreArchivo = ext => 'Reporte_' + (val('rpPeriodo') === 'semanal' ? (val('rpSemana') || 'semanal') : val('rpPeriodo') === 'mensual' ? (val('rpMes') || 'mensual') : 'general')
+    + '_' + (yo() || 'abogado').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').split(/\s+/).slice(0, 2).join('_') + '.' + ext;   // sin tildes: algunos navegadores lo descargan como «download»
+  const valorCelda = (f, k) => k === 'asignacion' ? fechaTxt(f.asignacion) : (f[k] || '');
+  function descargar(blob, nombre){
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+  function lineaResumen(s){
+    const c = fn => s.filter(fn).length;
+    return `Total: ${s.length} · Terminadas: ${c(f => /^termin/i.test(f.estado))} · Positivas: ${c(f => /^pos/i.test(f.resultado))} · Negativas: ${c(f => /^neg/i.test(f.resultado))} · Enviadas a firma: ${c(f => /envi/i.test(f.envio) && !/pendiente/i.test(f.envio))}`;
+  }
+
+  async function exportar(tipo){
+    const s = seleccion();
+    if(!s.length){ estado('No hay filas en el período elegido.'); return; }
+    if(tipo !== 'pdf' && !soportaZip()){ estado(AVISO_NAVEGADOR); return; }
+    try{
+      if(tipo === 'xlsx') descargar(await xlsx(s), nombreArchivo('xlsx'));
+      else if(tipo === 'docx') descargar(await docx(s), nombreArchivo('docx'));
+      else pdf(s);
+      if(tipo !== 'pdf') estado('✓ ' + titulo() + ' exportado (' + s.length + ' fila(s)).');
+    }catch(err){ console.error(err); estado('No se pudo exportar: ' + err.message); }
+  }
+
+  /* Excel con el mismo formato del «reporte»: mismas columnas y anchos,
+     bordes finos, títulos centrados y cuerpo en Verdana. */
+  async function xlsx(s){
+    const col = i => String.fromCharCode(65 + i);
+    const celda = (ref, v, est) => `<c r="${ref}" t="inlineStr" s="${est}"><is><t xml:space="preserve">${xmlEscape(String(v))}</t></is></c>`;
+    const filasXml = ['<row r="1">' + COLS.map((c, i) => celda(col(i) + '1', c.t, i === 7 ? 3 : 1)).join('') + '</row>']
+      .concat(s.map((f, n) => `<row r="${n + 2}">` + COLS.map((c, i) => {
+        const ref = col(i) + (n + 2);
+        if(c.k === 'folio' && /^\d+$/.test(f.folio)) return `<c r="${ref}" s="2"><v>${f.folio}</v></c>`;
+        if(c.k === 'asignacion' && /^\d{4}-\d{2}-\d{2}$/.test(f.asignacion)){
+          const serial = Math.round((Date.UTC(+f.asignacion.slice(0, 4), +f.asignacion.slice(5, 7) - 1, +f.asignacion.slice(8, 10)) - Date.UTC(1899, 11, 30)) / 864e5);
+          return `<c r="${ref}" s="4"><v>${serial}</v></c>`;
+        }
+        return celda(ref, f[c.k] || '', 2);
+      }).join('') + '</row>')).join('');
+    const hoja = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+      + '<cols>' + COLS.map((c, i) => `<col min="${i + 1}" max="${i + 1}" width="${c.ancho}" customWidth="1"/>`).join('') + '</cols>'
+      + '<sheetData>' + filasXml + '</sheetData></worksheet>';
+    const borde = '<border><left style="thin"><color auto="1"/></left><right style="thin"><color auto="1"/></right><top style="thin"><color auto="1"/></top><bottom style="thin"><color auto="1"/></bottom><diagonal/></border>';
+    const estilos = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      + '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+      + '<numFmts count="1"><numFmt numFmtId="164" formatCode="dd\\-mm\\-yyyy"/></numFmts>'
+      + '<fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><sz val="12"/><name val="Verdana"/></font></fonts>'
+      + '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>'
+      + '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' + borde + '</borders>'
+      + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+      + '<cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+      + '<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+      + '<xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+      + '<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>'
+      + '<xf numFmtId="164" fontId="2" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
+      + '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+    const NS_R = 'http://schemas.openxmlformats.org/package/2006/relationships';
+    const NS_OD = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    const partes = [
+      ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
+        + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+        + '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+      ['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${NS_R}"><Relationship Id="rId1" Type="${NS_OD}/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+      ['xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="' + NS_OD + '"><sheets><sheet name="Hoja1" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+      ['xl/_rels/workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${NS_R}"><Relationship Id="rId1" Type="${NS_OD}/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="${NS_OD}/styles" Target="styles.xml"/></Relationships>`],
+      ['xl/styles.xml', estilos],
+      ['xl/worksheets/sheet1.xml', hoja]
+    ];
+    const entradas = [];
+    for(const [n, c] of partes) entradas.push(await zipEntradaTexto(n, c));
+    return zipEscribir(entradas, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  }
+
+  async function docx(s){
+    const ancho = COLS.reduce((a, c) => a + c.w, 0);
+    const celda = (t, o) => `<w:tc><w:tcPr><w:tcW w:w="${o.w}" w:type="dxa"/>${o.fondo ? '<w:shd w:val="clear" w:color="auto" w:fill="' + o.fondo + '"/>' : ''}<w:vAlign w:val="center"/></w:tcPr>`
+      + `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:r>${o.b ? '<w:rPr><w:b/>' + (o.color ? '<w:color w:val="' + o.color + '"/>' : '') + '</w:rPr>' : ''}<w:t xml:space="preserve">${xmlEscape(String(t))}</w:t></w:r></w:p></w:tc>`;
+    const bordes = '<w:tblBorders>' + ['top','left','bottom','right','insideH','insideV'].map(b => `<w:${b} w:val="single" w:sz="4" w:space="0" w:color="808080"/>`).join('') + '</w:tblBorders>';
+    const tabla = `<w:tbl><w:tblPr><w:tblW w:w="${ancho}" w:type="dxa"/><w:jc w:val="center"/>${bordes}</w:tblPr><w:tblGrid>${COLS.map(c => `<w:gridCol w:w="${c.w}"/>`).join('')}</w:tblGrid>`
+      + '<w:tr><w:trPr><w:tblHeader/></w:trPr>' + COLS.map(c => celda(c.t, {w: c.w, b: true, fondo: '2C3E50', color: 'FFFFFF'})).join('') + '</w:tr>'
+      + s.map(f => '<w:tr>' + COLS.map(c => celda(valorCelda(f, c.k), {w: c.w})).join('') + '</w:tr>').join('') + '</w:tbl>';
+    const par = (t, o) => `<w:p><w:pPr>${o.jc ? '<w:jc w:val="' + o.jc + '"/>' : ''}<w:spacing w:after="${o.after || 80}"/></w:pPr><w:r><w:rPr>${o.b ? '<w:b/>' : ''}<w:sz w:val="${o.sz || 18}"/></w:rPr><w:t xml:space="preserve">${xmlEscape(t)}</w:t></w:r></w:p>`;
+    const doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+      + par(titulo(), {jc: 'center', b: true, sz: 26, after: 60})
+      + par('Unidad de Regularización · SEREMI de Bienes Nacionales, Región del Maule', {jc: 'center', sz: 16, after: 60})
+      + par('Abogado/a: ' + (yo() || '—') + '   ·   ' + textoPeriodo(), {jc: 'center', sz: 18, after: 200})
+      + tabla
+      + par(lineaResumen(s), {sz: 16, after: 0}).replace('<w:pPr>', '<w:pPr><w:spacing w:before="200"/>')
+      + '<w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr></w:body></w:document>';
+    const NS_R = 'http://schemas.openxmlformats.org/package/2006/relationships';
+    const NS_OD = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    const TIPO = 'application/vnd.openxmlformats-officedocument.wordprocessingml';
+    const partes = [
+      ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
+        + `<Override PartName="/word/document.xml" ContentType="${TIPO}.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="${TIPO}.styles+xml"/></Types>`],
+      ['_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${NS_R}"><Relationship Id="rId1" Type="${NS_OD}/officeDocument" Target="word/document.xml"/></Relationships>`],
+      ['word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${NS_R}"><Relationship Id="rId1" Type="${NS_OD}/styles" Target="styles.xml"/></Relationships>`],
+      ['word/styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Verdana" w:hAnsi="Verdana" w:cs="Verdana"/><w:sz w:val="18"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>'],
+      ['word/document.xml', doc]
+    ];
+    const entradas = [];
+    for(const [n, c] of partes) entradas.push(await zipEntradaTexto(n, c));
+    return zipEscribir(entradas, MIME_DOCX);
+  }
+
+  /* PDF: mismo mecanismo que la Bitácora (diálogo de impresión → Guardar como PDF). */
+  function pdf(s){
+    const cont = q('bitacoraImpresion'); if(!cont) return;
+    cont.innerHTML = '<h1>' + escaparHtml(titulo()) + '</h1>'
+      + '<p style="text-align:center;font-size:9pt;margin:0 0 4pt">Unidad de Regularización · SEREMI de Bienes Nacionales, Región del Maule</p>'
+      + '<p style="text-align:center;font-size:9.5pt;margin:0 0 8pt">Abogado/a: ' + escaparHtml(yo() || '—') + ' · ' + escaparHtml(textoPeriodo()) + '</p>'
+      + '<table><thead><tr>' + COLS.map(c => '<th style="text-align:center">' + c.t + '</th>').join('') + '</tr></thead><tbody>'
+      + s.map(f => '<tr>' + COLS.map(c => '<td style="text-align:center">' + escaparHtml(valorCelda(f, c.k)) + '</td>').join('') + '</tr>').join('')
+      + '</tbody></table><p class="bit-pie">' + escaparHtml(lineaResumen(s)) + '</p>';
+    estado('Se abrió el diálogo de impresión: elige «Guardar como PDF» como destino.');
+    const t = document.title; document.title = nombreArchivo('pdf').replace(/\.pdf$/, '');
+    window.print();
+    setTimeout(() => { document.title = t; }, 1000);
+  }
+
+  /* Desde Asignaciones: al derivar a firma, si el folio está en el reporte
+     se anota «enviada dd-mm» en esa fila. */
+  function marcarEnviada(folio){
+    const cand = filas().filter(x => String(x.folio).trim() === String(folio).trim());
+    const f = cand.filter(x => !String(x.envio || '').trim() || /pendiente/i.test(x.envio)).pop();
+    if(!f) return false;
+    f.envio = 'enviada ' + ddmm(hoyISO());
+    render(); guardar();
+    return true;
+  }
+
+  function init(){
+    const tabla = q('rpTabla'); if(!tabla || tabla.dataset.init) return;
+    tabla.dataset.init = '1';
+    const fijar = el => { const tr = el.closest('tr[data-i]'); if(!tr) return; const f = filas()[+tr.dataset.i]; if(!f) return; f[el.dataset.rp] = el.value; guardar(); };
+    tabla.addEventListener('input', e => { const el = e.target.closest('[data-rp]'); if(el && el.tagName !== 'SELECT'){ fijar(el); resumen(); } });
+    tabla.addEventListener('change', e => { const el = e.target.closest('[data-rp]'); if(el){ fijar(el); render(); } });
+    tabla.addEventListener('click', e => {
+      const qu = e.target.closest('[data-rp-quitar]');
+      if(qu){ filas().splice(+qu.dataset.rpQuitar, 1); render(); guardar(); return; }
+      const h = e.target.closest('[data-rp-hoy]');
+      if(h){ const f = filas()[+h.dataset.rpHoy]; if(f){ f.envio = 'enviada ' + ddmm(hoyISO()); render(); guardar(); } }
+    });
+  }
+  function vaciar(){
+    if(!filas().length || !confirm('¿Borrar todas las filas del reporte?')) return;
+    state.reporte = []; render(); guardar();
+  }
+
+  return {init, render, agregarFila, agregarExpedienteActual, importarExcel, exportar, vaciar, marcarEnviada, seleccion, _rango: rango};
+})();
+
+/* ============================================================
    SUPERIOR JERÁRQUICO — Minuta tipo de informe de descargos
    (para elevar con el recurso jerárquico, Art. 59 Ley N° 19.880)
 
@@ -16961,6 +17545,7 @@ function tareaDerivadoAFirma(info){
       numero: '', nota: [tabla, info.etapa].filter(Boolean).join(' · '), origen: 'asignaciones', datos
     });
     msg = '✓ Tarea «' + TAREA_DERIVADO_FIRMA + '» agregada a la bitácora (exp. ' + exp + ').';
+    try{ if(RP.marcarEnviada(exp)) msg += ' En el Reporte quedó como enviada.'; }catch(e){}
   } else {
     const antes = state.bitacora.length;
     state.bitacora = state.bitacora.filter(t => !(esta(t) && t.origen === 'asignaciones'));
@@ -17744,6 +18329,7 @@ function guardarAhora(){
         masivoFilas: state.masivoFilas,
         conservadorFilas: state.conservadorFilas,
         cuotaHer: state.cuotaHer,
+        reporte: state.reporte,
         /* ediciones manuales por párrafo de cada documento */
         docEdits: state.docEdits
       }
@@ -18090,6 +18676,7 @@ function restaurarTodo(){
     if(Array.isArray(est.masivoFilas)) state.masivoFilas = est.masivoFilas;
     if(Array.isArray(est.conservadorFilas)) state.conservadorFilas = est.conservadorFilas;
     if(est.cuotaHer && typeof est.cuotaHer === 'object') state.cuotaHer = est.cuotaHer;
+    if(Array.isArray(est.reporte)) state.reporte = est.reporte;
     if(Array.isArray(est.jqFilas) && est.jqFilas.length) state.jqFilas = est.jqFilas;
 
     // 2) el modo de adquisición crea campos dinámicos: primero se fija el
