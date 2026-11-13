@@ -699,6 +699,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
     <button type="button" class="otros-causa" aria-expanded="false" aria-controls="otrosRectificatoria">Rectificatoria</button>
 
     <button type="button" class="otros-directo" data-tab="cuotaHereditaria">Cuota hereditaria</button>
+    <button type="button" class="otros-directo" data-tab="campamentos">Campamentos Serviu</button>
 
   </div>
 
@@ -1910,6 +1911,58 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
 
 <!-- ================= OFICIOS (Word) ================= -->
 <!-- ================= BITÁCORA Y PADRÓN DE EXPEDIENTES ================= -->
+<!-- ================= CAMPAMENTOS SERVIU (Región del Maule) ================= -->
+<style>
+  #campView{padding:14px 16px;}
+  .cp-barra{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:0 0 10px;}
+  .cp-barra .field{margin:0;}
+  .cp-tabla{width:100%;border-collapse:collapse;font-size:13px;}
+  .cp-tabla th{background:#2c3e50;color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:6px;text-align:left;}
+  .cp-tabla td{border-bottom:1px solid #e6e2d3;padding:5px 6px;vertical-align:top;}
+  .cp-tabla td.num{font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .cp-reg{font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;white-space:nowrap;}
+  .cp-reg.v{background:#fdecea;color:#8f2a1f;} .cp-reg.h{background:#eef1f5;color:#4b5868;}
+  .cp-ovl{position:fixed;inset:0;z-index:5100;background:rgba(10,22,40,.6);display:flex;align-items:center;justify-content:center;padding:16px;}
+  .cp-ovl[hidden]{display:none;}
+  .cp-box{background:#fff;border-radius:12px;max-width:560px;width:100%;padding:20px 22px;box-shadow:0 20px 50px rgba(0,0,0,.4);border-top:6px solid #b8322a;}
+  .cp-box h3{margin:0 0 6px;color:#8f2a1f;font-size:18px;}
+  .cp-box ul{margin:8px 0 10px;padding-left:18px;font-size:13.5px;}
+  .cp-box li{margin:0 0 6px;}
+  .cp-box .hint{font-size:12px;}
+</style>
+<section id="campView" hidden>
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Campamentos Serviu · Región del Maule</h2>
+      <span class="hint">Catastro Nacional de Campamentos al 27-02-2026 · Res. Ex. N° 377 (V. y U.), de 09-03-2026</span>
+    </div>
+    <div class="panel-body">
+      <p class="hint" style="margin:0 0 10px;font-size:12.5px">Si en <b>Dirección / sector</b>, <b>Ubicación / nombre del predio</b>, <b>Comité / Loteo</b> o <b>lugar del inmueble</b> escribes un nombre que coincide con uno de estos campamentos (en la misma comuna, o si aún no eliges comuna), aparece un aviso de que el inmueble <b>podría ser un campamento</b>.</p>
+      <div class="cp-barra">
+        <div class="field" style="flex:1;min-width:200px"><label for="cpBuscar">Buscar</label><input type="text" id="cpBuscar" data-temporal placeholder="Nombre, folio o comuna" oninput="CAMP.render()"></div>
+        <div class="field"><label for="cpRegistro">Registro</label><select id="cpRegistro" data-temporal onchange="CAMP.render()"><option value="">Vigente e Histórico</option><option value="V">Vigente</option><option value="H">Histórico</option></select></div>
+        <div class="field"><label for="cpComuna">Comuna</label><select id="cpComuna" data-temporal onchange="CAMP.render()"></select></div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="CAMP.revisarExpediente(true)">🔍 Revisar el expediente actual</button>
+      </div>
+      <p class="status" id="cpStatus" style="margin:0 0 6px"></p>
+      <div style="overflow-x:auto"><table class="cp-tabla" id="cpTabla"></table></div>
+      <p class="hint" style="margin:10px 0 0;font-size:11.5px"><b>Vigente:</b> asentamientos que siguen existiendo (con o sin intervención del Programa). <b>Histórico:</b> fueron parte del Programa y ya no existen como campamento.</p>
+    </div>
+  </section>
+</section>
+<div class="cp-ovl" id="cpAviso" hidden role="alertdialog" aria-modal="true" aria-labelledby="cpAvisoTit">
+  <div class="cp-box">
+    <h3 id="cpAvisoTit">⚠ El inmueble podría ser un campamento</h3>
+    <p style="margin:0;font-size:13.5px" id="cpAvisoTxt"></p>
+    <ul id="cpAvisoLista"></ul>
+    <p class="hint">Fuente: Catastro Nacional de Campamentos del MINVU al 27-02-2026, aprobado por Res. Ex. N° 377 (V. y U.), de 09-03-2026. Verifica con SERVIU antes de continuar.</p>
+    <div class="btn-row" style="margin-top:10px">
+      <button type="button" class="btn btn-primary btn-sm" onclick="CAMP.cerrarAviso()">Entendido</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="CAMP.cerrarAviso(true)">Ver Campamentos Serviu</button>
+    </div>
+  </div>
+</div>
+
 <!-- ================= REPORTE (sólo perfil Abogado/a) ================= -->
 <style>
   #reporteView{padding:14px 16px;}
@@ -7756,10 +7809,12 @@ mainTabs.forEach(btn=>{
     const esReloj = tab === 'reloj';
     const esCuota = tab === 'cuotaHereditaria';
     const esReporte = tab === 'reporte';
+    const esCamp = tab === 'campamentos';
+    q('campView').hidden = !esCamp;
     q('relojView').hidden = !esReloj;
     q('cuotaView').hidden = !esCuota;
     q('reporteView').hidden = !esReporte;
-    const esDoc = !esOficios && !esBitacora && !esAsignaciones && !esReloj && !esCuota && !esReporte;
+    const esDoc = !esOficios && !esBitacora && !esAsignaciones && !esReloj && !esCuota && !esReporte && !esCamp;
     q('asignacionesView').hidden = !esAsignaciones;
     document.querySelector('.layout').style.display = esDoc ? 'grid' : 'none';
     q('oficiosView').style.display   = esOficios  ? 'grid'  : 'none';
@@ -7782,6 +7837,9 @@ mainTabs.forEach(btn=>{
       if(!frame.hasAttribute('srcdoc')) frame.srcdoc = frame.dataset.contenido;
     } else if(esBitacora){
       initBitacora();
+    } else if(esCamp){
+      abrirGrupoNavegacion(q('navGrupo-otros'), false);
+      CAMP.render();
     } else if(esReporte){
       RP.init(); RP.render();
     } else if(esCuota){
@@ -15090,6 +15148,141 @@ const RP = (()=>{
   }
 
   return {init, render, agregarFila, agregarExpedienteActual, agregarFinalizada, importarExcel, exportar, vaciar, marcarEnviada, seleccion, _rango: rango};
+})();
+
+/* ============================================================
+   CAMPAMENTOS SERVIU · REGIÓN DEL MAULE
+   Fuente: Res. Ex. N° 377 (V. y U.), de 09-03-2026, que aprueba el Registro
+   Histórico y el Registro Vigente del Catastro de Asentamientos Precarios
+   del MINVU al 27-02-2026 (filas de la Región del Maule).
+   Si un nombre del inmueble coincide con uno de estos campamentos, se
+   avisa que podría ser un campamento.
+   ============================================================ */
+const CAMP = (()=>{
+  // [registro, folio, nombre, provincia, comuna, alias opcionales]
+  const DATOS = [
+    ['V','720101','Punta De Rieles','Cauquenes','Cauquenes'],
+    ['V','730106','Río Guaiquillo - Obispo Chávez autodenominado (Puerto Príncipe)','Curicó','Curicó',['Río Guaiquillo','Obispo Chávez','Puerto Príncipe']],
+    ['V','730105','Santos Martínez','Curicó','Curicó'],
+    ['V','730401','El Molino','Curicó','Molina'],
+    ['V','730501','El Llano','Curicó','Rauco'],
+    ['V','730801','Sector la Aurora','Curicó','Teno',['La Aurora']],
+    ['V','740502','Nueva Esperanza','Linares','Retiro'],
+    ['V','740504','Pozos Lastre','Linares','Retiro'],
+    ['V','740503','Villa Las Estrellas','Linares','Retiro'],
+    ['V','740802','Villa esperanza','Linares','Yerbas Buenas'],
+    ['V','740801','Villa Esperanza','Linares','Yerbas Buenas'],
+    ['V','710207','Áreas Verdes','Talca','Constitución'],
+    ['V','710214','El Litre','Talca','Constitución'],
+    ['V','710229','Gabriela Mistral','Talca','Constitución'],
+    ['V','710223','Ignacio Carrera Pinto','Talca','Constitución'],
+    ['V','710215','La Mina 1','Talca','Constitución',['La Mina']],
+    ['V','710228','La Mina 2','Talca','Constitución'],
+    ['V','710216','Los Molinos','Talca','Constitución'],
+    ['V','710224','Pangalillo Km4','Talca','Constitución',['Pangalillo']],
+    ['V','710201','Sector Enlace Ruta K-24','Talca','Constitución',['Enlace Ruta K-24']],
+    ['V','710202','Sector Estadio Freire','Talca','Constitución',['Estadio Freire']],
+    ['V','710203','Sector Estadio Interior','Talca','Constitución',['Estadio Interior']],
+    ['V','710230','Sin nombre - 1','Talca','Constitución',[], true],
+    ['V','710221','Terreno Efe','Talca','Constitución',['Terreno EFE']],
+    ['V','710212','Villa Francia','Talca','Constitución'],
+    ['V','710227','Viñales Detrás De Las Letras','Talca','Constitución'],
+    ['V','710402','Avenida Bueras Ex-Línea Férrea','Talca','Empedrado',['Avenida Bueras','Av. Bueras']],
+    ['V','710101','Circunvalación Norte','Talca','Talca'],
+    ['V','710104','René Schnaider','Talca','Talca',['René Schneider']],
+    ['H','730101','San Agustín','Curicó','Curicó'],
+    ['H','730103','Tutuquen Bajo','Curicó','Curicó'],
+    ['H','730201','Ex Línea Férrea','Curicó','Hualañé'],
+    ['H','730202','Cementerio','Curicó','Hualañé'],
+    ['H','740501','Villa Los Copihue','Linares','Retiro',['Villa Los Copihues']],
+    ['H','740601','Toma San Gerónimo Norte','Linares','San Javier',['San Gerónimo Norte']],
+    ['H','740602','Toma Loncomilla','Linares','San Javier'],
+    ['H','740603','San Javier (8 Esperanzas)','Linares','San Javier',['8 Esperanzas','Ocho Esperanzas']],
+    ['H','740604','San Gerónimo de Alderete','Linares','San Javier'],
+    ['H','710204',"Cerro O'Higgins",'Talca','Constitución'],
+    ['H','710206','Viñales 1 "El Esfuerzo De Viñales"','Talca','Constitución',['El Esfuerzo De Viñales']],
+    ['H','710208','Camino Chacarillas','Talca','Constitución'],
+    ['H','710209','Lomas Del Maule','Talca','Constitución'],
+    ['H','710210',"Cerro O'Higgins 2",'Talca','Constitución'],
+    ['H','710213','Las Quiriquinas','Talca','Constitución'],
+    ['H','710217','Triángulo Cementerio','Talca','Constitución'],
+    ['H','710401','Avenida Bueras Frente a Consultorio','Talca','Empedrado'],
+    ['H','710801','Santa Helena Norte','Talca','Río Claro'],
+    ['H','710102','La Esperanza N° 2','Talca','Talca',['La Esperanza 2']],
+    ['H','710103','El Paso','Talca','Talca']
+  ].map(([registro, folio, nombre, provincia, comuna, alias, sinNombre]) => ({registro, folio, nombre, provincia, comuna, alias: alias || [], sinNombre: !!sinNombre}));
+
+  const norm = s => ' ' + String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/n[°ºo]\.?\s*/g, ' ').replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+  const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+  /* Busca campamentos cuyo nombre (o alias) aparezca como palabras completas
+     en el texto. Si se conoce la comuna, sólo los de esa comuna. */
+  function coincidencias(texto, comuna){
+    const t = norm(texto);
+    if(t.trim().length < 3) return [];
+    const c = norm(comuna).trim();
+    return DATOS.filter(d => !d.sinNombre && (!c || norm(d.comuna).trim() === c) &&
+      [d.nombre].concat(d.alias).some(n => { const k = norm(n); return k.trim().length >= 4 && t.includes(k); }));
+  }
+
+  /* ---------- aviso ---------- */
+  const avisados = new Set();
+  function avisar(lista, campo, forzar){
+    if(!lista.length) return false;
+    const clave = (val('expN') || '') + '|' + lista.map(d => d.folio).join(',');
+    if(!forzar && avisados.has(clave)) return false;
+    avisados.add(clave);
+    q('cpAvisoTxt').innerHTML = 'El nombre ingresado' + (campo ? ' en <b>' + esc(campo) + '</b>' : '') + ' coincide con ' + (lista.length === 1 ? 'un campamento' : lista.length + ' campamentos') + ' del Catastro del MINVU en la Región del Maule:';
+    q('cpAvisoLista').innerHTML = lista.map(d => `<li><b>${esc(d.nombre)}</b> · ${esc(d.comuna)} (prov. ${esc(d.provincia)}) · folio ${d.folio} · <span class="cp-reg ${d.registro === 'V' ? 'v' : 'h'}">${d.registro === 'V' ? 'Registro Vigente' : 'Registro Histórico'}</span></li>`).join('');
+    q('cpAviso').hidden = false;
+    q('cpAviso').querySelector('button').focus();
+    return true;
+  }
+  function cerrarAviso(ir){
+    q('cpAviso').hidden = true;
+    if(ir){
+      const g = q('navGrupo-otros'); if(g) abrirGrupoNavegacion(g, false);
+      const b = document.querySelector('#mainTabs button[data-tab="campamentos"]'); if(b) b.click();
+    }
+  }
+
+  const CAMPOS = {
+    ubicacion: {etiqueta: 'Dirección / sector', comuna: 'comuna'},
+    ofUbicacion: {etiqueta: 'Ubicación / nombre del predio', comuna: 'ofComuna'},
+    modoComite: {etiqueta: 'Comité / Loteo', comuna: 'comuna'},
+    modoLugarMayorExt: {etiqueta: 'lugar del inmueble a mayor extensión', comuna: 'comuna'}
+  };
+  function revisarCampo(id, forzar){
+    const cfg = CAMPOS[id]; if(!cfg || !q(id)) return false;
+    return avisar(coincidencias(val(id), q(cfg.comuna) ? val(cfg.comuna) : ''), cfg.etiqueta, forzar);
+  }
+  function revisarExpediente(manual){
+    for(const id of Object.keys(CAMPOS)) if(revisarCampo(id, manual)) return;
+    if(manual) q('cpStatus').textContent = '✓ Ningún nombre del inmueble del expediente actual coincide con los campamentos de la lista.';
+  }
+  // se revisa al terminar de escribir en el campo (al salir de él)
+  document.addEventListener('change', e => { const el = e.target; if(el && el.id && CAMPOS[el.id]) revisarCampo(el.id, false); }, true);
+
+  /* ---------- pestaña ---------- */
+  function render(){
+    const tabla = q('cpTabla'); if(!tabla) return;
+    const selC = q('cpComuna');
+    if(!selC.options.length){
+      const comunas = [...new Set(DATOS.map(d => d.comuna))].sort((a, b) => a.localeCompare(b, 'es'));
+      selC.innerHTML = '<option value="">Todas</option>' + comunas.map(c => `<option>${esc(c)}</option>`).join('');
+    }
+    const b = norm(val('cpBuscar')).trim(), r = val('cpRegistro'), c = val('cpComuna');
+    const lista = DATOS.filter(d => (!r || d.registro === r) && (!c || d.comuna === c) &&
+      (!b || norm(d.nombre + ' ' + d.alias.join(' ') + ' ' + d.folio + ' ' + d.comuna + ' ' + d.provincia).includes(' ' + b)));
+    tabla.innerHTML = '<thead><tr><th>Registro</th><th>Folio</th><th>Nombre del campamento</th><th>Provincia</th><th>Comuna</th></tr></thead><tbody>'
+      + lista.map(d => `<tr><td><span class="cp-reg ${d.registro === 'V' ? 'v' : 'h'}">${d.registro === 'V' ? 'Vigente' : 'Histórico'}</span></td><td class="num">${d.folio}</td><td>${esc(d.nombre)}</td><td>${esc(d.provincia)}</td><td>${esc(d.comuna)}</td></tr>`).join('')
+      + '</tbody>';
+    const v = DATOS.filter(d => d.registro === 'V').length, h = DATOS.length - v;
+    q('cpStatus').textContent = `Mostrando ${lista.length} de ${DATOS.length} campamentos del Maule (${v} vigentes · ${h} históricos).`;
+  }
+
+  return {render, coincidencias, revisarExpediente, cerrarAviso, DATOS};
 })();
 
 /* ============================================================
