@@ -464,6 +464,8 @@
   }
   .mas-fila .mas-acc button:hover{background:#eef2f7;}
   .mas-fila .mas-acc button.del:hover{background:#fde8e8;border-color:#e88;}
+  .mas-fila .mas-insc{margin-top:6px;border-top:1px dashed var(--linea,#d8dee7);padding-top:4px;}
+  .mas-fila .mas-nota{font-size:10.5px;color:#4a6b3a;margin:4px 0 0;}
   .mas-fila label{display:block;font-size:10.5px;color:#5a6a7d;margin:4px 0 2px;}
   .mas-fila input, .mas-fila select{
     width:100%;box-sizing:border-box;font-size:12px;padding:4px 6px;
@@ -11914,8 +11916,11 @@ function renderCbrFilas(){
   cont.innerHTML = '<table style="width:100%;font-size:12px;border-collapse:collapse;table-layout:fixed">'
     + '<colgroup><col style="width:25%"><col style="width:13%"><col style="width:15%"><col style="width:14%"><col style="width:23%"><col style="width:34px"></colgroup><tr>'
     + CBR_COLS.map(([,h])=>'<th style="text-align:left;padding:2px">' + h + '</th>').join('') + '<th></th></tr>'
-    + state.conservadorFilas.map((f, i)=>'<tr>' + CBR_COLS.map(([k])=>
-        '<td style="padding:1px"><input type="text" data-temporal style="width:100%;min-width:0;box-sizing:border-box;padding:3px 3px;font-size:12px" value="' + esc(f[k]) + '"'
+    + state.conservadorFilas.map((f, i)=>'<tr>' + CBR_COLS.map(([k])=> k === 'registro'
+        ? '<td style="padding:1px"><select data-temporal style="width:100%;min-width:0;box-sizing:border-box;padding:3px 2px;font-size:12px" onchange="cbrEditar(' + i + ',\'registro\',this.value)">'
+          + REGISTROS_CBR.concat(REGISTROS_CBR.includes(registroCanon(f.registro)) ? [] : [registroCanon(f.registro)]).map(r => '<option' + (r === registroCanon(f.registro) ? ' selected' : '') + '>' + esc(r) + '</option>').join('')
+          + '</select></td>'
+        : '<td style="padding:1px"><input type="text" data-temporal style="width:100%;min-width:0;box-sizing:border-box;padding:3px 3px;font-size:12px" value="' + esc(f[k]) + '"'
         + ' oninput="cbrEditar(' + i + ',\'' + k + '\',this.value)" onkeydown="cbrTecla(event,' + i + ')"></td>').join('')
       + '<td><button type="button" class="btn btn-outline btn-sm" style="padding:2px 6px" title="Quitar" onclick="cbrQuitarFila(' + i + ')">✕</button></td></tr>').join('')
     + '</table>';
@@ -12019,7 +12024,7 @@ const MASIVO_CAMPOS = [
   /* No se imprime en la tabla del oficio (el destinatario ya la nombra), pero
      es la que permite agrupar las filas por comuna al emitir un DOM por
      comuna: cada expediente puede ser de una comuna distinta. */
-  {k:'comuna',      etiqueta:'COMUNA (Dirección de Obras)', ph:'', select:true}
+  {k:'comuna',      etiqueta:'COMUNA DEL INMUEBLE', ph:'', select:true}
 ];
 
 /* Ancho relativo de las 6 columnas de la tabla de expedientes (EXP. · RUT ·
@@ -12027,6 +12032,82 @@ const MASIVO_CAMPOS = [
    la propia plantilla Word (932, 1574, 1565, 1644, 1573, 1638), para que la
    tabla del PDF real quede proporcionada igual que en el .docx. */
 const MASIVO_ANCHOS_COLUMNAS_TABLA = [932, 1574, 1565, 1644, 1573, 1638];
+
+/* ---------- Inscripción de cada fila del oficio masivo ----------
+   Se escribe por partes (fojas, número, año) y se eligen el registro y el
+   Conservador de un menú; el Conservador se pone solo según la comuna de la
+   fila. Con eso se arma el texto que se imprime en la tabla del oficio. */
+const REGISTROS_CBR = ['Propiedad', 'Hipotecas y Gravámenes', 'Interdicciones y Prohibiciones de Enajenar'];
+const _sinTilde = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+function registroCanon(t){ return REGISTROS_CBR.find(r => _sinTilde(r) === _sinTilde(t)) || (String(t || '').trim() ? String(t).trim() : 'Propiedad'); }
+function cbrCanon(t){ return CBR_MAULE.find(c => _sinTilde(c) === _sinTilde(t)) || String(t || '').trim(); }
+function masInscParse(t){
+  const m = String(t || '').trim().match(/^FOJAS\s+(.*?),\s*N\s*[º°o.]*\s*(.*?)\s+DEL\s+A[ÑN]O\s+(.*?)\s+DEL\s+REGISTRO\s+DE\s+(.*?)\s+DEL\s+CBR\s+DE\s+(.*?)\.?$/i);
+  if(!m) return null;
+  const l = x => /^_*$/.test(String(x).trim()) ? '' : String(x).trim();
+  return {insFojas: l(m[1]), insNum: l(m[2]), insAnio: l(m[3]), insRegistro: registroCanon(l(m[4])), insCbr: cbrCanon(l(m[5]))};
+}
+function masInscTexto(f){
+  if(!f.insFojas && !f.insNum && !f.insAnio && !f.insCbr) return '';
+  return 'FOJAS ' + blank(f.insFojas,'____') + ', Nº ' + blank(f.insNum,'____')
+       + ' DEL AÑO ' + blank(f.insAnio,'____')
+       + ' DEL REGISTRO DE ' + upper(f.insRegistro || 'Propiedad')
+       + ' DEL CBR DE ' + upper(blank(f.insCbr,'____________')) + '.';
+}
+/* Deja la fila con los campos por partes (también las guardadas antes de este
+   cambio o pegadas desde Excel) y recalcula el texto de la inscripción. */
+function masNormalizar(f){
+  if(!f) return f;
+  if(f.insFojas === undefined && !f.insLibre){
+    const r = masInscParse(f.inscripcion);
+    if(r){ Object.assign(f, r); f.insCbrAuto = !r.insCbr; }
+    else if(String(f.inscripcion || '').trim()) f.insLibre = true;
+    else Object.assign(f, {insFojas:'', insNum:'', insAnio:'', insRegistro:'Propiedad', insCbr:'', insCbrAuto:true});
+  }
+  if(f.insLibre) return f;
+  if(!f.insRegistro) f.insRegistro = 'Propiedad';
+  if(f.insCbrAuto !== false){
+    const r = cbrDeComuna(f.comuna);
+    f.insCbr = r ? r.cbr : (f.insCbrAuto ? '' : f.insCbr);
+    f.insCbrAuto = true;
+  }
+  f.inscripcion = masInscTexto(f);
+  return f;
+}
+function masCampoInsc(f, i){
+  const esc = t => String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  if(f.insLibre){
+    return `<label>INSCRIPCIÓN <span style="font-weight:400">(texto pegado · <a href="#" onclick="masInscPorPartes(${i});return false">escribir por partes</a>)</span></label>`
+         + `<input type="text" value="${esc(f.inscripcion)}" data-mas-idx="${i}" data-mas-campo="inscripcion">`;
+  }
+  const inp = (k, et) => `<div><label>${et}</label><input type="text" value="${esc(f[k])}" data-mas-idx="${i}" data-mas-campo="${k}"></div>`;
+  const regs = REGISTROS_CBR.map(r => `<option value="${esc(r)}"${r === f.insRegistro ? ' selected' : ''}>${esc(r)}</option>`).join('')
+    + (REGISTROS_CBR.includes(f.insRegistro) ? '' : `<option selected>${esc(f.insRegistro)}</option>`);
+  const auto = f.insCbrAuto !== false;
+  const cbrs = `<option value=""${auto ? ' selected' : ''}>${auto && f.insCbr ? esc(f.insCbr) + ' (automático)' : 'Automático (por comuna)'}</option>`
+    + CBR_MAULE.map(c => `<option value="${esc(c)}"${!auto && c === f.insCbr ? ' selected' : ''}>${esc(c)}</option>`).join('')
+    + (!auto && f.insCbr && !CBR_MAULE.includes(f.insCbr) ? `<option value="${esc(f.insCbr)}" selected>${esc(f.insCbr)}</option>` : '')
+    + '<option value="__otro">Otro / escribir…</option>';
+  const r = cbrDeComuna(f.comuna);
+  const nota = auto
+    ? (r ? (r.dudoso ? `<p class="mas-nota" style="color:#8a6d1f">⚠ CBR de ${esc(r.cbr)} según la comuna (${esc(r.comuna)}): revisa, esta comuna tiene asignación dudosa.</p>`
+                     : `<p class="mas-nota">✓ CBR de ${esc(r.cbr)} según la comuna.</p>`)
+         : '<p class="mas-nota" style="color:#8a6d1f">Elige la comuna para que el Conservador se ponga solo, o elígelo en el menú.</p>')
+    : '';
+  return `<label>INSCRIPCIÓN</label>
+      <div class="mas-grid3">${inp('insFojas','Fojas')}${inp('insNum','N°')}${inp('insAnio','Año')}</div>
+      <div class="mas-grid3" style="grid-template-columns:1fr 1fr">
+        <div><label>Registro</label><select data-mas-idx="${i}" data-mas-campo="insRegistro">${regs}</select></div>
+        <div><label>Conservador (CBR)</label><select data-mas-idx="${i}" data-mas-campo="insCbr">${cbrs}</select></div>
+      </div>${nota}`;
+}
+function masInscPorPartes(i){
+  const f = state.masivoFilas[i]; if(!f) return;
+  delete f.insLibre; delete f.insFojas;
+  f.inscripcion = '';
+  masNormalizar(f);
+  renderMasivoFilas(); guardarTodo(); previewOficioDiferido();
+}
 
 function masivoFilaVacia(){
   const f = {};
@@ -12094,6 +12175,7 @@ function renderMasivoFilas(){
     return;
   }
 
+  filas.forEach(masNormalizar);
   cont.innerHTML = filas.map((f,i)=>{
     const campo = (c)=>{
       if(c.select){
@@ -12137,11 +12219,11 @@ function renderMasivoFilas(){
         <div>${c.solicitante}</div>
       </div>
       ${c.ubicacion}
-      <div class="mas-grid3" style="grid-template-columns:1fr 2fr">
+      <div class="mas-grid3" style="grid-template-columns:1fr 1fr">
         <div>${c.rol}</div>
-        <div>${c.inscripcion}</div>
+        <div>${c.comuna}</div>
       </div>
-      ${c.comuna}
+      <div class="mas-insc">${masCampoInsc(f, i)}</div>
     </div>`;
   }).join('');
 
@@ -12153,7 +12235,7 @@ function renderMasivoFilas(){
     const k = el.dataset.masCampo;
     const sync = (alSalir)=>{
       if(el.dataset.fmt) aplicarFormato(el, alSalir);
-      if(state.masivoFilas[i]) state.masivoFilas[i][k] = el.value;
+      if(state.masivoFilas[i]){ state.masivoFilas[i][k] = el.value; masNormalizar(state.masivoFilas[i]); }
       guardarTodo();
       previewOficioDiferido();
     };
@@ -12164,8 +12246,19 @@ function renderMasivoFilas(){
     const i = Number(el.dataset.masIdx);
     const k = el.dataset.masCampo;
     el.addEventListener('change', ()=>{
-      if(state.masivoFilas[i]) state.masivoFilas[i][k] = el.value;
+      const f = state.masivoFilas[i];
+      if(f){
+        if(k === 'insCbr'){
+          let v = el.value;
+          if(v === '__otro') v = (prompt('Escribe el Conservador de Bienes Raíces:') || '').trim();
+          if(v && v !== '__otro'){ f.insCbr = cbrCanon(v); f.insCbrAuto = false; }
+          else { f.insCbrAuto = true; }
+        } else f[k] = el.value;
+        masNormalizar(f);
+      }
       guardarTodo();
+      /* El Conservador depende de la comuna: se vuelve a dibujar la fila. */
+      if(k === 'comuna' || k === 'insCbr' || k === 'insRegistro') renderMasivoFilas();
       previewOficioDiferido();
     });
   });
@@ -12227,7 +12320,9 @@ function masivoAgregarDesdeInforme(){
                 + ' DEL CBR DE ' + upper(blank(cbr,'____________')) + '.';
   }
 
-  state.masivoFilas.push({
+  state.masivoFilas.push(masNormalizar({
+    insFojas: fojas, insNum: num, insAnio: anio, insRegistro: 'Propiedad',
+    insCbr: cbrCanon(cbr), insCbrAuto: !cbr,
     exp: val('expN'),
     rut: val('rut'),
     solicitante: upper(val('nombre')),
@@ -12235,7 +12330,7 @@ function masivoAgregarDesdeInforme(){
     rol: rol ? ('ROL N°' + rol + (comunaMay ? ', ' + comunaMay : '') + '.') : '',
     inscripcion: inscripcion,
     comuna: comuna
-  });
+  }));
 
   /* Se sugiere la comuna del expediente: sirve tanto si este oficio va a la DOM
      como para el oficio a la DOM de «los 3 a la vez». */
@@ -12282,6 +12377,7 @@ function datosOficioMasivo(filasPropias, destinatarioPropio){
   const filas = (filasPropias && filasPropias.length)
     ? filasPropias
     : (state.masivoFilas.length ? state.masivoFilas : [masivoFilaVacia()]);
+  filas.forEach(masNormalizar);
   const varios = filas.length > 1;
 
   /* Concordancia de género y número de la frase de apertura. Con un solo
@@ -12414,7 +12510,9 @@ function filaMasivaConDatos(exp, datos){
     exp, rut: datos.rut || '', solicitante: upper(datos.nombre || ''),
     ubicacion: datos.ubicacion ? upper(datos.ubicacion) + (comunaMay ? ', ' + comunaMay + '.' : '') : '',
     rol: rol ? 'ROL N°' + rol + (comunaMay ? ', ' + comunaMay : '') + '.' : '',
-    inscripcion: inscripcionTexto(datos), comuna
+    inscripcion: inscripcionTexto(datos), comuna,
+    insFojas: datos.fojas || '', insNum: datos.numInsc || '', insAnio: datos.anioInsc || '',
+    insRegistro: 'Propiedad', insCbr: cbrCanon(datos.cbr || ''), insCbrAuto: !datos.cbr
   };
 }
 
