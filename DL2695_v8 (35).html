@@ -526,6 +526,10 @@
   .calc-utm > div{flex:1;min-width:0;}
   .calc-utm small{display:block;color:var(--tinta-suave);font-size:11px;}
   .calc-utm input{flex-basis:100%;}
+  .aval-resumen{border:1px solid #e3dfce;border-radius:9px;background:#fbfaf4;padding:9px 10px;display:grid;gap:7px;}
+  .aval-linea{font-family:var(--mono);font-size:11.5px;color:var(--tinta-suave);line-height:1.45;}
+  .aval-tope{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;}
+  .aval-tope b{font-family:var(--serif);font-size:15px;}
   .calc-inline summary{cursor:pointer;font-weight:700;font-size:12.5px;color:var(--azul-900);list-style:none;}
   .calc-inline summary::-webkit-details-marker{display:none;}
   .calc-inline[open] summary{margin-bottom:4px;}
@@ -819,7 +823,6 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
             <input type="date" id="fechaSolicitud">
           </div>
         </div>
-        <p data-lateral="calculo" class="hint rep-solo-fundamentos-auto" id="avisoTopeAvaluo" style="margin:2px 0 0"></p>
       </fieldset>
 
 
@@ -945,76 +948,43 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
         </div>
       </fieldset>
 
+      <!-- Rol y avalúo: un solo recuadro. Cada dato se escribe una vez; el
+           proporcional y el tope legal se calculan solos con la superficie a
+           regularizar (de «Ubicación del inmueble») y la UTM del mes de ingreso. -->
       <fieldset data-lateral="fiscal" class="rep-solo-fundamentos-auto">
-        <legend>Rol de avalúo fiscal</legend>
-        <div data-lateral="rol" class="field">
-          <label>Rol de Avalúo Fiscal</label>
-          <input type="text" id="rolAvaluo" placeholder="" data-fmt="rol">
-        </div>
+        <legend>Rol y avalúo fiscal</legend>
         <div class="grid2">
+          <div data-lateral="rol" class="field">
+            <label>Rol de avalúo fiscal</label>
+            <input type="text" id="rolAvaluo" placeholder="" data-fmt="rol">
+          </div>
           <div data-lateral="montos" class="field">
-            <label>Avalúo Fiscal Total ($)</label>
+            <label>Avalúo fiscal total ($)</label>
             <input type="text" inputmode="numeric" id="avaluoTotal" placeholder="" data-fmt="money">
           </div>
-          <div data-lateral="montos" class="field">
-            <label>Avalúo Fiscal Proporcional ($)</label>
-            <input type="text" inputmode="numeric" id="avaluoProporcional" placeholder="" data-fmt="money">
-          </div>
         </div>
-        <details data-lateral="calculo" class="calc-inline" open>
-          <summary>🧮 Calculadora de avalúo proporcional</summary>
-          <div class="calc-card" style="margin-top:8px;">
-            <div>
-              <div class="field">
-                <label>Avalúo fiscal total del rol ($)</label>
-                <input type="text" inputmode="numeric" id="calcAvaluoTotal" placeholder="" data-fmt="money" oninput="calcular()">
-              </div>
-              <div class="grid2">
-                <div class="field">
-                  <label>Sup. total del rol</label>
-                  <input type="text" inputmode="decimal" id="calcSupTotales" placeholder="" data-fmt="sup" oninput="onCalcSupInput('calcSupTotales','totales')">
-                  <p class="hint sup-eq" id="calcEqTotales">&nbsp;</p>
-                </div>
-                <div class="field">
-                  <label>Sup. a regularizar</label>
-                  <input type="text" inputmode="decimal" id="calcSupReg" placeholder="" data-fmt="sup" oninput="onCalcSupInput('calcSupReg','reg')">
-                  <p class="hint sup-eq" id="calcEqReg">&nbsp;</p>
-                </div>
-              </div>
-              <div class="calc-fila-chica">
-                <label for="calcUnidad">Unidad</label>
-                <select id="calcUnidad" onchange="onCalcUnidadChange()">
-                  <option value="m2">mt2</option>
-                  <option value="ha">hectáreas</option>
-                </select>
-                <span id="calcTipoCampo" hidden>
-                  <label for="calcTipo">Inmueble</label>
-                  <select id="calcTipo" onchange="calcular()">
-                    <option value="rural">Rural (800 UTM)</option>
-                    <option value="urbano">Urbano (380 UTM)</option>
-                  </select>
-                </span>
-              </div>
-              <div class="calc-utm" id="calcUtmCaja">
-                <div><b>UTM</b> <span id="calcUtmInfo">—</span></div>
-                <button type="button" class="btn btn-outline btn-sm" id="calcUtmEditarBtn" onclick="UTM.editar()" title="Escribir otro valor de UTM a mano">✎</button>
-                <input type="text" inputmode="numeric" id="calcUTM" value="" data-fmt="money" oninput="UTM.manual(this.value)" hidden>
-              </div>
-              <div class="btn-row" style="margin-top:8px">
-                <button type="button" class="btn btn-primary btn-sm" onclick="usarEnFormulario()">Llevar al documento →</button>
-              </div>
-            </div>
-            <div class="calc-result">
-              <div class="label">Avalúo fiscal proporcional</div>
-              <div class="num" id="calcResultado">$0</div>
-              <div class="formula" id="calcFormula">(sup. a regularizar × avalúo total) ÷ sup. total</div>
-              <div class="row"><span>Tope legal</span><span id="calcTope">$0</span></div>
-              <div class="row"><span>Resultado</span><span id="calcEstado">—</span></div>
-              <div class="row" style="display:none"><span>Régimen</span><span id="calcRegimen">—</span></div>
-              <div class="row" style="display:none"><span>Avalúo a comparar</span><span id="calcComparado">$0</span></div>
-            </div>
+        <div data-lateral="calculo" class="field">
+          <label>Superficie total del rol <span class="hint">(en <span class="uni-sup-rol">mt2</span>)</span></label>
+          <input type="text" inputmode="decimal" id="calcSupTotales" placeholder="" data-fmt="sup" oninput="onCalcSupInput('calcSupTotales','totales')">
+          <p class="hint sup-eq" id="calcEqTotales">&nbsp;</p>
+        </div>
+        <div data-lateral="montos" class="field">
+          <label>Avalúo fiscal proporcional ($) <span class="hint" id="propOrigen"></span></label>
+          <input type="text" inputmode="numeric" id="avaluoProporcional" placeholder="" data-fmt="money" oninput="onPropManual()">
+        </div>
+        <div data-lateral="calculo" class="aval-resumen">
+          <div class="aval-linea" id="calcFormula">Proporcional = superficie a regularizar × avalúo total ÷ superficie total del rol</div>
+          <div class="calc-utm" id="calcUtmCaja">
+            <div><b>UTM</b> <span id="calcUtmInfo">—</span></div>
+            <button type="button" class="btn btn-outline btn-sm" id="calcUtmEditarBtn" onclick="UTM.editar()" title="Escribir otro valor de UTM a mano">✎</button>
+            <input type="text" inputmode="numeric" id="calcUTM" value="" data-fmt="money" oninput="UTM.manual(this.value)" hidden>
           </div>
-        </details>
+          <div class="aval-tope">
+            <span>Tope legal <b id="calcTope">$0</b></span>
+            <span id="calcEstado">—</span>
+          </div>
+          <p class="hint rep-solo-fundamentos-auto" id="avisoTopeAvaluo" style="margin:0;font-size:11.5px;line-height:1.4"></p>
+        </div>
       </fieldset>
 
       <!-- ---- Datos que sólo aparecen en los documentos de la etapa B ----
@@ -11481,6 +11451,7 @@ function onSupUnidadChange(){
   }
   state.supUnidadAnterior = nueva;
   actualizarEquivalenciaSup();
+  mostrarSupTotalRol(true);
   generar();
 }
 
@@ -11488,75 +11459,41 @@ function onSupUnidadChange(){
    elegida, y rescata las superficies de borradores guardados antes de que
    existiera la conversión. */
 function initSuperficies(){
-  [['calcSupTotales','totales'], ['calcSupReg','reg']].forEach(([id, clave])=>{
-    if(state.calcSup[clave] === null || state.calcSup[clave] === undefined){
-      const n = parseNum(val(id));
-      if(!isNaN(n)) state.calcSup[clave] = (unidadCalc() === 'ha') ? n * M2_POR_HA : n;
-    }
-  });
+  /* Borradores antiguos: la superficie total del rol se escribía en la unidad
+     de la calculadora (que ya no existe); ahora va en la del expediente. */
+  if(state.calcSup.totales === null || state.calcSup.totales === undefined){
+    const n = parseNum(val('calcSupTotales'));
+    if(!isNaN(n)) state.calcSup.totales = (unidadCalc() === 'ha') ? n * M2_POR_HA : n;
+  }
   state.supUnidadAnterior = unidadSup();
-
-  document.querySelectorAll('.uni-sup').forEach(sp=>{ sp.textContent = etiquetaUnidad(unidadCalc()); });
-
   q('superficie').addEventListener('input', actualizarEquivalenciaSup);
   actualizarEquivalenciaSup();
-
-  /* Los datos del expediente alimentan la calculadora en cuanto se escriben. Se
-     escuchan sólo estos campos (no todo el panel), porque la calculadora vive
-     también en el panel izquierdo y si no, al escribir en ella se sobrescribiría
-     a sí misma. */
-  ['superficie','supUnidad','avaluoTotal','tipoBien'].forEach(id=>{
-    const el = q(id);
-    if(!el) return;
-    ['input','change'].forEach(evt=> el.addEventListener(evt, ()=>volcarEnCalculadora()));
-  });
-  /* Al arrancar sólo se rellena: así, si se recupera un borrador en que la
-     calculadora tenía datos y el expediente no, no se pierde nada. */
-  volcarEnCalculadora(true);
+  mostrarSupTotalRol();
 }
 
-/* ------------------------------------------------------------------
-   Lo que se escribe en el expediente se refleja de inmediato en la
-   calculadora de avalúo proporcional, para no escribir dos veces lo mismo:
+/* La superficie total del rol se muestra en la misma unidad que la superficie
+   a regularizar (mt2 o hectáreas); internamente se guarda en mt2. */
+function mostrarSupTotalRol(forzar){
+  const u = unidadCalc(), campo = q('calcSupTotales');
+  document.querySelectorAll('.uni-sup-rol').forEach(sp => { sp.textContent = u === 'ha' ? 'hectáreas' : ETIQUETA_SUPERFICIE; });
+  if(!campo || (!forzar && document.activeElement === campo)) return;
+  const m2 = state.calcSup.totales;
+  campo.value = (m2 === null || m2 === undefined || isNaN(m2)) ? '' : numeroALocal(u === 'ha' ? m2 / M2_POR_HA : m2);
+}
 
-     Superficie aproximada   -> Superficie que se pretende regularizar
-     Avalúo Fiscal Total     -> Avalúo Fiscal Total del rol
-     Tipo de bien            -> Tipo de inmueble
-
-   Queda por escribir sólo la superficie total del rol, que es el único dato que
-   la calculadora necesita y que no está en el expediente.
-   ------------------------------------------------------------------ */
-function volcarEnCalculadora(soloRellenar){
-  const campoReg = q('calcSupReg');
-  if(campoReg){
-    const m2 = superficieEnM2();
-    if(m2 !== null){
-      state.calcSup.reg = m2;
-      /* se muestra en la unidad que tenga elegida la calculadora */
-      campoReg.value = numeroALocal(unidadCalc() === 'ha' ? m2 / M2_POR_HA : m2);
-    } else if(!soloRellenar){
-      state.calcSup.reg = null;
-      campoReg.value = '';
-    }
-  }
-
-  const campoAvaluo = q('calcAvaluoTotal');
-  if(campoAvaluo){
-    const av = val('avaluoTotal');
-    if(av) campoAvaluo.value = formatMoneyValue(av);
-    else if(!soloRellenar) campoAvaluo.value = '';
-  }
-
-  const campoTipo = q('calcTipo');
-  if(campoTipo) campoTipo.value = (val('tipoBien') === 'Urbano') ? 'urbano' : 'rural';
-
-  actualizarEquivalencias();
+/* El proporcional se calcula solo; si se escribe a mano, se respeta. */
+function onPropManual(){
+  state.propManual = !!val('avaluoProporcional').trim();
   calcular();
+}
+function usarPropCalculado(){
+  state.propManual = false;
+  calcular(); generar();
 }
 
 /* ---------- superficie de la calculadora ---------- */
 
-function unidadCalc(){ return val('calcUnidad') === 'ha' ? 'ha' : 'm2'; }
+function unidadCalc(){ return unidadSup(); }
 function etiquetaUnidad(u){ return u === 'ha' ? 'ha' : ETIQUETA_SUPERFICIE; }
 function nombreUnidad(u, n){
   if(u !== 'ha') return ETIQUETA_SUPERFICIE;
@@ -11572,25 +11509,10 @@ function onCalcSupInput(id, clave){
   calcular();
 }
 
-function onCalcUnidadChange(){
-  const u = unidadCalc();
-  [['calcSupTotales','totales'], ['calcSupReg','reg']].forEach(([id, clave])=>{
-    const m2 = state.calcSup[clave];
-    q(id).value = (m2 === null || m2 === undefined)
-      ? ''
-      : numeroALocal(u === 'ha' ? m2 / M2_POR_HA : m2);
-  });
-
-  // las etiquetas de unidad siguen a la unidad elegida
-  document.querySelectorAll('.uni-sup').forEach(sp=>{ sp.textContent = etiquetaUnidad(u); });
-
-  calcular();
-}
-
 /* Muestra bajo cada campo el mismo valor en la otra unidad. */
 function actualizarEquivalencias(){
   const u = unidadCalc();
-  [['calcEqTotales','totales'], ['calcEqReg','reg']].forEach(([idTexto, clave])=>{
+  [['calcEqTotales','totales']].forEach(([idTexto, clave])=>{
     const el = q(idTexto);
     if(!el) return;
     const m2 = state.calcSup[clave];
@@ -11657,16 +11579,7 @@ function regimenActual(){
 
 /* Los desplegables de tipo de inmueble muestran el tope que les corresponde
    según la fecha de la solicitud, para no dejar cifras fijas en pantalla. */
-function actualizarEtiquetasTope(){
-  const sel = q('calcTipo');
-  if(!sel) return;
-  const rRural = regimenAvaluo(val('fechaSolicitud'), 'Rural');
-  const rUrbano = regimenAvaluo(val('fechaSolicitud'), 'Urbano');
-  const optR = sel.querySelector('option[value="rural"]');
-  const optU = sel.querySelector('option[value="urbano"]');
-  if(optR) optR.textContent = `Rural (${rRural.factorTexto} UTM)`;
-  if(optU) optU.textContent = `Urbano (${rUrbano.factorTexto} UTM)`;
-}
+function actualizarEtiquetasTope(){}
 
 /* ============================================================
    UTM SEGÚN LA FECHA DE INGRESO DE LA SOLICITUD
@@ -11743,83 +11656,67 @@ const UTM = (()=>{
 })();
 
 function calcular(){
-  const avaluoTotal = parseNum(val('calcAvaluoTotal'))||0;
+  const avaluoTotal = parseNum(val('avaluoTotal'))||0;
   const m2Totales = state.calcSup.totales || 0;
-  const m2Reg = state.calcSup.reg || 0;
+  const m2Reg = superficieEnM2() || 0;
+  state.calcSup.reg = m2Reg || null;
   const utm = parseNum(val('calcUTM'))||0;
-  const tipo = val('calcTipo');
-  const regimen = regimenAvaluo(val('fechaSolicitud'), tipo === 'urbano' ? 'Urbano' : 'Rural');
+  const regimen = regimenAvaluo(val('fechaSolicitud'), val('tipoBien') === 'Urbano' ? 'Urbano' : 'Rural');
   const factor = regimen.factor;
-  actualizarEtiquetasTope();
-  // el tipo de inmueble sólo importa para solicitudes anteriores a la Ley 21.737
-  if(q('calcTipoCampo')) q('calcTipoCampo').hidden = regimen.nuevo;
 
-  let proporcional = 0;
-  if(m2Totales>0){
-    proporcional = (m2Reg * avaluoTotal) / m2Totales;
-  }
-  window.__ultimoProporcional = proporcional;
-
-  actualizarEquivalencias();
-
-  /* La fórmula se muestra en la unidad elegida; el cálculo se hace en mt2. */
   const u = unidadCalc();
   const mostrar = (m2)=> numeroALocal(u === 'ha' ? m2 / M2_POR_HA : m2) + ' ' + etiquetaUnidad(u);
+  const calculable = avaluoTotal > 0 && m2Totales > 0 && m2Reg > 0;
+  const proporcional = calculable ? Math.round((m2Reg * avaluoTotal) / m2Totales) : 0;
+  window.__ultimoProporcional = proporcional;
 
-  q('calcResultado').textContent = money(proporcional) || '$0';
-  q('calcFormula').textContent = `(${mostrar(m2Reg)} × ${money(avaluoTotal)||'$0'}) ÷ ${mostrar(m2Totales)} = ${money(proporcional)||'$0'}`;
+  /* Borrador antiguo con un proporcional escrito que no coincide con el
+     cálculo: se considera escrito a mano y no se pisa. */
+  const campoProp = q('avaluoProporcional');
+  const escrito = parseNum(val('avaluoProporcional'));
+  if(state.propManual === undefined){
+    state.propManual = !!(calculable && escrito && Math.abs(escrito - proporcional) > 1);
+  }
+  if(!state.propManual && calculable && campoProp && document.activeElement !== campoProp){
+    const nuevo = formatMoneyValue(proporcional);
+    if(campoProp.value !== nuevo) campoProp.value = nuevo;
+  }
+  const origen = q('propOrigen');
+  if(origen){
+    const html = (state.propManual && val('avaluoProporcional').trim())
+      ? '· escrito a mano' + (calculable ? ` · <a href="#" onclick="usarPropCalculado();return false">usar el calculado (${money(proporcional)})</a>` : '')
+      : (calculable ? '· calculado solo' : '· se calcula solo con la superficie total del rol');
+    /* sólo se reescribe si cambia, para no perder el clic en el enlace */
+    if(origen.dataset.html !== html){ origen.dataset.html = html; origen.innerHTML = html; }
+  }
+
+  actualizarEquivalencias();
+  mostrarSupTotalRol();
+
+  const formula = q('calcFormula');
+  if(formula){
+    formula.textContent = calculable
+      ? `${mostrar(m2Reg)} a regularizar × ${money(avaluoTotal)} ÷ ${mostrar(m2Totales)} del rol = ${money(proporcional)}`
+      : (!m2Reg ? 'Falta la superficie a regularizar (en «Ubicación del inmueble»).'
+        : 'Proporcional = superficie a regularizar × avalúo total ÷ superficie total del rol');
+  }
 
   const tope = utm * factor;
   window.__ultimoTope = money(tope);
   window.__ultimoRegimen = regimen;
-  q('calcTope').textContent = `${money(tope)||'$0'}  (${regimen.factorTexto} UTM)`;
+  q('calcTope').textContent = `${money(tope)||'$0'} (${regimen.factorTexto} UTM)`;
 
-  /* Se deja a la vista de qué régimen sale el tope, porque cambia según la
-     fecha en que se ingresó la solicitud. */
-  const elRegimen = q('calcRegimen');
-  if(elRegimen){
-    if(regimen.sinFecha){
-      elRegimen.innerHTML = '<span class="badge warn">Falta la fecha de la solicitud</span> se asume 1.000 UTM';
-      elRegimen.title = 'Completa "Fecha de ingreso de la solicitud" para fijar el tope que corresponde.';
-    } else if(regimen.nuevo){
-      elRegimen.textContent = '1.000 UTM · Ley N° 21.737';
-      elRegimen.title = 'Solicitud ingresada desde el 21-04-2025: el tope es 1.000 UTM, sea urbano o rural.';
-    } else {
-      elRegimen.textContent = `${regimen.factorTexto} UTM · texto anterior`;
-      elRegimen.title = 'Solicitud ingresada antes del 21-04-2025: 800 UTM si es rural, 380 UTM si es urbano.';
-    }
-  }
-
-  const comparar = (m2Reg && m2Totales && m2Reg < m2Totales) ? proporcional : avaluoTotal;
-  q('calcComparado').textContent = money(comparar) || '$0';
-
+  /* Si se regulariza sólo una parte del rol se compara el proporcional; si no, el total. */
+  const usado = parseNum(val('avaluoProporcional')) || 0;
+  const comparar = (m2Reg && m2Totales && m2Reg < m2Totales) ? (usado || proporcional) : (avaluoTotal || usado);
   const estado = q('calcEstado');
-  if(!avaluoTotal || !tope){
+  if(!comparar || !tope){
     estado.innerHTML = '<span class="badge warn">Completa los datos</span>';
   } else if(comparar <= tope){
     estado.innerHTML = '<span class="badge ok">Dentro del tope legal</span>';
   } else {
     estado.innerHTML = '<span class="badge bad">Excede el tope legal</span>';
   }
-}
-
-function usarEnFormulario(){
-  const avaluoTotal = val('calcAvaluoTotal');
-  if(avaluoTotal) q('avaluoTotal').value = formatMoneyValue(avaluoTotal);
-  if(window.__ultimoProporcional) q('avaluoProporcional').value = formatMoneyValue(Math.round(window.__ultimoProporcional));
-
-  /* La superficie a regularizar pasa al formulario con la misma unidad que se
-     usó en la calculadora. */
-  const m2Reg = state.calcSup.reg;
-  if(m2Reg !== null && m2Reg !== undefined && m2Reg){
-    const u = unidadCalc();
-    q('supUnidad').value = u;
-    q('superficie').value = numeroALocal(u === 'ha' ? m2Reg / M2_POR_HA : m2Reg);
-  }
-
-  if(val('calcTipo')==='urbano') q('tipoBien').value = 'Urbano'; else q('tipoBien').value = 'Rural';
-  flashStatus('Valores aplicados al formulario del documento ✓');
-  generar();
 }
 
 /* ============================================================
@@ -14256,7 +14153,7 @@ function nuevoExpediente(){
     state.cuotaHer = null;
     state.utmManual = false;
     state.motivosOrden = [];
-    state.calcSup = {totales: null, reg: null};
+    state.calcSup = {totales: null, reg: null}; state.propManual = false;
     state.docEdits = {}; state.lastRender = {};
     TABS_EDICIONES.forEach(t => { state.docEdits[t] = {edits: {}, extras: []}; state.lastRender[t] = []; });
     state.lastPartes = null;
@@ -18797,6 +18694,7 @@ function guardarAhora(){
         ultimaTabDoc: state.ultimaTabDoc,
         sentidoManual: state.sentidoManual,
         calcSup: state.calcSup,
+        propManual: state.propManual,
         supUnidadAnterior: state.supUnidadAnterior,
         presuntos: state.presuntos,
         presuntosTipo: state.presuntosTipo,
@@ -19129,6 +19027,7 @@ function restaurarTodo(){
       notificacion: !!est.sentidoManual.notificacion
     };
     if(est.calcSup) state.calcSup = est.calcSup;
+    state.propManual = (typeof est.propManual === 'boolean') ? est.propManual : undefined;
     if(est.supUnidadAnterior) state.supUnidadAnterior = est.supUnidadAnterior;
     if(Array.isArray(est.presuntos)) state.presuntos = est.presuntos;
     if(est.presuntosTipo) state.presuntosTipo = est.presuntosTipo;
@@ -19337,7 +19236,7 @@ async function borrarGuardado(){
   state.notariasPropias = [];
   state.motivosOrden = [];
   state.masivoFilas = [];
-  state.calcSup = {totales:null, reg:null};
+  state.calcSup = {totales:null, reg:null}; state.propManual = false;
   state.docEdits = {};
   state.lastRender = {};
   TABS_EDICIONES.forEach(t=>{
