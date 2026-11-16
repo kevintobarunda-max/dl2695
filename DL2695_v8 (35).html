@@ -1002,7 +1002,6 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
               </div>
               <div class="btn-row" style="margin-top:8px">
                 <button type="button" class="btn btn-primary btn-sm" onclick="usarEnFormulario()">Llevar al documento →</button>
-                <button type="button" class="btn btn-outline btn-sm" onclick="UTM.cargarTodo(true)" title="Descarga los valores de la UTM desde 2018 hasta hoy y los guarda en este navegador">↻ Actualizar UTM 2018–hoy</button>
               </div>
             </div>
             <div class="calc-result">
@@ -11672,51 +11671,31 @@ function actualizarEtiquetasTope(){
 /* ============================================================
    UTM SEGÚN LA FECHA DE INGRESO DE LA SOLICITUD
    El tope del Art. 1° se calcula con la UTM del mes en que ingresó la
-   solicitud. Los valores mensuales (2018 a hoy) se descargan de
-   mindicador.cl (serie oficial publicada por el SII / Banco Central) desde
-   el navegador y se guardan en él, de modo que después funciona sin
-   conexión. Siempre se puede escribir otro valor a mano (✎).
+   solicitud. Los valores mensuales desde enero de 2018 vienen INCLUIDOS en
+   este archivo (tabla oficial del SII), así que no se usa internet.
+   Para un mes que aún no esté en la tabla, se usa el último valor conocido
+   y se avisa; siempre se puede escribir otro valor a mano (✎).
+   Para agregar un mes nuevo: sumar el valor al final del año en TABLA.
    ============================================================ */
 const UTM = (()=>{
-  const CLAVE = 'dl2695_utm_mensual', DESDE = 2018;
+  /* Valor de la UTM por mes (enero → diciembre), en pesos. Fuente: SII. */
+  const TABLA = {
+    2018: [47019,47066,47301,47301,47396,47538,47681,47729,47920,48016,48160,48353],
+    2019: [48353,48305,48353,48353,48595,48741,49033,49033,49131,49229,49229,49623],
+    2020: [49673,49723,50021,50221,50372,50372,50322,50272,50322,50372,50674,51029],
+    2021: [50978,51131,51489,51592,51798,52005,52161,52213,52631,52842,53476,54171],
+    2022: [54442,54878,55537,55704,56762,57557,58248,58772,59595,60310,60853,61157],
+    2023: [61769,61954,62450,62388,63074,63263,63326,63199,63452,63515,63960,64216],
+    2024: [64666,64343,64793,65182,65443,65770,65967,65901,66362,66561,66628,67294],
+    2025: [67429,67294,68034,68306,68648,68785,68923,68647,69265,69265,69542,69542],
+    2026: [69751,69611,69889,69889,70588,71506,71649,71649,71721,72151,72440],
+  };
   const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  const leer = ()=>{ try{ return JSON.parse(localStorage.getItem(CLAVE) || '{}') || {}; }catch(e){ return {}; } };
-  const guardarCache = c => { try{ localStorage.setItem(CLAVE, JSON.stringify(c)); }catch(e){} };
-  let cargando = null, intentado = false;
+  const VALORES = {};
+  Object.keys(TABLA).forEach(a => TABLA[a].forEach((v, i) => { VALORES[a + '-' + String(i + 1).padStart(2, '0')] = v; }));
+  const CLAVES = Object.keys(VALORES).sort();
+  const PRIMERO = CLAVES[0], ULTIMO = CLAVES[CLAVES.length - 1];
 
-  async function cargarAnio(a){
-    const r = await fetch('https://mindicador.cl/api/utm/' + a, {cache: 'no-store'});
-    if(!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json();
-    const c = leer();
-    (j.serie || []).forEach(x => {
-      const k = String(x.fecha || '').slice(0, 7);
-      if(/^\d{4}-\d{2}$/.test(k) && +x.valor > 0) c[k] = Math.round(+x.valor);
-    });
-    guardarCache(c);
-  }
-  function faltaAnio(a, c){
-    const hoy = new Date(), ult = a < hoy.getFullYear() ? 12 : hoy.getMonth() + 1;
-    for(let m = 1; m <= ult; m++) if(!c[a + '-' + String(m).padStart(2, '0')]) return true;
-    return false;
-  }
-  /* Descarga los años que falten (o todos, si se pide a mano). */
-  function cargarTodo(todo){
-    if(cargando) return cargando;
-    cargando = (async ()=>{
-      let error = null, bajados = 0;
-      for(let a = DESDE; a <= new Date().getFullYear(); a++){
-        if(!todo && !faltaAnio(a, leer())) continue;
-        try{ await cargarAnio(a); bajados++; }catch(e){ error = e; }
-      }
-      cargando = null;
-      aplicar();
-      if(todo) flashStatus(error && !bajados
-        ? '⚠ No se pudo descargar la UTM (sin internet o sitio no disponible). Se usan los valores guardados; puedes escribirla a mano con ✎.'
-        : '✓ UTM actualizada: valores mensuales desde 2018 hasta hoy guardados en este navegador.');
-    })();
-    return cargando;
-  }
   function mesClave(){
     const f = val('fechaSolicitud');
     if(/^\d{4}-\d{2}/.test(f)) return {k: f.slice(0, 7), conFecha: true};
@@ -11724,48 +11703,43 @@ const UTM = (()=>{
     return {k: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'), conFecha: false};
   }
   function valorPara(k){
-    const c = leer();
-    if(c[k]) return {valor: c[k], k};
-    const previas = Object.keys(c).filter(x => x <= k).sort();
-    return previas.length ? {valor: c[previas[previas.length - 1]], k: previas[previas.length - 1], aprox: true} : null;
+    if(VALORES[k]) return {valor: VALORES[k], k};
+    if(k > ULTIMO) return {valor: VALORES[ULTIMO], k: ULTIMO, aprox: 'despues'};
+    return null; /* antes de 2018 */
   }
   const nombreMes = k => MESES[+k.slice(5, 7) - 1] + ' de ' + k.slice(0, 4);
+  const textoManual = () => `${money(parseNum(val('calcUTM'))) || '$—'} <small>escrita a mano · <a href="#" onclick="UTM.automatica();return false">usar la del mes de ingreso</a></small>`;
 
   function aplicar(){
     const info = q('calcUtmInfo'), campo = q('calcUTM');
     if(!info || !campo) return;
-    if(state.utmManual){
-      campo.hidden = false;
-      info.innerHTML = `${money(parseNum(val('calcUTM'))) || '$—'} <small>escrita a mano · <a href="#" onclick="UTM.automatica();return false">usar la del mes de ingreso</a></small>`;
-      calcular(); return;
-    }
+    if(state.utmManual){ campo.hidden = false; info.innerHTML = textoManual(); calcular(); return; }
     campo.hidden = true;
     const {k, conFecha} = mesClave();
     const r = valorPara(k);
     if(r){
       campo.value = formatMoneyValue(r.valor);
       info.innerHTML = `${money(r.valor)} <small>${r.aprox
-        ? '⚠ aún no hay valor de ' + nombreMes(k) + '; se usa el de ' + nombreMes(r.k)
+        ? '⚠ la tabla llega hasta ' + nombreMes(r.k) + '; para ' + nombreMes(k) + ' se usa ese valor (corrígelo con ✎ si ya salió el nuevo)'
         : nombreMes(k) + ' · ' + (conFecha ? 'mes de ingreso de la solicitud' : 'mes actual: falta la fecha de ingreso de la solicitud')}</small>`;
     } else {
       campo.value = '';
-      info.innerHTML = '<small>⚠ Sin valores de UTM en este navegador. Conéctate a internet y pulsa «Actualizar UTM», o escríbela con ✎.</small>';
+      info.innerHTML = '<small>⚠ La tabla incluida parte en ' + nombreMes(PRIMERO) + '. Para ' + nombreMes(k) + ' escribe la UTM con ✎.</small>';
     }
-    if((!r || r.aprox) && !intentado){ intentado = true; cargarTodo(false); }
     calcular();
   }
   function editar(){ state.utmManual = true; aplicar(); const c = q('calcUTM'); c.focus(); c.select(); try{ guardarTodo(); }catch(e){} }
   function manual(){
     state.utmManual = true;
     const info = q('calcUtmInfo');
-    if(info) info.innerHTML = `${money(parseNum(val('calcUTM'))) || '$—'} <small>escrita a mano · <a href="#" onclick="UTM.automatica();return false">usar la del mes de ingreso</a></small>`;
+    if(info) info.innerHTML = textoManual();
     calcular(); try{ guardarTodo(); }catch(e){}
   }
   function automatica(){ state.utmManual = false; aplicar(); try{ guardarTodo(); }catch(e){} }
 
   document.addEventListener('change', e => { if(e.target && e.target.id === 'fechaSolicitud') aplicar(); }, true);
-  window.addEventListener('load', ()=>{ setTimeout(()=>{ aplicar(); if(navigator.onLine !== false) cargarTodo(false); }, 400); });
-  return {aplicar, cargarTodo, editar, manual, automatica, valorPara, _leer: leer};
+  window.addEventListener('load', ()=>{ setTimeout(aplicar, 400); });
+  return {aplicar, editar, manual, automatica, valorPara, TABLA, ultimoMes: ULTIMO};
 })();
 
 function calcular(){
