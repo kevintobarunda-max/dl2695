@@ -13842,6 +13842,16 @@ const PDFB = {
 };
 const PDFB_TABS = TABS_TEXTO.slice();
 
+/* Resolución de reposición: márgenes y letra del modelo del sistema (SISTRED):
+   Verdana 8,6 pt, interlineado 10,5 pt, márgenes laterales 37,5 pt (1,32 cm),
+   encabezado a la derecha de 247,4 pt y firma centrada en la mitad derecha.
+   El logo es el mismo de los demás documentos. */
+const PDF_REPOSICION = {
+  mIzq: 37.5, mDer: 37.5, mSup: 36,
+  fuente: 8.6, inter: 10.5, fuenteCab: 8.6, interCab: 10.5,
+  anchoCab: 247.4, antesTitulo: 21, antesFirma: 78.5, firmaX: 317.8, firmaAncho: 250
+};
+
 // Coordenadas del logo en la resolución de término anticipado (EMU de Word).
 const LOGO_RESOLUCION = {x:432435, y:269240, cx:1341765, cy:1219200};
 
@@ -13857,7 +13867,9 @@ async function paginasDocumentoBPdf(tab, bloques){
   const dim = leerDimensionesJpeg(logoBytes);
   const esModelo = tab === 'resolucionFallecimiento';
   const pagina = tab === 'notificacionFallecimiento' ? PDFB : {...PDFB, alto:936, mIzq:33.75, mDer:33.75};
+  const esRep = tab === 'resolucionRep';
   const P = esModelo ? {...pagina, fuente:9, inter:11, fuenteCab:9, interCab:11} :
+    esRep ? {...pagina, ...PDF_REPOSICION} :
     tab === 'informe' ? {...pagina, fuente:9.7, inter:13.4} : pagina;
   const anchoTotal = P.ancho - P.mIzq - P.mDer;
   const N = t => [{texto: t, negrita: false}];
@@ -13919,16 +13931,19 @@ async function paginasDocumentoBPdf(tab, bloques){
   if(/^resolucion/.test(tab)){
     if(esModelo) topY += 7;
     if(tab === 'resolucionRectificatoria') topY = Math.max(topY, logoTop + logoAlto - P.interCab);
-    const c = col(esModelo ? 219.5 : 214.3, esModelo ? 'left' : 'justify');
+    const c = col(esModelo ? 219.5 : esRep ? P.anchoCab : 214.3, esModelo ? 'left' : 'justify');
     if(por.exp !== undefined)        parrafo(runsEtiquetaPdfB(por.exp), {...c, align: 'left'});
     if(por.materia !== undefined)    parrafo(Bd(por.materia), {...c, antes: P.interCab});
     if(por.lugarFecha !== undefined) parrafo(N(por.lugarFecha), {...c, antes: P.interCab});
     if(por.resN !== undefined)       parrafo(runsEtiquetaPdfB(por.resN), {...c, align: 'left', antes: P.interCab});
-    const TIT = esModelo ? {'vistos-titulo':18,'cons-titulo':18,'resuelvo-titulo':18} : {'vistos-titulo': 25, 'cons-titulo': 24, 'resuelvo-titulo': 24};
+    const TIT = esModelo ? {'vistos-titulo':18,'cons-titulo':18,'resuelvo-titulo':18}
+      : esRep ? {'vistos-titulo': P.antesTitulo, 'cons-titulo': P.antesTitulo, 'resuelvo-titulo': P.antesTitulo}
+      : {'vistos-titulo': 25, 'cons-titulo': 24, 'resuelvo-titulo': 24};
     if(!paginas.length) topY = Math.max(topY, logoTop + logoAlto);
     cuerpo({exp:1, materia:1, lugarFecha:1, resN:1}, b=>{
       if(TIT[b.id] !== undefined)    parrafo(Bd(b.texto), {align: 'center', antes: TIT[b.id], juntas: true});
       else if(b.id === 'cierre')     parrafo(N(b.texto), {antes: P.inter});
+      else if(b.id === 'firma' && esRep) firma(b.texto, P.antesFirma, P.firmaX, P.firmaAncho);
       else if(b.id === 'firma')      firma(b.texto, esModelo ? 59 : 24, (P.ancho - P.anchoFirmaCentrada) / 2, P.anchoFirmaCentrada);
       else if(b.id === 'distribucion') distribucion(b.texto, P.inter);
       else if(tab === 'resolucionRectificatoria')
@@ -16478,9 +16493,14 @@ function documentoFallecimientoWordXml(tab, bloques, cxLogo, cyLogo){
   const cabeceraIds = /^resolucion/.test(tab)
     ? ['exp','materia','lugarFecha','resN'] : ['cabecera'];
   const esRect = /Rectificatoria$/.test(tab);
-  const runsXml = (runs)=> wordRuns(runs, {sz:21}).replace(/\t/g, '</w:t><w:tab/><w:t xml:space="preserve">');
+  /* Reposición: mismos márgenes y letra que el PDF (ver PDF_REPOSICION). */
+  const esRep = tab === 'resolucionRep';
+  const tw = pt => Math.round(pt * 20);
+  const runsXml = (runs)=> wordRuns(runs, {sz: esRep ? 17 : 21}).replace(/\t/g, '</w:t><w:tab/><w:t xml:space="preserve">');
   const parrafo = (texto, opciones={})=>String(texto).split('\n').map((linea,i)=>{
-    const runs = (esRect && opciones.id) ? runsRectificatoria(opciones.id, linea) : [{texto:linea, negrita:!!opciones.negrita}];
+    const runs = (esRect && opciones.id) ? runsRectificatoria(opciones.id, linea)
+      : (esRep && (opciones.id === 'exp' || opciones.id === 'resN')) ? runsEtiquetaPdfB(linea)
+      : [{texto:linea, negrita:!!opciones.negrita || (esRep && opciones.id === 'distribucion' && i === 0)}];
     /* Rectificatoria: una línea en blanco antes del texto citado (“…”). */
     const antesCita = (esRect && i > 0 && /^\s*“/.test(linea)) ? 240 : 0;
     let xml = wordParrafo(runsXml(runs), {
@@ -16493,26 +16513,41 @@ function documentoFallecimientoWordXml(tab, bloques, cxLogo, cyLogo){
   /* En la rectificatoria, "Exp.Nº:" baja hasta la altura en que termina el
      logo (el resto del encabezado sigue debajo). */
   const cabecera = bloques.filter(b=>cabeceraIds.includes(b.id)).map(b=>parrafo(b.texto,{
-    align:'left',negrita:b.id==='materia',before:(esRect && (b.id==='exp' || b.id==='cabecera')) ? 1380 : 140,id:b.id
+    align: esRep && b.id==='materia' ? 'both' : 'left', negrita:b.id==='materia',
+    before: esRep ? (b.id==='exp' ? 0 : tw(PDF_REPOSICION.interCab))
+      : (esRect && (b.id==='exp' || b.id==='cabecera')) ? 1380 : 140, id:b.id
   })).join('');
+  const anchoTexto = 12240 - (esRep ? 2 * tw(PDF_REPOSICION.mIzq) : 1350);
+  const colCab = esRep ? tw(PDF_REPOSICION.anchoCab) : 4390, colLogo = anchoTexto - colCab;
   const celda = (contenido,ancho)=>'<w:tc><w:tcPr><w:tcW w:w="'+ancho+'" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr>'+contenido+'</w:tc>';
-  let out = '<w:tbl><w:tblPr><w:tblW w:w="10890" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>'
+  let out = '<w:tbl><w:tblPr><w:tblW w:w="'+(colLogo+colCab)+'" w:type="dxa"/><w:tblLayout w:type="fixed"/>'
+    + (esRep ? '<w:tblCellMar><w:left w:w="0" w:type="dxa"/><w:right w:w="0" w:type="dxa"/></w:tblCellMar>' : '') + '<w:tblBorders>'
     + ['top','left','bottom','right','insideH','insideV'].map(b=>'<w:'+b+' w:val="nil"/>').join('')
-    + '</w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="6500"/><w:gridCol w:w="4390"/></w:tblGrid><w:tr>'
+    + '</w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="'+colLogo+'"/><w:gridCol w:w="'+colCab+'"/></w:tblGrid><w:tr>'
     + '<w:trPr><w:trHeight w:val="1694" w:hRule="atLeast"/></w:trPr>'
-    + celda(logo,6500)+celda(cabecera || '<w:p/>',4390)+'</w:tr></w:tbl>';
+    + celda(logo,colLogo)+celda(cabecera || '<w:p/>',colCab)+'</w:tr></w:tbl>';
   bloques.filter(b=>!cabeceraIds.includes(b.id)).forEach(b=>{
     const titulo = /^(vistos|cons|resuelvo)-titulo$/.test(b.id);
     if(b.id === 'firma'){
       const lineas = String(b.texto).split('\n');
-      lineas.forEach((linea,i)=>{out += parrafo(linea,{align:'center',before:i===0?480:0,keepNext:i<lineas.length-1});});
+      /* Reposición: la firma va centrada en la mitad derecha, como en el modelo. */
+      const sangria = esRep ? tw(PDF_REPOSICION.firmaX - PDF_REPOSICION.mIzq) : 0;
+      lineas.forEach((linea,i)=>{
+        let xml = parrafo(linea,{align:'center',before:i===0?(esRep ? tw(PDF_REPOSICION.antesFirma) : 480):0,keepNext:i<lineas.length-1});
+        if(sangria) xml = xml.replace(/<w:pPr>/g, '<w:pPr><w:ind w:left="' + sangria + '" w:right="' + Math.max(0, anchoTexto - sangria - tw(PDF_REPOSICION.firmaAncho)) + '"/>');
+        out += xml;
+      });
     } else out += parrafo(b.texto,{id:b.id,
       align:titulo?'center': /^(de|a-\d+|distribucion|saluda|cierre)$/.test(b.id)?'left':'both',
       negrita:titulo || b.id === 'de' || /^a-\d+/.test(b.id),
-      before:titulo?360: b.id==='distribucion'?240:180,keepNext:titulo
+      before: esRep ? (titulo ? tw(PDF_REPOSICION.antesTitulo) : tw(PDF_REPOSICION.inter))
+        : titulo?360: b.id==='distribucion'?240:180,keepNext:titulo
     });
   });
-  const sect = '<w:sectPr><w:pgSz w:w="12240" w:h="' + (notificacionAnterior ? 15840 : 18720) + '"/><w:pgMar w:top="680" w:right="675" w:bottom="800" w:left="675" w:header="0" w:footer="400"/></w:sectPr>';
+  const mar = esRep
+    ? '<w:pgMar w:top="' + tw(PDF_REPOSICION.mSup) + '" w:right="' + tw(PDF_REPOSICION.mDer) + '" w:bottom="800" w:left="' + tw(PDF_REPOSICION.mIzq) + '" w:header="0" w:footer="400"/>'
+    : '<w:pgMar w:top="680" w:right="675" w:bottom="800" w:left="675" w:header="0" w:footer="400"/>';
+  const sect = '<w:sectPr><w:pgSz w:w="12240" w:h="' + (notificacionAnterior ? 15840 : 18720) + '"/>' + mar + '</w:sectPr>';
   return {documentXml:base.documentXml.slice(0,inicioBody)+out+sect+'</w:body></w:document>',footerXml:base.footerXml};
 }
 
