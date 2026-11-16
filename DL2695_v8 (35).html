@@ -553,8 +553,12 @@
   .sol-card.m{border-left:3px solid var(--azul-700);}
   .sol-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
   .sol-head .n{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--tinta-suave);flex:1;}
-  .sol-gen{display:flex;gap:4px;}
-  .sol-gen button{border:1px solid #d8dce3;background:#fff;border-radius:7px;padding:3px 9px;font-size:12px;font-weight:700;cursor:pointer;color:var(--tinta-suave);}
+  /* Selector don / doña: sobre el nombre, grande y con ícono */
+  .sol-gen{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 8px;}
+  .sol-gen button{display:flex;align-items:center;justify-content:center;gap:7px;border:1.5px solid #d8dce3;background:#fff;border-radius:9px;padding:7px 10px;font-size:14px;font-weight:700;cursor:pointer;color:var(--tinta-suave);transition:background .15s,border-color .15s;}
+  .sol-gen button svg{width:22px;height:22px;fill:currentColor;flex:none;}
+  .sol-gen button:hover{border-color:#b9c0cc;}
+  .sol-gen button:focus-visible{outline:2px solid var(--azul-700);outline-offset:2px;}
   .sol-gen button.on.f{background:#fdf2f9;border-color:#b4478f;color:#8e2e6d;}
   .sol-gen button.on.m{background:var(--azul-100);border-color:var(--azul-700);color:var(--azul-700);}
 
@@ -7107,6 +7111,10 @@ function elegirTerrenoC(menu){
   generar();
 }
 
+/* Íconos de persona para el selector don / doña. */
+const ICONO_HOMBRE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="3.4"/><path d="M8.2 10.6h7.6c1.1 0 2 .9 2 2v5.1h-2.3V22h-2.6v-4.3h-1.8V22H8.5v-4.3H6.2v-5.1c0-1.1.9-2 2-2z"/></svg>';
+const ICONO_MUJER = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="3.4"/><path d="M9.6 10.6h4.8c.9 0 1.6.6 1.9 1.4l2.2 6.3h-3v3.7h-2.3v-3.7h-2.4v3.7H8.5v-3.7h-3l2.2-6.3c.3-.8 1-1.4 1.9-1.4z"/></svg>';
+
 function renderSolicitantes(){
   const wrap = q('solicitantesWrap');
   if(!wrap) return;
@@ -7119,11 +7127,11 @@ function renderSolicitantes(){
     return `<div class="sol-card ${esF?'f':'m'}">
       <div class="sol-head">
         <span class="n">${lista.length>1 ? 'Solicitante '+(i+1) : 'Solicitante'}</span>
-        <span class="sol-gen" data-lateral="genero">
-          <button type="button" class="f ${esF?'on':''}" onclick="setGeneroSolicitante(${i},'F')">♀ doña</button>
-          <button type="button" class="m ${!esF?'on':''}" onclick="setGeneroSolicitante(${i},'M')">♂ don</button>
-        </span>
         ${lista.length>1 ? `<button type="button" class="btn btn-outline btn-sm" onclick="quitarSolicitante(${i})" title="Quitar este solicitante">✕</button>` : ''}
+      </div>
+      <div class="sol-gen" data-lateral="genero" role="radiogroup" aria-label="Tratamiento">
+        <button type="button" class="m ${!esF?'on':''}" role="radio" aria-checked="${!esF}" onclick="setGeneroSolicitante(${i},'M')">${ICONO_HOMBRE}<span>don</span></button>
+        <button type="button" class="f ${esF?'on':''}" role="radio" aria-checked="${esF}" onclick="setGeneroSolicitante(${i},'F')">${ICONO_MUJER}<span>doña</span></button>
       </div>
       <div class="field" data-lateral="nombre">
         <label>Nombre completo</label>
