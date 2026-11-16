@@ -1103,8 +1103,8 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
           <label>SEREMI de Bienes Nacionales</label>
           <input type="text" id="seremi" value="Flavio Esteban Bazzi Pezoa">
         </div>
-        <div data-lateral="subrogancia" class="check-row checked" id="rowSubrogancia">
-          <input type="checkbox" id="subrogancia" checked onchange="toggleClass('rowSubrogancia','checked',this.checked); generar();">
+        <div data-lateral="subrogancia" class="check-row" id="rowSubrogancia">
+          <input type="checkbox" id="subrogancia" onchange="toggleClass('rowSubrogancia','checked',this.checked); generar();">
           <div>
             <div class="lbl">Firma en calidad de subrogante (S)</div>
           </div>
@@ -18986,13 +18986,14 @@ function restaurarTodo(){
     ['abogado','abogadoSelect'].forEach(k=>{ if(campos[k] === 'Rub\u00e9n Villagra Fritz') campos[k] = 'Rub\u00e9n Villagra Friz'; });
     /* Borradores anteriores a la casilla «Hay representante legal». */
     if(campos.repHayRepresentante === undefined && String(campos.repRepresentante || '').trim()) campos.repHayRepresentante = true;
-    /* Noviembre 2026: firma el Seremi subrogante. La casilla (S) se marca una
-       sola vez en los borradores antiguos; después se respeta lo que elijas. */
-    if(!localStorage.getItem('dl2695_subrogancia_2026')){
-      campos.subrogancia = true;
+    /* 16-11-2026: la casilla del Seremi subrogante (S) vuelve a estar
+       desmarcada por defecto. Se desmarca una sola vez en los borradores
+       guardados; después se respeta lo que elijas. */
+    if(!localStorage.getItem('dl2695_subrogancia_off_2026')){
+      campos.subrogancia = false;
       if(!campos.seremiSubrogante) campos.seremiSubrogante = 'Octavio Fredes Fuenzalida';
       if(!campos.vSubrogancia) delete campos.vSubrogancia;
-      try{ localStorage.setItem('dl2695_subrogancia_2026', '1'); }catch(e){}
+      try{ localStorage.setItem('dl2695_subrogancia_off_2026', '1'); }catch(e){}
     }
     if(!campos.rectListaDatos && campos.rectTexto?.trim()){
       campos.rectListaDatos=JSON.stringify([{nombre:campos.rectPunto?.trim() || 'Apartado por identificar',activo:true,texto:campos.rectTexto}]);
