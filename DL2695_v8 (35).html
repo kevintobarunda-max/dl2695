@@ -964,8 +964,14 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
           </div>
         </div>
         <div data-lateral="calculo" class="field">
-          <label>Superficie total del rol <span class="hint">(en <span class="uni-sup-rol">mt2</span>)</span></label>
-          <input type="text" inputmode="decimal" id="calcSupTotales" placeholder="" data-fmt="sup" oninput="onCalcSupInput('calcSupTotales','totales')">
+          <label>Superficie total del rol</label>
+          <div class="sup-row">
+            <input type="text" inputmode="decimal" id="calcSupTotales" placeholder="" data-fmt="sup" oninput="onCalcSupInput('calcSupTotales','totales')">
+            <select id="calcUnidadRol" onchange="onCalcUnidadRolChange()" aria-label="Unidad de la superficie total del rol">
+              <option value="m2">mt2</option>
+              <option value="ha">hectáreas</option>
+            </select>
+          </div>
           <p class="hint sup-eq" id="calcEqTotales">&nbsp;</p>
         </div>
         <div data-lateral="montos" class="field">
@@ -11475,10 +11481,15 @@ function initSuperficies(){
    a regularizar (mt2 o hectáreas); internamente se guarda en mt2. */
 function mostrarSupTotalRol(forzar){
   const u = unidadCalc(), campo = q('calcSupTotales');
-  document.querySelectorAll('.uni-sup-rol').forEach(sp => { sp.textContent = u === 'ha' ? 'hectáreas' : ETIQUETA_SUPERFICIE; });
   if(!campo || (!forzar && document.activeElement === campo)) return;
   const m2 = state.calcSup.totales;
   campo.value = (m2 === null || m2 === undefined || isNaN(m2)) ? '' : numeroALocal(u === 'ha' ? m2 / M2_POR_HA : m2);
+}
+
+/* Al cambiar mt2 ↔ hectáreas se convierte la cifra escrita (se guarda en mt2). */
+function onCalcUnidadRolChange(){
+  mostrarSupTotalRol(true);
+  calcular(); generar();
 }
 
 /* El proporcional se calcula solo; si se escribe a mano, se respeta. */
@@ -11493,7 +11504,8 @@ function usarPropCalculado(){
 
 /* ---------- superficie de la calculadora ---------- */
 
-function unidadCalc(){ return unidadSup(); }
+/* Unidad propia de la superficie total del rol (mt2 o hectáreas). */
+function unidadCalc(){ return val('calcUnidadRol') === 'ha' ? 'ha' : 'm2'; }
 function etiquetaUnidad(u){ return u === 'ha' ? 'ha' : ETIQUETA_SUPERFICIE; }
 function nombreUnidad(u, n){
   if(u !== 'ha') return ETIQUETA_SUPERFICIE;
@@ -11664,8 +11676,7 @@ function calcular(){
   const regimen = regimenAvaluo(val('fechaSolicitud'), val('tipoBien') === 'Urbano' ? 'Urbano' : 'Rural');
   const factor = regimen.factor;
 
-  const u = unidadCalc();
-  const mostrar = (m2)=> numeroALocal(u === 'ha' ? m2 / M2_POR_HA : m2) + ' ' + etiquetaUnidad(u);
+  const mostrarEn = (m2, u)=> numeroALocal(u === 'ha' ? m2 / M2_POR_HA : m2) + ' ' + etiquetaUnidad(u);
   const calculable = avaluoTotal > 0 && m2Totales > 0 && m2Reg > 0;
   const proporcional = calculable ? Math.round((m2Reg * avaluoTotal) / m2Totales) : 0;
   window.__ultimoProporcional = proporcional;
@@ -11696,7 +11707,7 @@ function calcular(){
   const formula = q('calcFormula');
   if(formula){
     formula.textContent = calculable
-      ? `${mostrar(m2Reg)} a regularizar × ${money(avaluoTotal)} ÷ ${mostrar(m2Totales)} del rol = ${money(proporcional)}`
+      ? `${mostrarEn(m2Reg, unidadSup())} a regularizar × ${money(avaluoTotal)} ÷ ${mostrarEn(m2Totales, unidadCalc())} del rol = ${money(proporcional)}`
       : (!m2Reg ? 'Falta la superficie a regularizar (en «Ubicación del inmueble»).'
         : 'Proporcional = superficie a regularizar × avalúo total ÷ superficie total del rol');
   }
