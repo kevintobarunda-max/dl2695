@@ -6312,8 +6312,13 @@ function prepararImportacion(tabla){
           <label>Conservador de Bienes Raíces de</label>
           <select id="ofCbrSelect" onchange="onOfCbrSelectChange()"></select>
           <input type="text" id="ofCbr" style="margin-top:6px;display:none;" placeholder="Escribe el Conservador">
+          <p class="hint" id="ofCbrAviso" style="margin:4px 0 0"></p>
         </div>
-        <div class="field" id="ofFieldRegistro"><label>Registro (Conservador)</label><input type="text" id="ofRegistro" value="Propiedad"></div>
+        <div class="field" id="ofFieldRegistro"><label>Registro (Conservador)</label><select id="ofRegistro">
+          <option value="Propiedad" selected>Propiedad</option>
+          <option value="Hipotecas y Gravámenes">Hipotecas y Gravámenes</option>
+          <option value="Interdicciones y Prohibiciones de Enajenar">Interdicciones y Prohibiciones de Enajenar</option>
+        </select></div>
         <div class="field" id="ofFieldEmail"><label>Correo de contacto (Conservador)</label><input type="text" id="ofEmailContacto" placeholder=""></div>
       </fieldset>
 
@@ -6593,6 +6598,50 @@ const CBR_MAULE = [
   'Villa Alegre'
 ];
 
+/* Conservador que corresponde a cada comuna del inmueble, para llenarlo solo
+   en los oficios. Las marcadas como dudosas tienen asignaciones distintas
+   según la norma consultada: se llenan igual, pero con aviso para revisar. */
+const CBR_POR_COMUNA = {
+  'Talca':'Talca','San Clemente':'Talca','Pelarco':'Talca','Pencahue':'Talca','Maule':'Talca','San Rafael':'Talca','Río Claro':'Talca',
+  'Curicó':'Curicó','Teno':'Curicó','Romeral':'Curicó','Rauco':'Curicó',
+  'Molina':'Molina','Sagrada Familia':'Molina',
+  'Licantén':'Licantén','Hualañé':'Licantén','Vichuquén':'Licantén',
+  'Curepto':'Curepto',
+  'Constitución':'Constitución','Empedrado':'Constitución',
+  'Linares':'Linares','Yerbas Buenas':'Linares','Colbún':'Linares','Longaví':'Linares',
+  'San Javier':'San Javier','Villa Alegre':'Villa Alegre',
+  'Parral':'Parral','Retiro':'Parral',
+  'Cauquenes':'Cauquenes','Pelluhue':'Cauquenes',
+  'Chanco':'Chanco'
+};
+const CBR_DUDOSO = ['Río Claro','Empedrado','Retiro','Pelluhue'];
+function cbrDeComuna(comuna){
+  const n = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const k = Object.keys(CBR_POR_COMUNA).find(c => n(c) === n(comuna));
+  return k ? {cbr: CBR_POR_COMUNA[k], comuna: k, dudoso: CBR_DUDOSO.includes(k)} : null;
+}
+
+/* Oficios: el Conservador se llena solo con la comuna del inmueble, salvo que
+   se haya elegido otro a mano. */
+function autoCbrOficio(){
+  const input = q('ofCbr'), aviso = q('ofCbrAviso');
+  if(!input) return;
+  const r = cbrDeComuna(val('ofComuna'));
+  const manual = input.dataset.auto !== '1' && !!input.value.trim();
+  if(r && !manual){
+    input.value = r.cbr; input.dataset.auto = '1';
+    sincronizarCbrSelect('ofCbrSelect','ofCbr');
+  }
+  if(aviso){
+    aviso.innerHTML = (input.dataset.auto === '1' && r)
+      ? (r.dudoso
+          ? '⚠ Puesto según la comuna (' + r.comuna + '). Esta comuna tiene asignación dudosa: revisa que sea el Conservador correcto.'
+          : '✓ Puesto solo según la comuna del inmueble (' + r.comuna + ').')
+      : '';
+    aviso.style.color = r && r.dudoso && input.dataset.auto === '1' ? '#8a6d1f' : '';
+  }
+}
+
 function poblarCbrSelect(selectId){
   const sel = q(selectId);
   if(!sel) return;
@@ -6811,6 +6860,7 @@ function onCbrSelectChange(){
 function onOfCbrSelectChange(){
   const sel = q('ofCbrSelect');
   const input = q('ofCbr');
+  input.dataset.auto = sel.value ? '0' : '1';
   if(sel.value === 'otro'){
     input.style.display = 'block';
     input.value = '';
@@ -6819,6 +6869,8 @@ function onOfCbrSelectChange(){
     input.style.display = 'none';
     input.value = sel.value;
   }
+  if(!sel.value) autoCbrOficio();
+  else if(q('ofCbrAviso')) q('ofCbrAviso').innerHTML = '';
   generarOficioPreview();
 }
 
@@ -11762,6 +11814,7 @@ function onOfComunaChange(){
   const sel = q('ofComuna');
   const opt = sel.options[sel.selectedIndex];
   q('ofProvincia').value = opt ? (opt.dataset.provincia || '') : '';
+  autoCbrOficio();
 }
 
 function initOficios(){
@@ -12283,6 +12336,7 @@ function oficioDesdePadron(exp){
    'ofFojas','ofNumInsc','ofAnioInsc'].forEach(id=>{ if(q(id)) q(id).value = ''; });
   if(q('ofCbr')){
     q('ofCbr').value = '';
+    q('ofCbr').dataset.auto = '1';
     sincronizarCbrSelect('ofCbrSelect','ofCbr');
   }
 
@@ -12313,7 +12367,9 @@ function oficioDesdePadron(exp){
   if(extra.numInsc)  { q('ofNumInsc').value = extra.numInsc; }
   if(extra.anioInsc) { q('ofAnioInsc').value = extra.anioInsc; }
   if(extra.fojas || extra.numInsc || extra.anioInsc) recuperados.push('la inscripción');
+  if(!extra.cbr) autoCbrOficio();
   if(extra.cbr){
+    q('ofCbr').dataset.auto = '0';
     q('ofCbr').value = extra.cbr;
     sincronizarCbrSelect('ofCbrSelect','ofCbr');
     recuperados.push('el Conservador');
@@ -12458,7 +12514,9 @@ function autocompletarOficios(){
   q('ofNumInsc').value = val('numInsc');
   q('ofAnioInsc').value = val('anioInsc');
   q('ofCbr').value = val('cbr');
+  q('ofCbr').dataset.auto = val('cbr') ? '0' : '1';
   sincronizarCbrSelect('ofCbrSelect','ofCbr');
+  autoCbrOficio();
   q('ofRolAvaluo').value = val('rolAvaluo');
   q('ofSeremi').value = seremiFirmante();
 
