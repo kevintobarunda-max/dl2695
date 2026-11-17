@@ -15730,7 +15730,18 @@ function sincronizarMinutaReposicion(){
   q('jqPlazo').disabled = true;
   const primera = jqFilas()[0];
   let cambio = false;
-  [['arg',val('repAlegacion')],['desc',fundamentos]].forEach(([campo,valor])=>{
+  /* Descargos de la Unidad = lo que dice la Resolución de Reposición: los fundamentos
+     de la denegatoria y su considerando 5 (motivación del servicio y la decisión
+     agregada), textual y sin número. Los textos de ayuda entre corchetes no pasan. */
+  const sinAyuda = t => String(t || '').replace(/\[[^\]]*\]/g, '').replace(/[ \t]{2,}/g, ' ').trim();
+  let cons5 = '';
+  try{
+    const b5 = bloquesFinales('resolucionRep', partesDe('resolucionRep').bloques).find(b => b.id === 'cons-5');
+    if(b5) cons5 = sinAyuda(quitarNumeracion(b5.texto)).replace(/^Que,\s*/i, '');
+    cons5 = cons5 ? cons5.charAt(0).toUpperCase() + cons5.slice(1) : '';
+  }catch(e){ console.warn('Considerando 5 de Reposición:', e); }
+  const descargos = [sinAyuda(fundamentos), cons5].filter(Boolean).join('\n\n');
+  [['arg',val('repAlegacion')],['desc',descargos]].forEach(([campo,valor])=>{
     const anterior = '_auto_' + campo;
     if(!primera[campo] || primera[campo] === primera[anterior]){
       if(primera[campo] !== valor) cambio = true;
