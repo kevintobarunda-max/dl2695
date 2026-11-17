@@ -532,6 +532,19 @@
   .aval-linea{font-family:var(--mono);font-size:11.5px;color:var(--tinta-suave);line-height:1.45;}
   .aval-tope{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;}
   .aval-tope b{font-family:var(--serif);font-size:15px;}
+  .ocr-zona{margin-top:8px;border:1.5px dashed #b9c3d3;border-radius:9px;padding:9px 10px;background:#f8fafc;cursor:pointer;transition:background .15s,border-color .15s;}
+  .ocr-zona:hover,.ocr-zona:focus-visible{border-color:var(--azul-800,#1e3a5f);outline:none;}
+  .ocr-zona.arrastrando{background:#eaf2ff;border-color:var(--azul-800,#1e3a5f);}
+  .ocr-zona.leyendo{cursor:progress;opacity:.95;}
+  .ocr-titulo{font-weight:700;font-size:12.5px;color:var(--azul-900,#14304f);}
+  .ocr-sub{font-size:12px;color:var(--tinta-suave,#5a6a7d);margin-top:3px;line-height:1.5;}
+  .ocr-sub .btn{margin:0 2px;padding:2px 8px;}
+  .ocr-tip{display:block;font-size:11px;}
+  .ocr-estado{font-size:12px;margin-top:5px;}
+  .ocr-estado:empty{display:none;}
+  .ocr-bruto{margin-top:6px;font-size:12px;cursor:default;}
+  .ocr-bruto summary{cursor:pointer;color:var(--azul-800,#1e3a5f);}
+  .ocr-bruto textarea{width:100%;box-sizing:border-box;font-family:var(--mono,monospace);font-size:11.5px;margin-top:4px;}
   .calc-inline summary{cursor:pointer;font-weight:700;font-size:12.5px;color:var(--azul-900);list-style:none;}
   .calc-inline summary::-webkit-details-marker{display:none;}
   .calc-inline[open] summary{margin-bottom:4px;}
@@ -1032,7 +1045,25 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
               <label>Pega aquí los deslindes de la minuta <span class="hint">· se ordenan solos; admite NORESTE, SURESTE… y varios lotes</span></label>
               <textarea id="bDeslindes" rows="6" spellcheck="false" placeholder="NORTE: Calle Cintura en 12,64 metros&#10;ESTE: …&#10;SUR: …&#10;OESTE: …" oninput="generar()" onpaste="ordenarDeslindesAlPegar()"></textarea>
             </div>
-            <div class="hint" id="bDeslindesEstado" style="margin:2px 0 0"></div></div></div>
+            <div class="hint" id="bDeslindesEstado" style="margin:2px 0 0"></div>
+            <!-- Lector OCR: imagen o PDF de los deslindes (arrastrar, abrir o pegar). Todo corre en el
+                 computador, sin internet, con el pdf.js y el Tesseract que ya vienen en este archivo. -->
+            <div class="ocr-zona" id="bDeslindesOcr" tabindex="0" role="button"
+                 aria-label="Leer deslindes desde una imagen o PDF"
+                 onclick="if(!event.target.closest('a,button,details')) q('bDeslindesArchivo').click()"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();q('bDeslindesArchivo').click();}">
+              <input type="file" id="bDeslindesArchivo" data-temporal accept="image/*,application/pdf,.pdf" multiple hidden
+                     onchange="ocrDeslindesArchivos(this.files); this.value=''">
+              <div class="ocr-titulo">📷 Lector OCR de deslindes</div>
+              <div class="ocr-sub">Arrastra aquí una <b>imagen</b> o <b>PDF</b> de la minuta, o
+                <button type="button" class="btn btn-outline btn-sm" onclick="q('bDeslindesArchivo').click()">Abrir archivo…</button>
+                <span class="ocr-tip">También puedes pegar una captura con Ctrl+V en el recuadro.</span></div>
+              <div class="ocr-estado" id="bDeslindesOcrEstado" aria-live="polite"></div>
+              <details class="ocr-bruto" id="bDeslindesOcrBrutoBox" hidden>
+                <summary>Ver el texto leído completo</summary>
+                <textarea id="bDeslindesOcrBruto" data-temporal rows="6" readonly spellcheck="false"></textarea>
+              </details>
+            </div></div></div>
             <!-- campos de borradores anteriores (por rumbo): se siguen leyendo si el recuadro está vacío -->
             <input type="hidden" id="bDeslindeNorte"><input type="hidden" id="bDeslindeEste">
             <input type="hidden" id="bDeslindeSur"><input type="hidden" id="bDeslindeOeste">
@@ -16302,6 +16333,87 @@ async function ocrDeLienzoB(lienzo, progreso, rapido){
 }
 async function ocrDeImagenB(dataUrl, progreso, rapido){ return ocrDeLienzoB(await lienzoDeImagenB(dataUrl, 4800), progreso, rapido); }
 async function textoDeImagenB(dataUrl, progreso, rapido){ return ocrDeImagenB(dataUrl, progreso, rapido); }
+
+/* ---------- Lector OCR de deslindes (imagen o PDF: arrastrar, abrir o pegar) ----------
+   Los PDF con texto se leen directo; las imágenes y los PDF escaneados pasan por el
+   reconocimiento de texto. El resultado se ordena por rumbo y queda en el recuadro para revisar. */
+let _ocrDeslindesOcupado = false;
+function esArchivoOcrDeslindes(f){ return f && (/^image\//.test(f.type) || /pdf$/i.test(f.type) || /\.(pdf|png|jpe?g|webp|bmp|gif|tiff?)$/i.test(f.name || '')); }
+async function ocrDeslindesArchivos(files){
+  const estado = q('bDeslindesOcrEstado'), zona = q('bDeslindesOcr'), ta = q('bDeslindes');
+  const lista = Array.from(files || []).filter(esArchivoOcrDeslindes);
+  const decir = (html, color) => { if(estado){ estado.innerHTML = html; estado.style.color = color || ''; } };
+  if(!lista.length){ decir('⚠ Solo se pueden leer imágenes (JPG, PNG…) o PDF.', '#a33'); return; }
+  if(_ocrDeslindesOcupado){ decir('⏳ Espera: todavía se está leyendo el archivo anterior.'); return; }
+  _ocrDeslindesOcupado = true; zona && zona.classList.add('leyendo');
+  const textos = []; let conOcr = false;
+  try{
+    for(const [i, f] of lista.entries()){
+      const pre = (lista.length > 1 ? '(' + (i + 1) + '/' + lista.length + ') ' : '') + '«' + escaparHtml(f.name || 'imagen') + '»: ';
+      const progreso = m => decir('⏳ ' + pre + escaparHtml(m) + '…');
+      progreso('preparando el lector (la primera vez puede tardar unos segundos)');
+      const datos = await leerArchivoB(f);
+      const esPdf = /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name || '');
+      const r = esPdf ? await textoDePdfB(datos, progreso, false, false) : await textoDeImagenB(datos, progreso, false);
+      const usoOcr = !esPdf || r.usoOcr;
+      conOcr = conOcr || usoOcr;
+      textos.push(usoOcr ? limpiarOcrDeslindes(r.texto || '') : String(r.texto || ''));
+    }
+  } catch(err){
+    console.error(err);
+    decir('⚠ No se pudo leer el archivo: ' + escaparHtml(err.message || String(err)), '#a33');
+    _ocrDeslindesOcupado = false; zona && zona.classList.remove('leyendo');
+    return;
+  }
+  _ocrDeslindesOcupado = false; zona && zona.classList.remove('leyendo');
+
+  const bruto = textos.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  const box = q('bDeslindesOcrBrutoBox'), crudo = q('bDeslindesOcrBruto');
+  if(crudo) crudo.value = bruto;
+  if(box) box.hidden = !bruto;
+  if(!bruto){ decir('⚠ No se encontró texto en el archivo. Prueba con una imagen más nítida o escríbelos a mano.', '#a33'); return; }
+
+  const p = parsearDeslindes(bruto);
+  const nuevo = p.hallados ? textoDeslindesOrdenado(p) : bruto;
+  if(ta){
+    const previo = ta.value.trim();
+    if(previo && previo !== nuevo){
+      const reemplazar = confirm('El recuadro ya tiene deslindes.\n\nAceptar: reemplazarlos por los leídos.\nCancelar: agregar los leídos al final.');
+      ta.value = reemplazar ? nuevo : previo + '\n' + nuevo;
+    } else ta.value = nuevo;
+    generar();
+  }
+  const sitios = p.sitios.length > 1 ? ' en ' + p.sitios.length + ' lotes/sitios' : '';
+  decir(p.hallados
+    ? '✓ Leído' + (conOcr ? ' con OCR' : '') + ': se reconocieron ' + p.hallados + ' rumbo' + (p.hallados === 1 ? '' : 's') + sitios + '. '
+      + (conOcr ? '<b>Revisa las cifras y nombres</b>: el OCR puede confundir letras y números.' : 'Revisa el resultado.')
+    : '⚠ Se leyó el texto, pero no se reconocieron rumbos (NORTE, SUR…). Quedó en el recuadro para que lo corrijas.',
+    p.hallados ? '#2f6b3a' : '#8a6d1f');
+}
+/* Arrastrar y soltar sobre la zona o sobre el recuadro; pegar una captura (Ctrl+V) en el recuadro. */
+(function(){
+  const arrancar = ()=>{
+    const zona = q('bDeslindesOcr'), ta = q('bDeslindes');
+    if(!zona || !ta) return;
+    const conArchivos = e => Array.from((e.dataTransfer && e.dataTransfer.types) || []).includes('Files');
+    [zona, ta].forEach(el=>{
+      el.addEventListener('dragover', e => { if(!conArchivos(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; zona.classList.add('arrastrando'); });
+      el.addEventListener('dragleave', e => { if(!el.contains(e.relatedTarget)) zona.classList.remove('arrastrando'); });
+      el.addEventListener('drop', e => {
+        if(!conArchivos(e)) return;
+        e.preventDefault(); zona.classList.remove('arrastrando');
+        ocrDeslindesArchivos(e.dataTransfer.files);
+      });
+    });
+    ta.addEventListener('paste', e => {
+      const files = Array.from((e.clipboardData && e.clipboardData.files) || []).filter(esArchivoOcrDeslindes);
+      if(!files.length) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      ocrDeslindesArchivos(files);
+    }, true);
+  };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar); else arrancar();
+})();
 
 /* ---------- Fecha del informe técnico: mes y año ---------- */
 const MESES_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
