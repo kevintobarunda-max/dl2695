@@ -580,7 +580,13 @@
   .sol-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
   .sol-head .n{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--tinta-suave);flex:1;}
   /* Selector don / doña: sobre el nombre, grande y con ícono */
-  .sol-gen{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 8px;}
+  .sol-gen{display:grid;grid-template-columns:1fr 1fr 1.35fr;gap:6px;margin:0 0 8px;}
+  .sol-gen button.on.j{background:#eef6ef;border-color:#3e7d4c;color:#2f6b3a;}
+  .sol-card.j{border-left:3px solid #3e7d4c;}
+  .sol-gen button span{white-space:nowrap;}
+  .sol-rep-fila{display:flex;gap:6px;}
+  .sol-rep-fila select{width:auto;flex:none;}
+  .sol-rep-fila input{flex:1;min-width:0;}
   .sol-gen button{display:flex;align-items:center;justify-content:center;gap:7px;border:1.5px solid #d8dce3;background:#fff;border-radius:9px;padding:7px 10px;font-size:14px;font-weight:700;cursor:pointer;color:var(--tinta-suave);transition:background .15s,border-color .15s;}
   .sol-gen button svg{width:22px;height:22px;fill:currentColor;flex:none;}
   .sol-gen button:hover{border-color:#b9c0cc;}
@@ -6295,7 +6301,7 @@ function prepararImportacion(tabla){
         <div class="grid2">
           <div class="field"><label>Nombre completo</label><input type="text" id="ofNombre" placeholder=""></div>
           <div class="field"><label>Género</label>
-            <select id="ofGenero"><option value="F">Femenino (doña)</option><option value="M">Masculino (don)</option></select>
+            <select id="ofGenero"><option value="F">Femenino (doña)</option><option value="M">Masculino (don)</option><option value="J">Persona jurídica</option></select>
           </div>
         </div>
         <div class="grid2">
@@ -7122,7 +7128,7 @@ function variosSolicitantes(){ return sols().length > 1; }
    y la que siguen los informes: "los solicitantes" en cuanto hay un hombre). */
 function generoGrupo(){
   const s = sols();
-  return s.every(p => p.genero === 'F') ? 'F' : 'M';
+  return s.every(esFem) ? 'F' : 'M';
 }
 
 function opcionesPersonaC(campo, genero){
@@ -7178,6 +7184,7 @@ function elegirTerrenoC(menu){
 
 /* Íconos de persona para el selector don / doña. */
 const ICONO_HOMBRE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="3.4"/><path d="M8.2 10.6h7.6c1.1 0 2 .9 2 2v5.1h-2.3V22h-2.6v-4.3h-1.8V22H8.5v-4.3H6.2v-5.1c0-1.1.9-2 2-2z"/></svg>';
+const ICONO_EMPRESA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V5.5c0-.8.7-1.5 1.5-1.5h7c.8 0 1.5.7 1.5 1.5V9h4.5c.8 0 1.5.7 1.5 1.5V21h-6v-4h-4v4H4zm3-14v2h2V7H7zm4 0v2h2V7h-2zm-4 4v2h2v-2H7zm4 0v2h2v-2h-2zm5 1v2h2v-2h-2zm0 4v2h2v-2h-2z"/></svg>';
 const ICONO_MUJER = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="3.4"/><path d="M9.6 10.6h4.8c.9 0 1.6.6 1.9 1.4l2.2 6.3h-3v3.7h-2.3v-3.7h-2.4v3.7H8.5v-3.7h-3l2.2-6.3c.3-.8 1-1.4 1.9-1.4z"/></svg>';
 
 function renderSolicitantes(){
@@ -7188,23 +7195,35 @@ function renderSolicitantes(){
   if(cont) cont.textContent = String(lista.length);
 
   wrap.innerHTML = lista.map((p,i)=>{
-    const esF = p.genero === 'F';
-    return `<div class="sol-card ${esF?'f':'m'}">
+    const esJ = p.genero === 'J', esF = p.genero === 'F', esM = !esJ && !esF;
+    return `<div class="sol-card ${esJ?'j':esF?'f':'m'}">
       <div class="sol-head">
         <span class="n">${lista.length>1 ? 'Solicitante '+(i+1) : 'Solicitante'}</span>
         ${lista.length>1 ? `<button type="button" class="btn btn-outline btn-sm" onclick="quitarSolicitante(${i})" title="Quitar este solicitante">✕</button>` : ''}
       </div>
       <div class="sol-gen" data-lateral="genero" role="radiogroup" aria-label="Tratamiento">
-        <button type="button" class="m ${!esF?'on':''}" role="radio" aria-checked="${!esF}" onclick="setGeneroSolicitante(${i},'M')">${ICONO_HOMBRE}<span>don</span></button>
+        <button type="button" class="m ${esM?'on':''}" role="radio" aria-checked="${esM}" onclick="setGeneroSolicitante(${i},'M')">${ICONO_HOMBRE}<span>don</span></button>
         <button type="button" class="f ${esF?'on':''}" role="radio" aria-checked="${esF}" onclick="setGeneroSolicitante(${i},'F')">${ICONO_MUJER}<span>doña</span></button>
+        <button type="button" class="j ${esJ?'on':''}" role="radio" aria-checked="${esJ}" onclick="setGeneroSolicitante(${i},'J')">${ICONO_EMPRESA}<span>Persona jurídica</span></button>
       </div>
       <div class="field" data-lateral="nombre">
-        <label>Nombre completo</label>
+        <label>${esJ ? 'Razón social o nombre de la persona jurídica' : 'Nombre completo'}</label>
         <input type="text" value="${escapeAttr(p.nombre)}" placeholder=""
                oninput="updateSolicitante(${i},'nombre',this.value)">
       </div>
+      ${esJ ? `<div class="sol-rep" data-lateral="nombre">
+        <div class="field"><label>Representante legal <span class="hint">(opcional)</span></label>
+          <div class="sol-rep-fila">
+            <select aria-label="Tratamiento del representante" onchange="updateSolicitante(${i},'repGenero',this.value)">
+              <option value="M" ${p.repGenero!=='F'?'selected':''}>don</option><option value="F" ${p.repGenero==='F'?'selected':''}>doña</option>
+            </select>
+            <input type="text" value="${escapeAttr(p.repNombre)}" placeholder="Nombre del representante" oninput="updateSolicitante(${i},'repNombre',this.value)">
+          </div></div>
+        <div class="field"><label>C.I. del representante <span class="hint">(opcional)</span></label>
+          <input type="text" value="${escapeAttr(p.repRut)}" oninput="this.value=formatRutEscribiendo(this.value); updateSolicitante(${i},'repRut',this.value)" onblur="this.value=formatRutValue(this.value); updateSolicitante(${i},'repRut',this.value)"></div>
+      </div>` : ''}
       <section class="datos-inscripcion-c" data-lateral="fichaC" aria-label="Datos para inscripción · Etapa C"><strong>Datos para inscripción · Etapa C</strong>
-        <div class="grid2">
+        <div class="grid2" ${esJ ? 'hidden' : ''}>
           ${menuPersonaC(i,'nacionalidad','Nacionalidad',p)}<div class="field"><label>Profesión u oficio (si consta)</label><input type="text" value="${escapeAttr(p.profesion)}" oninput="updateSolicitante(${i},'profesion',this.value)"></div>
           ${menuPersonaC(i,'estadoCivil','Estado civil',p)}
         </div>
@@ -7215,7 +7234,7 @@ function renderSolicitantes(){
       </section>
       <div class="grid2 rep-no-utilizado">
         <div class="field" data-lateral="rut">
-          <label>RUT / C.I.</label>
+          <label>${esJ ? 'RUT de la persona jurídica' : 'RUT / C.I.'}</label>
           <input type="text" value="${escapeAttr(p.rut)}" placeholder=""
                  oninput="this.value=formatRutEscribiendo(this.value); updateSolicitante(${i},'rut',this.value)"
                  onblur="this.value=formatRutValue(this.value); updateSolicitante(${i},'rut',this.value)">
@@ -7247,7 +7266,7 @@ function quitarSolicitante(i){
 }
 function setGeneroSolicitante(i, gen){
   const persona=sols()[i];
-  for(const campo of ['nacionalidad','estadoCivil']){
+  if(gen !== 'J' && persona.genero !== 'J') for(const campo of ['nacionalidad','estadoCivil']){
     const indice=opcionesPersonaC(campo,persona.genero).indexOf(persona[campo]);
     if(indice>=0) persona[campo]=opcionesPersonaC(campo,gen)[indice];
   }
@@ -7279,8 +7298,7 @@ function solicitantesNotificados(){ return sols(); }
 /* "don JUAN PÉREZ, C.I. N° 1.111.111-1; y doña ANA SOTO, C.I. N° 2.222.222-2" */
 function listaSolicitantesConRut(personas){
   const lista = (personas || sols()).map(p=>{
-    const trato = p.genero === 'F' ? 'doña' : 'don';
-    return `${trato} ${upper(blank(p.nombre,'____________________'))}, C.I. N° ${blank(p.rut,'____________')}`;
+    return `${conTrato(p, upper(blank(p.nombre,'____________________')))}, ${docIdDe(p)} ${blank(p.rut,'____________')}${representacionDe(p)}`;
   });
   return unirConY(lista, '; ');
 }
@@ -7295,8 +7313,7 @@ function nombresSolicitantes(personas){
    "don JUAN PÉREZ; Y doña ANA SOTO" */
 function nombresSolicitantesConTrato(personas){
   const lista = (personas || sols()).map(p=>{
-    const trato = p.genero === 'F' ? 'doña' : 'don';
-    return `${trato} ${upper(blank(p.nombre,'____________________'))}`;
+    return conTrato(p, upper(blank(p.nombre,'____________________')));
   });
   return unirConY(lista, '; ', 'Y');
 }
@@ -7801,6 +7818,24 @@ function g(masc, fem, mascPlural, femPlural){
 /* v() = concordancia del verbo: v('posee','poseen') */
 function v(singular, plural){ return variosSolicitantes() ? plural : singular; }
 
+/* ---------- Persona jurídica (genero 'J') ----------
+   Se redacta en femenino («la solicitante», «interesada»…), sin don/doña,
+   con RUT en vez de C.I. y, si se indica, «representada legalmente por …». */
+function esJuridica(p){ return !!p && p.genero === 'J'; }
+function esFem(p){ return !!p && (p.genero === 'F' || p.genero === 'J'); }
+function tratoDe(p){ return esJuridica(p) ? '' : (p && p.genero === 'F' ? 'doña' : 'don'); }
+function conTrato(p, nombre){ const t = tratoDe(p); return t ? t + ' ' + nombre : nombre; }
+function senorDe(p){ return esJuridica(p) ? '' : (p && p.genero === 'F' ? 'SEÑORA' : 'SEÑOR'); }
+function conSenor(p, nombre){ const t = senorDe(p); return t ? t + ' ' + nombre : nombre; }
+function docIdDe(p){ return esJuridica(p) ? 'RUT N°' : 'C.I. N°'; }
+function representacionDe(p){
+  if(!esJuridica(p)) return '';
+  const r = String(p.repNombre || '').trim();
+  if(!r) return '';
+  return ', representada legalmente por ' + (p.repGenero === 'F' ? 'doña ' : 'don ') + upper(r)
+    + (String(p.repRut || '').trim() ? ', C.I. N° ' + p.repRut.trim() : '');
+}
+
 function donDona(){ return g('don','doña','los','las'); }
 function DonDona(){ return g('Don','Doña','Los','Las'); }
 function elLa(){ return g('el','la','los','las'); }
@@ -7819,7 +7854,7 @@ function delInteresado(){ return g('del interesado','de la interesada','de los i
    con sus destinatarios y no con todo el expediente. */
 function Interesados(personas){
   const lista = (personas && personas.length) ? personas : sols();
-  const esF = lista.every(p => p.genero === 'F');
+  const esF = lista.every(esFem);
   if(lista.length > 1) return esF ? 'Interesadas' : 'Interesados';
   return esF ? 'Interesada' : 'Interesado';
 }
@@ -7833,8 +7868,7 @@ function poseedorCalidad(){ return g('poseedor regular','poseedora regular','pos
    ("doña ANA SOTO") o a todos en plural ("doña ANA SOTO; y don LUIS DÍAZ"). */
 function tratamientoYNombre(personas){
   const lista = (personas || sols()).map(p=>{
-    const trato = p.genero === 'F' ? 'doña' : 'don';
-    return `${trato} ${upper(blank(p.nombre,'____________________'))}`;
+    return conTrato(p, upper(blank(p.nombre,'____________________')));
   });
   return unirConY(lista, '; ');
 }
@@ -9245,7 +9279,7 @@ function textoSegunContexto(tab, bloque, texto){
 function partesFallecimiento(tab){
   const d = encabezadoComun(), notifica = tab === 'notificacionFallecimiento';
   const persona = sols()[0] || {};
-  const genero = val('tfGenero') || persona.genero;
+  const genero = val('tfGenero') || (persona.genero === 'J' ? 'F' : persona.genero);
   const nombre = blank(val('tfNombre') || persona.nombre);
   const rut = blank(val('tfRut') || persona.rut);
   const trato = genero === 'F' ? 'doña' : 'don';
@@ -9323,7 +9357,7 @@ function partesCNegativa(tab){
   const de = `SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES${d.subrogancia ? ' (S)' : ''}, REGIÓN DEL MAULE`;
   const fecha = fechaCorta(notifica ? d.fecha : val('resCFecha'));
   const bloques = [], destinatarios = solicitantesNotificados();
-  const direcciones = destinatarios.map(p=>`${p.genero === 'F' ? 'SEÑORA' : 'SEÑOR'} ${upper(blank(p.nombre))}\n${p.domicilio || val('cDestDireccion') || ubicacionAdministrativa(d)}.`);
+  const direcciones = destinatarios.map(p=>`${conSenor(p, upper(blank(p.nombre)))}\n${p.domicilio || val('cDestDireccion') || ubicacionAdministrativa(d)}.`);
   const a = direcciones.join('\n\n');
   const cabecera = `Exp.Nº: ${d.expN}\nORD. Nº: E-${blank(val('ordCN'))}\nANT.: Su solicitud de regularización D.L. Nº 2.695/79.-`;
   if(notifica){
@@ -9424,7 +9458,7 @@ function partesCPositiva(tab){
   const fecha = fechaCorta(notifica ? d.fecha : val('resCFecha'));
   const de = `SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES${d.subrogancia ? ' (S)' : ''}, REGIÓN DEL MAULE`;
   const destinatarios = solicitantesNotificados();
-  const lineasA = destinatarios.map(p=>`${p.genero==='F' ? 'SEÑORA' : 'SEÑOR'} ${upper(blank(p.nombre))}\nDirección ${p.domicilio || val('cDestDireccion') || domicilioInscripcionC(p)}.`);
+  const lineasA = destinatarios.map(p=>`${conSenor(p, upper(blank(p.nombre)))}\nDirección ${p.domicilio || val('cDestDireccion') || domicilioInscripcionC(p)}.`);
   const a = lineasA.join('\n\n');
   const bloques = [], cabecera = `Exp.Nº: ${d.expN}\nORD. Nº: E-${blank(val('ordCN'))}\nANT.: Su solicitud de regularización, D.L. Nº 2.695/79.-`;
   if(notifica){
@@ -9452,7 +9486,9 @@ function partesCPositiva(tab){
     bloques.push(bl('cons-2', `2.- Que fue verificado por el Servicio y consta de los antecedentes relacionados, que ${peticionario()} ${v('ejerce','ejercen')} efectivamente por más de cinco años la posesión material sobre el mencionado inmueble, en forma exclusiva y continua, sin violencia ni clandestinidad, la que ${v('adquirió','adquirieron')} por ${blank(val('cModoAdq'))}.`),
       bl('cons-3', `3.- Que, mediante declaración jurada acompañada se acredita que no existe juicio pendiente, en contra ${delSolicitante()}, en el cual se discuta el dominio o posesión del mismo inmueble, iniciado con antelación a la fecha de presentación de la solicitud administrativa de regularización, tratándose de propiedad con avalúo inferior al límite fijado por la ley.`),
       bl('resuelvo-titulo', 'RESUELVO:'));
-    const personas = sols().map(p=>`${p.genero==='F'?'doña':'don'} ${upper(blank(p.nombre))}, Cédula de Identidad N° ${blank(p.rut)}, ${blank(p.nacionalidad)}, ${p.profesion ? p.profesion+', ' : ''}${blank(p.estadoCivil)}, ${p.genero==='F'?'domiciliada':'domiciliado'} en ${domicilioInscripcionC(p)}`).join('; ');
+    const personas = sols().map(p=> esJuridica(p)
+      ? `${upper(blank(p.nombre))}, Rol Único Tributario N° ${blank(p.rut)}${representacionDe(p)}, domiciliada en ${domicilioInscripcionC(p)}`
+      : `${p.genero==='F'?'doña':'don'} ${upper(blank(p.nombre))}, Cédula de Identidad N° ${blank(p.rut)}, ${blank(p.nacionalidad)}, ${p.profesion ? p.profesion+', ' : ''}${blank(p.estadoCivil)}, ${p.genero==='F'?'domiciliada':'domiciliado'} en ${domicilioInscripcionC(p)}`).join('; ');
     bloques.push(bl('res-1', `1.- INSCRÍBASE el inmueble individualizado precedentemente a nombre de ${personas}${val('cTieneInscripcion') === 'sin' ? '.' : ', en el Registro de Propiedad del Conservador de Bienes Raíces de '+d.cbr+';'}`),
       bl('res-2', `2.- Inscríbase, además, en el Registro de Prohibiciones del mismo Conservador, la prohibición de gravar el inmueble durante el plazo de dos años, contado desde la fecha de inscripción del dominio. Conjuntamente con ello, inscríbase la prohibición de enajenación del inmueble durante el plazo de cinco años, contados desde la fecha de inscripción del dominio. Ambas inscripciones quedarán canceladas por el solo ministerio de la ley una vez transcurridos los plazos de dos y cinco años, respectivamente, conforme a lo dispuesto en el artículo 17 del Decreto Ley Nº 2.695/79, modificado por el artículo único de la ley Nº 21.108;`),
       bl('res-3', val('cTieneInscripcion') === 'sin'
@@ -9562,8 +9598,7 @@ function partesNotificacion(){
   const direccionGeneral = val('destDireccion') || ubicacionInmueble;
   const lineasA = destinatarios.map(p=>{
     const dom = p.domicilio || direccionGeneral;
-    const trato = p.genero === 'F' ? 'SEÑORA' : 'SEÑOR';
-    return `${trato} ${upper(blank(p.nombre,'____________________'))}\n${dom}`;
+    return `${conSenor(p, upper(blank(p.nombre,'____________________')))}\n${dom}`;
   });
   const a = lineasA.join('\n\n');
 
@@ -10018,8 +10053,7 @@ function partesNotificacionB(){
 
   const lineasA = destinatarios.map(p=>{
     const dom = p.domicilio || direccionGeneral;
-    const trato = p.genero === 'F' ? 'SEÑORA' : 'SEÑOR';
-    return `${trato} ${upper(blank(p.nombre,'____________________'))}\n${dom}`;
+    return `${conSenor(p, upper(blank(p.nombre,'____________________')))}\n${dom}`;
   });
   const a = lineasA.join('\n\n');
 
@@ -10413,7 +10447,7 @@ function partesNotificacionRep(){
 
   const lineasA = destinatarios.map(p=>{
     const dom = p.domicilio || direccionGeneral;
-    return `${p.genero === 'F' ? 'doña' : 'don'} ${upper(blank(p.nombre,'____________________'))}, ${dom}, COMUNA DE ${upper(d.comuna)}.`;
+    return `${conTrato(p, upper(blank(p.nombre,'____________________')))}, ${dom}, COMUNA DE ${upper(d.comuna)}.`;
   });
   const a = lineasA.join('\n\n');
 
@@ -10658,7 +10692,7 @@ function partesRectificatoria(tab){
   if(notifica){
     cabecera = `ORD.: ${numero('rectOrd')}\nANT.: Notifica Resolución Exenta a través de la cual se rectifica la resolución que allí se indica.\nMAT.: ${materia}\nTALCA, ${fecha}`;
     bloques.push(bl('cabecera',cabecera), bl('de','DE: '+de));
-    const direcciones = solicitantesNotificados().map(p => `${p.genero === 'F' ? 'SEÑORA' : 'SEÑOR'} ${upper(blank(p.nombre))}, ${upper(blank(p.domicilio || val('rectDomicilio'))).replace(/[.\s]+$/,'')}.`);
+    const direcciones = solicitantesNotificados().map(p => `${conSenor(p, upper(blank(p.nombre)))}, ${upper(blank(p.domicilio || val('rectDomicilio'))).replace(/[.\s]+$/,'')}.`);
     a = direcciones.join('\n\n');
     direcciones.forEach((linea,i) => bloques.push(bl('a-'+i,(i===0 ? 'A: ' : '')+linea)));
     bloques.push(bl('intro',`Mediante la presente, envío copia de la Resolución Exenta que rectifica la ${original}, de esta Secretaría Regional Ministerial de Bienes Nacionales, Región del Maule.`),
@@ -10748,6 +10782,7 @@ function identificacionReposicion(texto, sinRut){
     const patron = nombre.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+');
     const regex = new RegExp('(^|[^\\p{L}\\p{N}])(?:(?:don|doña)\\s+)?('+patron+')(?![\\p{L}\\p{N}])','giu');
     resultado = resultado.replace(regex,(total,antes,nom)=>{
+      if(esJuridica(p)) return antes + nom;
       let trato = p.genero === 'F' ? 'doña' : 'don';
       if(total.trim() === total.trim().toUpperCase()) trato = trato.toUpperCase();
       return antes + trato + ' ' + nom;
@@ -12645,7 +12680,7 @@ function renderOficioPadron(){
 function autocompletarOficios(){
   const d = encabezadoComun();
   q('ofNombre').value = val('nombre');
-  q('ofGenero').value = state.genero;
+  q('ofGenero').value = esJuridica(sols()[0]) ? 'J' : state.genero;
   if(q('ofMasGenero')) q('ofMasGenero').value = state.genero;
   q('ofCi').value = val('rut');
   q('ofExpediente').value = val('expN');
@@ -12696,7 +12731,7 @@ function xmlEscape(s){
 function datosOficioActuales(){
   const modo = val('ofModoAdq');
   const genero = val('ofGenero');
-  const tratamiento = genero === 'F' ? 'doña' : 'don';
+  const tratamiento = genero === 'J' ? '' : genero === 'F' ? 'doña' : 'don';
   const comunaSel = q('ofComuna');
   const comunaOpt = comunaSel ? comunaSel.options[comunaSel.selectedIndex] : null;
   const provincia = comunaOpt ? (comunaOpt.dataset.provincia || '') : val('ofProvincia');
@@ -12707,6 +12742,7 @@ function datosOficioActuales(){
     fecha_larga: '',   // los oficios salen sin fecha: la línea queda "TALCA,"
     comuna_mayus: upper(blank(val('ofComunaDom')||val('ofComuna'),'____________')),
     tratamiento: tratamiento,
+    __juridica: genero === 'J',
     nombre_mayus: upper(blank(val('ofNombre'),'____________________')),
     ci: blank(val('ofCi'),'____________'),
     expediente: blank(val('ofExpediente'),'______'),
@@ -13237,8 +13273,14 @@ async function construirOficioXml(tipo, datos){
   if(cbrVarios){ xml = agregarColumnaExpConservador(pluralConservador(xml)); }
   if(datos.__filas) xml = repetirFilasTabla(xml, datos.__filas);
 
+  /* Persona jurídica: sin don/doña, con RUT y en femenino. */
+  if(datos.__juridica){
+    xml = xml.split('{tratamiento} {nombre_mayus}').join('{nombre_mayus}')
+      .split('C.I. {ci}').join('RUT N° {ci}')
+      .split('el siguiente solicitante').join('la siguiente solicitante');
+  }
   Object.keys(datos).forEach(key=>{
-    if(key === '__filas') return;
+    if(key === '__filas' || key === '__juridica') return;
     const token = '{' + key + '}';
     xml = xml.split(token).join(xmlEscape(String(datos[key])));
   });
@@ -19359,7 +19401,8 @@ function restaurarTodo(){
     // 1) estado interno
     if(Array.isArray(est.solicitantes) && est.solicitantes.length){
       state.solicitantes = est.solicitantes.map(p=>({
-        nombre: p.nombre || '', genero: p.genero === 'F' ? 'F' : 'M',
+        nombre: p.nombre || '', genero: (p.genero === 'F' || p.genero === 'J') ? p.genero : 'M',
+        repNombre: p.repNombre || '', repGenero: p.repGenero === 'F' ? 'F' : 'M', repRut: p.repRut || '',
         rut: p.rut || '', domicilio: p.domicilio || '',
         nacionalidad: p.nacionalidad || '', profesion: p.profesion || '', estadoCivil: p.estadoCivil || '',
         domicilioInscripcion: p.domicilioInscripcion || '', comunaInscripcion: p.comunaInscripcion || ''
