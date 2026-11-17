@@ -9189,6 +9189,28 @@ function domicilioInscripcionC(p){
 }
 
 
+/* Domicilio de la notificación por fallecimiento. Si no se escribe uno propio, se completa
+   igual que en las demás notificaciones: domicilio del solicitante o, si no lo tiene, la
+   ubicación del inmueble (con su comuna y provincia). */
+function domicilioNotificacionFallecimiento(d, persona){
+  const dir = val('tfDestDireccion').trim(), comunaPropia = val('tfDestComuna');
+  if(!dir && !comunaPropia){
+    const p = persona || sols()[0] || {};
+    return (p.domicilio ? String(p.domicilio).trim().replace(/\.?$/, '.') : ubicacionAdministrativa(d || encabezadoComun()) + '.');
+  }
+  const comuna = comunaPropia || val('comuna');
+  const provincia = comunaPropia ? val('tfDestProvincia') : (Object.keys(COMUNAS_MAULE).find(pr => COMUNAS_MAULE[pr].includes(comuna)) || '');
+  return `${blank(dir)}, Comuna de ${blank(comuna)}, Provincia de ${blank(provincia)}, Región del Maule.`;
+}
+/* Los campos vacíos muestran qué se usará en su lugar. */
+function avisoDomicilioFallecimiento(){
+  const dir = q('tfDestDireccion'); if(!dir) return;
+  const p = sols()[0] || {};
+  dir.placeholder = p.domicilio ? 'En blanco: se usa el domicilio del solicitante (' + p.domicilio + ')'
+    : val('ubicacion') ? 'En blanco: se usa la ubicación del inmueble (' + val('ubicacion') + ')'
+    : 'En blanco: se usa el domicilio del solicitante o la ubicación del inmueble';
+}
+
 function actualizarProvinciaFallecimiento(){
   const comuna = val('tfDestComuna');
   const provincia = Object.keys(COMUNAS_MAULE).find(p=>COMUNAS_MAULE[p].includes(comuna));
@@ -9237,7 +9259,7 @@ function partesFallecimiento(tab){
     : `DECLARA TÉRMINO DEL PROCEDIMIENTO DE REGULARIZACIÓN POR FALLECIMIENTO Y ORDENA ARCHIVO DE EXPEDIENTE DE ${upper(referencia)}, D.L. Nº 2.695/79.`;
   const bloques = [];
   const destinatario = val('tfDestinatario') || `SUCESIÓN DE ${upper(referencia)}`;
-  const domicilio = `${blank(val('tfDestDireccion'))}, Comuna de ${blank(val('tfDestComuna'))}, Provincia de ${blank(val('tfDestProvincia'))}, Región del Maule.`;
+  const domicilio = domicilioNotificacionFallecimiento(d, persona);
   const a = `${destinatario}\n${domicilio}`;
   const cabecera = `Exp.Nº: ${d.expN}\nORD. Nº: E-${blank(val('tfOrdN'))}\nANT.: Su solicitud de regularización D.L. Nº 2.695/79.-`;
   if(notifica){
@@ -10849,6 +10871,7 @@ function generarAhora(){
     return;
   }
   actualizarProvinciaFallecimiento();
+  avisoDomicilioFallecimiento();
   ubicarMinutaCompartida(activeMainTab());
   document.body.dataset.documento = activeMainTab();
   // Informe 1 puede aportar fundamentos que dependen de los datos comunes.
