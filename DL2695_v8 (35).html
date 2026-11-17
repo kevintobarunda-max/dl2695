@@ -1057,7 +1057,8 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
               <div class="ocr-titulo">📷 Lector OCR de deslindes</div>
               <div class="ocr-sub">Arrastra aquí una <b>imagen</b> o <b>PDF</b> de la minuta, o
                 <button type="button" class="btn btn-outline btn-sm" onclick="q('bDeslindesArchivo').click()">Abrir archivo…</button>
-                <span class="ocr-tip">También puedes pegar una captura con Ctrl+V en el recuadro.</span></div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="pegarCapturaDeslindes()" title="Pega la captura de pantalla que copiaste (Win+Shift+S o Impr Pant)">📋 Pegar captura</button>
+                <span class="ocr-tip">Toma la captura (Win+Shift+S o Impr Pant) y pulsa «Pegar captura», o presiona Ctrl+V en el recuadro.</span></div>
               <div class="ocr-estado" id="bDeslindesOcrEstado" aria-live="polite"></div>
               <details class="ocr-bruto" id="bDeslindesOcrBrutoBox" hidden>
                 <summary>Ver el texto leído completo</summary>
@@ -16388,7 +16389,27 @@ async function ocrDeslindesArchivos(files){
     : '⚠ Se leyó el texto, pero no se reconocieron rumbos (NORTE, SUR…). Quedó en el recuadro para que lo corrijas.',
     p.hallados ? '#2f6b3a' : '#8a6d1f');
 }
-/* Arrastrar y soltar sobre la zona o sobre el recuadro; pegar una captura (Ctrl+V) en el recuadro. */
+/* Botón «Pegar captura»: toma la imagen del portapapeles. Si el navegador no deja leerlo
+   (o pide permiso y se rechaza), deja la zona lista para pegar con Ctrl+V. */
+async function pegarCapturaDeslindes(){
+  const estado = q('bDeslindesOcrEstado');
+  const decir = (html, color) => { if(estado){ estado.innerHTML = html; estado.style.color = color || ''; } };
+  if(navigator.clipboard && navigator.clipboard.read){
+    try{
+      const items = await navigator.clipboard.read(), files = [];
+      for(const it of items){
+        const tipo = it.types.find(t => /^image\//.test(t));
+        if(tipo){ const blob = await it.getType(tipo); files.push(new File([blob], 'captura.' + (tipo.split('/')[1] || 'png'), {type: tipo})); }
+      }
+      if(files.length) return ocrDeslindesArchivos(files);
+      decir('⚠ No hay una imagen copiada. Toma la captura (Win+Shift+S o Impr Pant) y vuelve a pulsar «Pegar captura».', '#8a6d1f');
+      return;
+    }catch(e){ /* sin permiso o sin soporte: se usa Ctrl+V */ }
+  }
+  const zona = q('bDeslindesOcr'); if(zona) zona.focus();
+  decir('👉 Presiona <b>Ctrl+V</b> ahora para pegar la captura.');
+}
+/* Arrastrar y soltar sobre la zona o sobre el recuadro; pegar una captura (Ctrl+V) en el recuadro o en la zona. */
 (function(){
   const arrancar = ()=>{
     const zona = q('bDeslindesOcr'), ta = q('bDeslindes');
@@ -16403,12 +16424,12 @@ async function ocrDeslindesArchivos(files){
         ocrDeslindesArchivos(e.dataTransfer.files);
       });
     });
-    ta.addEventListener('paste', e => {
+    [ta, zona].forEach(el => el.addEventListener('paste', e => {
       const files = Array.from((e.clipboardData && e.clipboardData.files) || []).filter(esArchivoOcrDeslindes);
       if(!files.length) return;
       e.preventDefault(); e.stopImmediatePropagation();
       ocrDeslindesArchivos(files);
-    }, true);
+    }, true));
   };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar); else arrancar();
 })();
