@@ -552,6 +552,9 @@
   .aval-linea{font-family:var(--mono);font-size:11.5px;color:var(--tinta-suave);line-height:1.45;}
   .aval-tope{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;}
   .aval-tope b{font-family:var(--serif);font-size:15px;}
+  .plano-fila{display:flex;gap:6px;}
+  .plano-fila input{flex:1;min-width:0;}
+  .plano-fila select{width:auto;flex:none;}
   .chk-vta{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:400;color:var(--tinta-suave,#5a6a7d);margin-top:4px;cursor:pointer;}
   .chk-vta input{width:auto;margin:0;}
   .insc-extra{border:1px solid #e3dfce;border-radius:9px;background:#fbfaf4;padding:8px 10px;margin:0 0 8px;}
@@ -1058,9 +1061,17 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
               <div><div class="lbl">El plano es catastral <span class="hint">· marca la casilla si lo es; si no, dirá solo «Plano N°»</span></div></div>
             </div>
             <div class="grid2">
-              <div data-lateral="plano" class="field">
-                <label>Plano N°</label>
-                <input type="text" id="bPlano" placeholder="07106 - 21.738 - S.R.">
+              <div data-lateral="plano" class="field" style="grid-column:1/-1">
+                <label>Plano N° <span class="hint">· escribe el número; la sigla S.R. / S.U. se elige al lado</span></label>
+                <div class="plano-fila">
+                  <input type="text" id="bPlano" placeholder="07106 - 21.738">
+                  <select id="bPlanoTipo" aria-label="Plano urbano o rural" title="S.R. = rural · S.U. = urbano"
+                          onchange="q('bPlanoTipoManual').value='1'; generar()">
+                    <option value="S.R.">S.R. · Rural</option>
+                    <option value="S.U.">S.U. · Urbano</option>
+                  </select>
+                  <input type="hidden" id="bPlanoTipoManual">
+                </div>
               </div>
               <div data-lateral="matriz" class="field">
                 <label>Rol Matriz</label>
@@ -9710,7 +9721,17 @@ function modoAdquisicionCorto(){
    que cuando la frase cierra con punto se usa planoNumeroFinal() para no dejar
    dos puntos seguidos. */
 function planoNumero(){
-  return blank(val('bPlano'),'____________');
+  /* El número se escribe sin la sigla; la sigla sale del menú S.R. (rural) / S.U. (urbano).
+     Si se escribió igual al final («… - S.R.»), se reemplaza por la del menú. */
+  const num = String(val('bPlano') || '').replace(/\s*[-–]?\s*S\.?\s*[RU]\.?\s*$/i, '').trim();
+  const sigla = val('bPlanoTipo') || (val('tipoBien') === 'Urbano' ? 'S.U.' : 'S.R.');
+  return blank(num, '____________') + ' - ' + sigla;
+}
+/* Mientras no se elija a mano, la sigla sigue al «Tipo de bien» (Urbano → S.U., Rural → S.R.). */
+function sincronizarSiglaPlano(){
+  const sel = q('bPlanoTipo'); if(!sel || val('bPlanoTipoManual') === '1') return;
+  const sigla = val('tipoBien') === 'Urbano' ? 'S.U.' : 'S.R.';
+  if(sel.value !== sigla) sel.value = sigla;
 }
 function planoNumeroFinal(){
   const p = planoNumero();
@@ -11009,6 +11030,7 @@ function generarAhora(){
   }
   actualizarProvinciaFallecimiento();
   avisoDomicilioFallecimiento();
+  sincronizarSiglaPlano();
   ubicarMinutaCompartida(activeMainTab());
   document.body.dataset.documento = activeMainTab();
   // Informe 1 puede aportar fundamentos que dependen de los datos comunes.
