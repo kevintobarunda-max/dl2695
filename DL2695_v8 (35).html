@@ -951,7 +951,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
           <div class="field">
             <label>Fojas</label>
             <input type="text" id="fojas" placeholder="">
-            <label class="chk-vta"><input type="checkbox" id="fojasVta" onchange="generar()"> Fojas vuelta</label>
+            <label class="chk-vta"><input type="checkbox" id="fojasVta" onchange="generar()"> Fojas Vuelta</label>
           </div>
           <div class="field">
             <label>N° inscripción</label>
@@ -9710,7 +9710,7 @@ function inscripcionRolada(d){
 }
 
 /* ---------- Inscripciones de dominio (principal + adicionales) ---------- */
-function fojasTxt(f, vta){ const t = blank(f, '____'); return vta && String(f || '').trim() ? t + ' vuelta' : t; }
+function fojasTxt(f, vta){ const t = blank(f, '____'); return vta && String(f || '').trim() ? t + ' Vuelta' : t; }
 /* Fojas de la inscripción principal tal como se imprimen («12» o «12 vuelta»). */
 function fojasPrincipal(){ return String(val('fojas') || '').trim() ? fojasTxt(val('fojas'), chk('fojasVta')) : ''; }
 function inscripcionesDominio(){
@@ -9768,7 +9768,7 @@ function renderInscripcionesExtra(){
         <button type="button" class="btn btn-outline btn-sm" title="Quitar esta inscripción" onclick="quitarInscripcionExtra(${i})">✕</button></div>
       <div class="grid3">
         <div class="field"><label>Fojas</label><input type="text" data-temporal value="${esc(x.fojas)}" oninput="editarInscripcionExtra(${i},'fojas',this.value)">
-          <label class="chk-vta"><input type="checkbox" data-temporal ${x.vta ? 'checked' : ''} onchange="editarInscripcionExtra(${i},'vta',this.checked)"> Fojas vuelta</label></div>
+          <label class="chk-vta"><input type="checkbox" data-temporal ${x.vta ? 'checked' : ''} onchange="editarInscripcionExtra(${i},'vta',this.checked)"> Fojas Vuelta</label></div>
         <div class="field"><label>N° inscripción</label><input type="text" data-temporal value="${esc(x.num)}" oninput="editarInscripcionExtra(${i},'num',this.value)"></div>
         <div class="field"><label>Año</label><input type="text" data-temporal value="${esc(x.anio)}" oninput="editarInscripcionExtra(${i},'anio',this.value)"></div>
       </div>
