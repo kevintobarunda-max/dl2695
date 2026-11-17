@@ -91,7 +91,27 @@
     .layout{grid-template-columns:1fr;}
   }
   /* Divisor arrastrable entre los datos y la vista previa */
-  #layoutMain{grid-template-columns:var(--col-lado,360px) 12px minmax(0,1fr);gap:0;max-width:2000px;}
+  #layoutMain{grid-template-columns:var(--col-lado,330px) 12px minmax(0,1fr);gap:0;max-width:2000px;}
+  /* Barra lateral compacta y ordenada: letra de ayuda más chica, campos más bajos
+     y nada que se salga por el borde derecho. */
+  #sidePanel{overflow-x:hidden;}
+  #sidePanel .panel-head{padding:11px 14px;}
+  #sidePanel .panel-body{padding:12px 14px;}
+  #sidePanel fieldset{margin-bottom:12px;}
+  #sidePanel legend{margin-bottom:6px;}
+  #sidePanel .hint{font-size:11.5px;line-height:1.45;}
+  #sidePanel label{font-size:11px;margin-bottom:3px;}
+  #sidePanel .field{margin-bottom:8px;min-width:0;}
+  #sidePanel .grid2,#sidePanel .grid3{gap:8px;}
+  #sidePanel .grid2>*,#sidePanel .grid3>*{min-width:0;}
+  #sidePanel fieldset[data-lateral="inmueble"] .grid3{grid-template-columns:1.6fr 1fr .85fr;}
+  #sidePanel input[type=text],#sidePanel input[type=number],#sidePanel input[type=date],#sidePanel select,#sidePanel textarea{padding:6px 8px;font-size:13px;border-radius:7px;}
+  #sidePanel .btn-sm{font-size:12px;}
+  #sidePanel .sol-card{padding:8px 10px 2px;min-width:0;}
+  #sidePanel .sol-gen{grid-template-columns:auto auto minmax(0,1fr);gap:5px;}
+  #sidePanel .sol-gen button{padding:5px 8px;font-size:12.5px;gap:4px;min-width:0;}
+  #sidePanel .sol-gen button svg{width:17px;height:17px;}
+  #sidePanel .sol-gen button span{white-space:normal;line-height:1.15;text-align:left;}
   #layoutMain > .panel{min-width:0;}
   /* La barra lateral se desplaza sola, sin arrastrar la página, y queda a la vista bajo la barra superior. */
   :root{--alto-header:63px;}
@@ -14315,7 +14335,15 @@ function tituloPropio(txt){
   const arrancar = ()=>{
     const lay = q('layoutMain'), sp = q('splitterMain'), lado = q('sidePanel');
     if(!lay || !sp || !lado) return;
-    try{ const w = parseInt(localStorage.getItem('dl2695_ladoAncho'), 10); if(w >= 240 && w <= 1000) lay.style.setProperty('--col-lado', w + 'px'); }catch(e){}
+    try{
+      /* 17-11-2026: la barra lateral pasa a ser más angosta; un ancho guardado mayor
+         se descarta una sola vez (después se respeta el que dejes arrastrando). */
+      if(!localStorage.getItem('dl2695_lado_compacto_2026')){
+        if(parseInt(localStorage.getItem('dl2695_ladoAncho'), 10) > 330) localStorage.removeItem('dl2695_ladoAncho');
+        localStorage.setItem('dl2695_lado_compacto_2026', '1');
+      }
+      const w = parseInt(localStorage.getItem('dl2695_ladoAncho'), 10); if(w >= 240 && w <= 1000) lay.style.setProperty('--col-lado', w + 'px');
+    }catch(e){}
     sp.addEventListener('pointerdown', ev=>{
       ev.preventDefault(); sp.setPointerCapture(ev.pointerId); sp.classList.add('arrastrando');
       const x0 = ev.clientX, w0 = lado.getBoundingClientRect().width;
