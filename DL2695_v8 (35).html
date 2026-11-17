@@ -1043,7 +1043,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
             </p>
             <div data-lateral="deslindes" id="slotMinutaB"><div id="minutaCompartidaBC"><div class="field">
               <label>Pega aquí los deslindes de la minuta <span class="hint">· se ordenan solos; admite NORESTE, SURESTE… y varios lotes</span></label>
-              <textarea id="bDeslindes" rows="6" spellcheck="false" placeholder="NORTE: Calle Cintura en 12,64 metros&#10;ESTE: …&#10;SUR: …&#10;OESTE: …" oninput="generar()" onpaste="ordenarDeslindesAlPegar()"></textarea>
+              <textarea id="bDeslindes" rows="6" spellcheck="false" placeholder="Pega o escribe aquí los deslindes, o usa el lector OCR de abajo." oninput="generar()" onpaste="ordenarDeslindesAlPegar()"></textarea>
             </div>
             <div class="hint" id="bDeslindesEstado" style="margin:2px 0 0"></div>
             <!-- Lector OCR: imagen o PDF de los deslindes (arrastrar, abrir o pegar). Todo corre en el
@@ -1064,9 +1064,6 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
                 <textarea id="bDeslindesOcrBruto" data-temporal rows="6" readonly spellcheck="false"></textarea>
               </details>
             </div></div></div>
-            <!-- campos de borradores anteriores (por rumbo): se siguen leyendo si el recuadro está vacío -->
-            <input type="hidden" id="bDeslindeNorte"><input type="hidden" id="bDeslindeEste">
-            <input type="hidden" id="bDeslindeSur"><input type="hidden" id="bDeslindeOeste">
 
           </div>
         </details>
@@ -9756,7 +9753,8 @@ function deslindesActuales(){
     const p = parsearDeslindes(bruto);
     return p.hallados ? {sitios: p.sitios, libre: ''} : {sitios: [], libre: bruto.replace(/\s+/g, ' ').trim()};
   }
-  return {sitios: [{nombre: '', slug: '', superficie: '', rumbos: {norte: val('bDeslindeNorte'), este: val('bDeslindeEste'), sur: val('bDeslindeSur'), oeste: val('bDeslindeOeste')}}], libre: ''};
+  /* Con el recuadro vacío no hay deslindes (ya no se usan datos de borradores antiguos). */
+  return {sitios: [], libre: ''};
 }
 
 function textoDeslindesOrdenado(p){
