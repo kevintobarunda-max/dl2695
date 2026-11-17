@@ -1017,8 +1017,8 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
         <details class="calc-inline" id="detalleEtapaB">
           <summary>📐 Plano, deslindes y rol matriz (documentos B)</summary>
           <div style="margin-top:10px;">
-            <div data-lateral="plano" class="check-row checked" id="row-bPlanoCatastral" style="margin-bottom:8px;">
-              <input type="checkbox" id="bPlanoCatastral" checked onchange="toggleClass('row-bPlanoCatastral','checked',this.checked); generar();">
+            <div data-lateral="plano" class="check-row" id="row-bPlanoCatastral" style="margin-bottom:8px;">
+              <input type="checkbox" id="bPlanoCatastral" onchange="toggleClass('row-bPlanoCatastral','checked',this.checked); generar();">
               <div><div class="lbl">El plano es catastral <span class="hint">· marca la casilla si lo es; si no, dirá solo «Plano N°»</span></div></div>
             </div>
             <div class="grid2">
@@ -19308,6 +19308,12 @@ function restaurarTodo(){
       if(!campos.seremiSubrogante) campos.seremiSubrogante = 'Octavio Fredes Fuenzalida';
       if(!campos.vSubrogancia) delete campos.vSubrogancia;
       try{ localStorage.setItem('dl2695_subrogancia_off_2026', '1'); }catch(e){}
+    }
+    /* 17-11-2026: «Plano Catastral» viene desmarcado por defecto. Se desmarca
+       una sola vez en los borradores guardados; después se respeta lo que elijas. */
+    if(!localStorage.getItem('dl2695_plano_catastral_off_2026')){
+      campos.bPlanoCatastral = false;
+      try{ localStorage.setItem('dl2695_plano_catastral_off_2026', '1'); }catch(e){}
     }
     if(!campos.rectListaDatos && campos.rectTexto?.trim()){
       campos.rectListaDatos=JSON.stringify([{nombre:campos.rectPunto?.trim() || 'Apartado por identificar',activo:true,texto:campos.rectTexto}]);
