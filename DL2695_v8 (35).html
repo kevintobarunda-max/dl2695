@@ -10499,7 +10499,15 @@ function considerandoNotificacionRep(n){
   const medio = medioNotificacionRepTexto();
   const expresa = `consta en expediente administrativo, bajo el Folio N° ${folioSiacReposicion()}, ${medio.tipo} realizada con fecha ${fechaProsa(val('repFechaNotifPersonal'))} ${medio.lugar}, informándole ${alALa()} que ${v('tenía','tenían')} el plazo de 5 días hábiles para presentar ${recursoDeducido()}`;
 
+  /* Notificación personal o por correo electrónico: el párrafo parte por esa forma
+     (ya no por el Oficio Ordinario). */
+  const notifDirecta = `${n}.- Que, dicha Resolución Denegatoria le fue notificada `
+    + (forma === 'correo' ? 'por correo electrónico, en la forma solicitada en Formulario N° 1,' : 'en forma personal, en oficinas de esta SEREMI,')
+    + ` con fecha ${fechaProsa(val('repFechaNotifPersonal'))}, según consta en expediente administrativo bajo el Folio N° ${folioSiacReposicion()}, informándole ${alALa()} que ${v('tenía','tenían')} el plazo de 5 días hábiles para presentar ${recursoDeducido()}`;
+
   if(!esRepAcoge() && esRepExtemporaneo()){
+    if(forma === 'personal' || forma === 'correo')
+      return `${notifDirecta}, siendo presentado el mismo fuera de plazo legal, esto es, con fecha ${fechaRecurso}.`;
     if(forma === 'ordinario')
       return `${preambulo}, notificación que, de acuerdo al artículo 46 de la Ley N° 19.880, se entiende practicada a contar del tercer día siguiente a su recepción en la oficina de Correos que corresponda, siendo presentado el recurso fuera de plazo legal, esto es, con fecha ${fechaRecurso}.`;
     return `${preambulo}, sin embargo ${expresa}, siendo presentado el mismo fuera de plazo legal, esto es, con fecha ${fechaRecurso}.`;
@@ -10512,7 +10520,7 @@ function considerandoNotificacionRep(n){
     return `${preambulo}, pero, consultado el seguimiento de la notificación en Correos de Chile, no consta notificación por carta certificada ${g('al recurrente','a la recurrente','a los recurrentes','a las recurrentes')}, y consultados los sistemas informáticos de este Servicio, tampoco consta notificación expresa por parte ${g('del requirente','de la requirente','de los requirentes','de las requirentes')}, sin embargo, debemos entender que existe una notificación tácita con la sola presentación del recurso, esto es con fecha ${fechaRecurso}.`;
   }
   if(modo === 'expresa'){
-    return `${preambulo}, ${sinCarta}, sin embargo, ${expresa}, siendo presentado el mismo dentro de plazo legal con fecha ${fechaRecurso}.`;
+    return `${notifDirecta}, siendo presentado el mismo dentro de plazo legal con fecha ${fechaRecurso}.`;
   }
   return `${preambulo}.`;
 }
