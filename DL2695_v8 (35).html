@@ -7929,6 +7929,18 @@ function tratoDe(p){ return esJuridica(p) ? '' : (p && p.genero === 'F' ? 'doña
 function conTrato(p, nombre){ const t = tratoDe(p); return t ? t + ' ' + nombre : nombre; }
 function senorDe(p){ return esJuridica(p) ? '' : (p && p.genero === 'F' ? 'SEÑORA' : 'SEÑOR'); }
 function conSenor(p, nombre){ const t = senorDe(p); return t ? t + ' ' + nombre : nombre; }
+/* Línea del destinatario de las notificaciones, en una sola línea y en mayúsculas:
+   «DON JUAN PÉREZ SOTO, CALLE UNO N°1, COMUNA TALCA». Si el domicilio ya trae la
+   comuna, no se repite. Persona jurídica: sin DON/DOÑA. */
+function lineaDestinatarioNotif(p, direccion, comuna, comunaOpcional){
+  const trato = esJuridica(p) ? '' : (p && p.genero === 'F' ? 'DOÑA ' : 'DON ');
+  const nombre = String((p && p.nombre) || '').trim() ? String(p.nombre).trim().toLocaleUpperCase('es-CL') : '____________________';
+  const dir = String(direccion || '').trim().replace(/[.\s]+$/, '');
+  let linea = trato + nombre + ', ' + (dir ? dir.toLocaleUpperCase('es-CL') : '____________________');
+  const com = String(comuna || '').trim();
+  if(!/\bcomuna\b/i.test(dir) && (com || !comunaOpcional)) linea += ', COMUNA ' + (com ? com.toLocaleUpperCase('es-CL') : '____________');
+  return linea;
+}
 function docIdDe(p){ return esJuridica(p) ? 'RUT N°' : 'C.I. N°'; }
 function representacionDe(p){
   if(!esJuridica(p)) return '';
@@ -9395,8 +9407,11 @@ function partesFallecimiento(tab){
     : `DECLARA TÉRMINO DEL PROCEDIMIENTO DE REGULARIZACIÓN POR FALLECIMIENTO Y ORDENA ARCHIVO DE EXPEDIENTE DE ${upper(referencia)}, D.L. Nº 2.695/79.`;
   const bloques = [];
   const destinatario = val('tfDestinatario') || `SUCESIÓN DE ${upper(referencia)}`;
-  const domicilio = domicilioNotificacionFallecimiento(d, persona);
-  const a = `${destinatario}\n${domicilio}`;
+  /* Una sola línea, como las demás notificaciones: «SUCESIÓN DE DON …, CALLE …, COMUNA …». */
+  const destinoNombre = val('tfDestinatario') ? val('tfDestinatario').toLocaleUpperCase('es-CL')
+    : `SUCESIÓN DE ${genero === 'F' ? 'DOÑA' : 'DON'} ${String(nombre).toLocaleUpperCase('es-CL')}`;
+  const dirFall = val('tfDestDireccion').trim() || (!val('tfDestComuna') && persona.domicilio) || val('ubicacion');
+  const a = lineaDestinatarioNotif({nombre: destinoNombre, genero: 'J'}, dirFall, val('tfDestComuna') || val('comuna'));
   const cabecera = `Exp.Nº: ${d.expN}\nORD. Nº: E-${blank(val('tfOrdN'))}\nANT.: Su solicitud de regularización D.L. Nº 2.695/79.-`;
   if(notifica){
     bloques.push(bl('cabecera', `${cabecera}\nMAT.: ${materia}\nFecha: ${fecha}`), bl('de','DE: '+de), bl('a-0','A: '+a),
@@ -9459,7 +9474,7 @@ function partesCNegativa(tab){
   const de = `SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES${d.subrogancia ? ' (S)' : ''}, REGIÓN DEL MAULE`;
   const fecha = fechaCorta(notifica ? d.fecha : val('resCFecha'));
   const bloques = [], destinatarios = solicitantesNotificados();
-  const direcciones = destinatarios.map(p=>`${conSenor(p, upper(blank(p.nombre)))}\n${p.domicilio || val('cDestDireccion') || ubicacionAdministrativa(d)}.`);
+  const direcciones = destinatarios.map(p=> lineaDestinatarioNotif(p, p.domicilio || val('cDestDireccion') || val('ubicacion'), val('comuna')));
   const a = direcciones.join('\n\n');
   const cabecera = `Exp.Nº: ${d.expN}\nORD. Nº: E-${blank(val('ordCN'))}\nANT.: Su solicitud de regularización D.L. Nº 2.695/79.-`;
   if(notifica){
@@ -9560,7 +9575,10 @@ function partesCPositiva(tab){
   const fecha = fechaCorta(notifica ? d.fecha : val('resCFecha'));
   const de = `SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES${d.subrogancia ? ' (S)' : ''}, REGIÓN DEL MAULE`;
   const destinatarios = solicitantesNotificados();
-  const lineasA = destinatarios.map(p=>`${conSenor(p, upper(blank(p.nombre)))}\nDirección ${p.domicilio || val('cDestDireccion') || domicilioInscripcionC(p)}.`);
+  const lineasA = destinatarios.map(p=> p.domicilio || val('cDestDireccion')
+    ? lineaDestinatarioNotif(p, p.domicilio || val('cDestDireccion'), val('comuna'))
+    : p.domicilioInscripcion ? lineaDestinatarioNotif(p, p.domicilioInscripcion, p.comunaInscripcion || val('comuna'))
+    : lineaDestinatarioNotif(p, val('ubicacion'), val('comuna')));
   const a = lineasA.join('\n\n');
   const bloques = [], cabecera = `Exp.Nº: ${d.expN}\nORD. Nº: E-${blank(val('ordCN'))}\nANT.: Su solicitud de regularización, D.L. Nº 2.695/79.-`;
   if(notifica){
@@ -9699,8 +9717,7 @@ function partesNotificacion(){
      general del campo "Dirección de notificación" o la del inmueble. */
   const direccionGeneral = val('destDireccion') || ubicacionInmueble;
   const lineasA = destinatarios.map(p=>{
-    const dom = p.domicilio || direccionGeneral;
-    return `${conSenor(p, upper(blank(p.nombre,'____________________')))}\n${dom}`;
+    return lineaDestinatarioNotif(p, p.domicilio || val('destDireccion') || val('ubicacion'), val('comuna'));
   });
   const a = lineasA.join('\n\n');
 
@@ -10236,8 +10253,7 @@ function partesNotificacionB(){
   const direccionGeneral = val('destDireccion') || ubicacionInmueble;
 
   const lineasA = destinatarios.map(p=>{
-    const dom = p.domicilio || direccionGeneral;
-    return `${conSenor(p, upper(blank(p.nombre,'____________________')))}\n${dom}`;
+    return lineaDestinatarioNotif(p, p.domicilio || val('destDireccion') || val('ubicacion'), val('comuna'));
   });
   const a = lineasA.join('\n\n');
 
@@ -10630,8 +10646,7 @@ function partesNotificacionRep(){
   const direccionGeneral = val('destDireccion') || ubicacionInmueble;
 
   const lineasA = destinatarios.map(p=>{
-    const dom = p.domicilio || direccionGeneral;
-    return `${conTrato(p, upper(blank(p.nombre,'____________________')))}, ${dom}, COMUNA DE ${upper(d.comuna)}.`;
+    return lineaDestinatarioNotif(p, p.domicilio || val('destDireccion') || val('ubicacion'), val('comuna'));
   });
   const a = lineasA.join('\n\n');
 
@@ -10876,7 +10891,7 @@ function partesRectificatoria(tab){
   if(notifica){
     cabecera = `ORD.: ${numero('rectOrd')}\nANT.: Notifica Resolución Exenta a través de la cual se rectifica la resolución que allí se indica.\nMAT.: ${materia}\nTALCA, ${fecha}`;
     bloques.push(bl('cabecera',cabecera), bl('de','DE: '+de));
-    const direcciones = solicitantesNotificados().map(p => `${conSenor(p, upper(blank(p.nombre)))}, ${upper(blank(p.domicilio || val('rectDomicilio'))).replace(/[.\s]+$/,'')}.`);
+    const direcciones = solicitantesNotificados().map(p => lineaDestinatarioNotif(p, p.domicilio || val('rectDomicilio'), val('comuna'), true));
     a = direcciones.join('\n\n');
     direcciones.forEach((linea,i) => bloques.push(bl('a-'+i,(i===0 ? 'A: ' : '')+linea)));
     bloques.push(bl('intro',`Mediante la presente, envío copia de la Resolución Exenta que rectifica la ${original}, de esta Secretaría Regional Ministerial de Bienes Nacionales, Región del Maule.`),
@@ -10975,6 +10990,13 @@ function identificacionReposicion(texto, sinRut){
   return resultado.replace(/,\s*,/g,',').replace(/[ \t]+([,;.])/g,'$1');
 }
 
+/* Notificaciones: la línea del destinatario va entera en mayúsculas
+   («A: DON JUAN PÉREZ, CALLE N°1, COMUNA TALCA»). */
+function lineaANotifMayus(tab, id, texto){
+  if(!/^notificacion/.test(tab) || !/^a-\d+$/.test(id)) return texto;
+  return String(texto).replace(/^(A:\s*)?([\s\S]*)$/, (m, pre, resto) => (pre || '') + resto.toLocaleUpperCase('es-CL'));
+}
+
 function bloquesFinales(tab, base){
   const ed = edicionesDe(tab);
   const salida = [];
@@ -11006,16 +11028,16 @@ function bloquesFinales(tab, base){
       : {};
     return salida.map(b=>{
     let texto = textosCanonicos[b.id] || b.texto;
-    texto = tratamientosEnMinuscula(identificacionReposicion(texto,tab === 'resolucionRep'));
+    if(!(tab === 'notificacionRep' && /^a-\d+$/.test(b.id))) texto = tratamientosEnMinuscula(identificacionReposicion(texto,tab === 'resolucionRep'));
     if(tab === 'notificacionRep' && b.id === 'cabecera'){
       texto = texto.replace(/(MAT\.:\s*Se acoge recurso de )(?!reposición\b)/i, '$1reposición de ');
     }
     if(b.id === 'firma') texto = texto.replace(/^.*SECRETARIO(?:\/A)?\s+REGIONAL\s+MINISTERIAL.*$/im, linea =>
       `SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES${/\(S\)/i.test(linea) ? ' (S)' : ''} REGIÓN DEL MAULE`);
-    return {...b,texto:firmaSubrogante(b.id, vistoInvestidura(textoSegunContexto(tab,b.id,texto)))};
+    return {...b,texto:lineaANotifMayus(tab, b.id, firmaSubrogante(b.id, vistoInvestidura(textoSegunContexto(tab,b.id,texto))))};
     });
   }
-  const final = salida.map(b => ({...b, texto: firmaSubrogante(b.id, vistoInvestidura(textoSegunContexto(tab,b.id,b.texto)))}));
+  const final = salida.map(b => ({...b, texto: lineaANotifMayus(tab, b.id, firmaSubrogante(b.id, vistoInvestidura(textoSegunContexto(tab,b.id,b.texto))))}));
   if(/Rectificatoria$/.test(tab)) return final.map(b => ({...b, texto: ajustarTextoRectificatoria(b.id, b.texto)}));
   return final;
 }
