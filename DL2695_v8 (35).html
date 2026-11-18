@@ -392,6 +392,33 @@
   .vp-btn{border:1px solid #c9c2ae;background:#f6f4ee;color:var(--tinta);border-radius:8px 8px 0 0;padding:6px 12px;font-size:12.5px;font-weight:600;cursor:pointer;}
   .vp-btn.activo{background:#fff;border-color:#b9b19a;color:var(--azul-900);box-shadow:0 -2px 0 var(--azul-800) inset;}
   .vp-estado{font-size:11.5px;color:var(--tinta-suave);margin-left:auto;}
+  .vp-btn.vp-full{border-radius:8px;margin-bottom:4px;}
+  /* ---- Editor en pantalla completa, con aspecto de Word ---- */
+  .ec-barra,.ec-estado{display:none;}
+  body.editor-completo{overflow:hidden;}
+  body.editor-completo .ec-barra{display:flex;position:fixed;left:0;right:0;top:0;height:48px;z-index:9001;align-items:center;gap:12px;padding:0 14px;
+    background:#185abd;color:#fff;font-family:"Segoe UI",var(--sans);box-shadow:0 1px 4px rgba(0,0,0,.25);}
+  .ec-tit{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;flex:1;min-width:0;}
+  .ec-tit #ecTitulo{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ec-icono{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:4px;background:#fff;color:#185abd;font-weight:800;font-size:15px;flex:none;}
+  .ec-zoom{display:flex;align-items:center;gap:4px;font-size:12.5px;}
+  .ec-zoom span{min-width:42px;text-align:center;}
+  .ec-barra button{border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.12);color:#fff;border-radius:5px;padding:5px 10px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .ec-barra button:hover{background:rgba(255,255,255,.25);}
+  .ec-zoom button{padding:2px 9px;font-size:15px;line-height:1.2;}
+  .ec-acc{display:flex;gap:6px;flex:none;}
+  .ec-barra .ec-cerrar{background:#fff;color:#185abd;}
+  body.editor-completo .ec-estado{display:flex;position:fixed;left:0;right:0;bottom:0;height:26px;z-index:9001;align-items:center;gap:18px;padding:0 14px;
+    background:#f3f3f3;border-top:1px solid #d6d6d6;color:#444;font-size:12px;font-family:"Segoe UI",var(--sans);}
+  body.editor-completo .paper-wrap:has(#preview){display:block !important;position:fixed;left:0;right:0;top:48px;bottom:26px;z-index:9000;
+    background:#e6e6e6;padding:22px 12px !important;overflow:auto;}
+  body.editor-completo .paper:has(#preview){width:calc(816px * var(--ec-zoom,1));max-width:100% !important;margin:0 auto;background:#fff;border:none;border-radius:0;
+    box-shadow:0 0 0 1px #d0d0d0,0 3px 12px rgba(0,0,0,.18);}
+  body.editor-completo textarea#preview,body.editor-completo .preview-mirror{
+    font-family:Verdana,Geneva,sans-serif !important;font-size:calc(13.5px * var(--ec-zoom,1)) !important;line-height:1.6 !important;
+    padding:calc(72px * var(--ec-zoom,1)) calc(76px * var(--ec-zoom,1)) !important;text-align:justify;color:#111;}
+  body.editor-completo .preview-mirror{color:transparent;}
+  body.editor-completo textarea#preview{height:calc(100vh - 48px - 26px - 44px);min-height:0;resize:none;}
   .doc-preview{background:#8b8f96;padding:18px 12px;min-height:640px;}
   .doc-paginas{display:flex;flex-direction:column;align-items:center;gap:16px;}
   .doc-pagina{display:block;background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.35);max-width:100%;}
@@ -1949,11 +1976,28 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
       <div class="vp-barra" role="tablist" aria-label="Tipo de vista previa">
         <button type="button" class="vp-btn" data-vista="documento" role="tab" onclick="cambiarVistaPrevia('documento')">📄 Documento</button>
         <button type="button" class="vp-btn" data-vista="texto" role="tab" onclick="cambiarVistaPrevia('texto')">✏️ Editar texto</button>
+        <button type="button" class="vp-btn vp-full" onclick="editorCompleto(true)" title="Redactar en pantalla completa, con aspecto de Word (Esc para salir)">⛶ Pantalla completa</button>
         <span class="vp-estado" id="docPreviewEstado"></span>
       </div>
       <div id="docPreview" class="doc-preview" title="Doble clic para editar el texto">
         <div id="docPreviewPaginas" class="doc-paginas"></div>
       </div>
+      <!-- Editor en pantalla completa (aspecto Word): barras propias; la hoja es el mismo cuadro de texto. -->
+      <div class="ec-barra" id="ecBarra" hidden>
+        <div class="ec-tit"><span class="ec-icono">W</span><span id="ecTitulo">Documento</span></div>
+        <div class="ec-zoom" role="group" aria-label="Zoom">
+          <button type="button" onclick="editorZoom(-0.1)" title="Alejar">−</button>
+          <span id="ecZoomTxt">100%</span>
+          <button type="button" onclick="editorZoom(0.1)" title="Acercar">+</button>
+        </div>
+        <div class="ec-acc">
+          <button type="button" onclick="copiar()" title="Copiar todo el texto">⧉ Copiar</button>
+          <button type="button" onclick="descargarDocumentoDocx()" title="Descargar en Word">⬇ Word</button>
+          <button type="button" onclick="descargarPdfB()" title="Descargar en PDF">⬇ PDF</button>
+          <button type="button" class="ec-cerrar" onclick="editorCompleto(false)" title="Salir de pantalla completa (Esc)">✕ Cerrar</button>
+        </div>
+      </div>
+      <div class="ec-estado" id="ecEstado" hidden></div>
       <div class="paper-wrap">
         <div class="paper">
           <div class="stripe"></div>
@@ -11112,6 +11156,56 @@ function aplicarVistaPrevia(){
   if(modo === 'documento') programarVistaDocumento(true);
   else { const e = q('docPreviewEstado'); if(e) e.textContent = 'Lo que escribas aquí se conserva aunque cambien los datos.'; }
 }
+/* ---------- Editor en pantalla completa (aspecto Word) ----------
+   Usa el mismo cuadro «Editar texto»: lo escrito se guarda igual que siempre.
+   Se sale con «✕ Cerrar» o con Esc. */
+let _ecVistaAntes = null;
+function editorZoomValor(){ try{ const z = parseFloat(localStorage.getItem('dl2695_ec_zoom')); return z >= 0.6 && z <= 2 ? z : 1; }catch(e){ return 1; } }
+function editorZoom(delta){
+  const z = Math.round(Math.min(2, Math.max(0.6, editorZoomValor() + delta)) * 10) / 10;
+  try{ localStorage.setItem('dl2695_ec_zoom', String(z)); }catch(e){}
+  aplicarEditorZoom();
+}
+function aplicarEditorZoom(){
+  const z = editorZoomValor();
+  document.documentElement.style.setProperty('--ec-zoom', String(z));
+  const t = q('ecZoomTxt'); if(t) t.textContent = Math.round(z * 100) + '%';
+}
+function actualizarEstadoEditor(){
+  const est = q('ecEstado'); if(!est || !document.body.classList.contains('editor-completo')) return;
+  const txt = val('preview');
+  const palabras = (txt.match(/[\p{L}\p{N}][\p{L}\p{N}'’.,-]*/gu) || []).length;
+  const parrafos = txt.split(/\n{2,}/).filter(x => x.trim()).length;
+  est.innerHTML = `<span>${palabras.toLocaleString('es-CL')} palabras</span><span>${txt.length.toLocaleString('es-CL')} caracteres</span><span>${parrafos} párrafos</span><span style="margin-left:auto">Los cambios se guardan solos · Esc para salir</span>`;
+}
+function editorCompleto(abrir){
+  const body = document.body;
+  if(abrir){
+    if(body.classList.contains('editor-completo')) return;
+    _ecVistaAntes = vistaPreviaModo();
+    if(_ecVistaAntes !== 'texto') cambiarVistaPrevia('texto');
+    const boton = document.querySelector('#mainTabs [data-tab="' + activeMainTab() + '"]');
+    const grupo = boton && boton.closest('.nav-etapa') && boton.closest('.nav-etapa').querySelector('.nav-etapa-toggle');
+    if(q('ecTitulo')) q('ecTitulo').textContent = ((grupo ? grupo.textContent.trim() + ' · ' : '') + (boton ? boton.textContent.trim() : 'Documento'))
+      + (val('expN') ? ' — Exp. ' + val('expN') : '');
+    ['ecBarra','ecEstado'].forEach(id => { const e = q(id); if(e) e.hidden = false; });
+    body.classList.add('editor-completo');
+    aplicarEditorZoom(); actualizarEstadoEditor();
+    const ta = q('preview'); if(ta){ ta.focus({preventScroll:true}); ta.setSelectionRange(0, 0); ta.scrollTop = 0; }
+    try{ if(document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{}); }catch(e){}
+  } else {
+    if(!body.classList.contains('editor-completo')) return;
+    body.classList.remove('editor-completo');
+    ['ecBarra','ecEstado'].forEach(id => { const e = q(id); if(e) e.hidden = true; });
+    try{ if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{}); }catch(e){}
+    if(_ecVistaAntes && _ecVistaAntes !== 'texto') cambiarVistaPrevia(_ecVistaAntes);
+    _ecVistaAntes = null;
+  }
+}
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && document.body.classList.contains('editor-completo')) editorCompleto(false); });
+document.addEventListener('fullscreenchange', () => { if(!document.fullscreenElement && document.body.classList.contains('editor-completo')) editorCompleto(false); });
+document.addEventListener('input', e => { if(e.target && e.target.id === 'preview') actualizarEstadoEditor(); });
+
 function programarVistaDocumento(inmediato){
   clearTimeout(_vpTimer);
   if(vistaPreviaModo() !== 'documento') return;
