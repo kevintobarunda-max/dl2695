@@ -1867,12 +1867,15 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
           </div>
         </div>
         <p class="hint" id="avisoMinutaJerarquica"></p>
+        <div class="btn-row" style="margin:0 0 10px"><button type="button" class="btn btn-primary btn-sm btn-pasar-minuta" onclick="pasarReposicionAMinuta()" title="Copia a la Minuta del Recurso Jerárquico los datos de esta Reposición: expediente, recurrente, fechas, resolución recurrida, decisión, alegaciones y descargos">⇢ Pasar datos a la Minuta Jerárquico</button></div>
         <div class="field" id="row-repAlegacion">
           <label>Nuevos antecedentes y lo que alega el recurrente</label>
           <textarea id="repAlegacion" rows="10" style="min-height:220px;resize:vertical" placeholder="Señalando que el inmueble se adquiere por cesión de derechos. Se acompaña cesión de derechos de fecha 17 de febrero de 1993."></textarea>
         </div>
       </fieldset>
       <fieldset id="repDecision5Campos"><legend>Decisión · considerando 5</legend><div class="field"><label for="repDecision5">Texto de la decisión <span class="hint">· se agrega al considerando 5 que ya viene por defecto, en un solo párrafo</span></label><textarea id="repDecision5" rows="5" style="min-height:120px;resize:vertical" placeholder="Ej.: Atendido lo anterior, se concluye que los antecedentes aportados acreditan la posesión material exclusiva por más de cinco años, por lo que procede acoger el recurso." oninput="generar()"></textarea></div><p class="hint" style="margin:0;font-size:12px">Si lo dejas vacío, el considerando 5 sale como siempre.</p></fieldset>
+      <div class="btn-row" style="margin:4px 0 12px"><button type="button" class="btn btn-primary btn-sm btn-pasar-minuta" onclick="pasarReposicionAMinuta()" title="Copia a la Minuta del Recurso Jerárquico los datos de esta Reposición: expediente, recurrente, fechas, resolución recurrida, decisión, alegaciones y descargos">⇢ Pasar datos a la Minuta Jerárquico</button>
+        <span class="hint" style="font-size:11.5px">Normalmente se pasa solo; úsalo si la minuta no se actualizó.</span></div>
     </div>
 
     <!-- ---- SUPERIOR JERÁRQUICO: MINUTA DE DESCARGOS DEL RECURSO JERÁRQUICO ---- -->
@@ -15985,6 +15988,55 @@ function sincronizarBotonJerarquico(){
   if(aviso){ aviso.hidden = corresponde; aviso.textContent = corresponde ? '' : '⚠ ' + motivoNoCorrespondeJerarquico(); }
 }
 
+/* Datos de la Reposición que alimentan la Minuta del Recurso Jerárquico. */
+function datosReposicionParaMinuta(){
+  const fundamentos = fundamentosTextualesSinNumero();
+  const compartidos = {
+    jqCaso: val('expN'),
+    jqRecurrente: representanteReposicion() || nombresSolicitantes(),
+    jqFechaNotif: fechaNotifRep(),
+    jqFechaInterp: val('repFechaRecurso'),
+    jqResN: val('repResDenegN'),
+    jqResFecha: val('repResDenegFecha'),
+    jqFundFecha: val('repResDenegFecha'),
+    jqDecision: resumenDecisionJq(fundamentos)
+  };
+  const sinAyuda = t => String(t || '').replace(/\[[^\]]*\]/g, '').replace(/[ \t]{2,}/g, ' ').trim();
+  let cons5 = '';
+  try{
+    const b5 = bloquesFinales('resolucionRep', partesDe('resolucionRep').bloques).find(b => b.id === 'cons-5');
+    if(b5) cons5 = sinAyuda(quitarNumeracion(b5.texto)).replace(/^Que,\s*/i, '');
+    cons5 = cons5 ? cons5.charAt(0).toUpperCase() + cons5.slice(1) : '';
+  }catch(e){ console.warn('Considerando 5 de Reposición:', e); }
+  return {compartidos, arg: val('repAlegacion'), desc: [sinAyuda(fundamentos), cons5].filter(Boolean).join('\n\n')};
+}
+
+/* Botón manual: pasa ahora mismo los datos de Reposición a la Minuta, aunque la
+   reposición no esté marcada como rechazada con jerárquico en subsidio. */
+function pasarReposicionAMinuta(){
+  try{
+    const d = datosReposicionParaMinuta();
+    Object.entries(d.compartidos).forEach(([id, valor]) => { const c = q(id); if(c) c.value = valor; });
+    if(q('jqPlazo')) q('jqPlazo').value = esRepExtemporaneo() ? 'no' : 'si';
+    const primera = jqFilas()[0];
+    const aMano = ['arg','desc'].some(k => String(primera[k] || '').trim() && primera[k] !== primera['_auto_' + k]
+      && primera[k] !== (k === 'arg' ? d.arg : d.desc));
+    let tabla = true;
+    if(aMano) tabla = confirm('La primera fila de la tabla de la minuta tiene cambios hechos a mano.\n\n'
+      + 'Aceptar: reemplazarla con los datos de Reposición.\nCancelar: dejar la tabla como está (los demás datos se pasan igual).');
+    if(tabla){
+      primera.arg = d.arg; primera.desc = d.desc;
+      primera._auto_arg = d.arg; primera._auto_desc = d.desc;
+    }
+    renderJqFilas();
+    generar();
+    flashStatus('✓ Datos de Reposición pasados a la Minuta del Recurso Jerárquico' + (tabla ? '' : ' (la tabla quedó como estaba)') + '.');
+  }catch(err){
+    console.error(err);
+    flashStatus('⚠ No se pudieron pasar los datos a la minuta: ' + err.message);
+  }
+}
+
 function sincronizarMinutaReposicion(){
   const habilitada = puedeMinutaJerarquica();
   sincronizarBotonJerarquico();
@@ -16000,20 +16052,8 @@ function sincronizarMinutaReposicion(){
     if(q('jqPlazo')) q('jqPlazo').disabled = false;
     return;
   }
-  const fundamentos = fundamentosTextualesSinNumero();
-  const compartidos = {
-    jqCaso: val('expN'),
-    /* Con representante, el recurrente es quien presentó el recurso: el representante. */
-    jqRecurrente: representanteReposicion() || nombresSolicitantes(),
-    /* La notificación del acto recurrido: la personal (folio SIAC) si se
-       indicó; si no, la fecha del ordinario que notificó la denegatoria. */
-    jqFechaNotif: fechaNotifRep(),
-    jqFechaInterp: val('repFechaRecurso'),
-    jqResN: val('repResDenegN'),
-    jqResFecha: val('repResDenegFecha'),
-    jqFundFecha: val('repResDenegFecha'),
-    jqDecision: resumenDecisionJq(fundamentos)
-  };
+  const datosRep = datosReposicionParaMinuta();
+  const compartidos = datosRep.compartidos;
   Object.entries(compartidos).forEach(([id,valor])=>{
     const campo = q(id); if(!campo) return;
     campo.value = valor;
@@ -16025,18 +16065,8 @@ function sincronizarMinutaReposicion(){
   q('jqPlazo').disabled = true;
   const primera = jqFilas()[0];
   let cambio = false;
-  /* Descargos de la Unidad = lo que dice la Resolución de Reposición: los fundamentos
-     de la denegatoria y su considerando 5 (motivación del servicio y la decisión
-     agregada), textual y sin número. Los textos de ayuda entre corchetes no pasan. */
-  const sinAyuda = t => String(t || '').replace(/\[[^\]]*\]/g, '').replace(/[ \t]{2,}/g, ' ').trim();
-  let cons5 = '';
-  try{
-    const b5 = bloquesFinales('resolucionRep', partesDe('resolucionRep').bloques).find(b => b.id === 'cons-5');
-    if(b5) cons5 = sinAyuda(quitarNumeracion(b5.texto)).replace(/^Que,\s*/i, '');
-    cons5 = cons5 ? cons5.charAt(0).toUpperCase() + cons5.slice(1) : '';
-  }catch(e){ console.warn('Considerando 5 de Reposición:', e); }
-  const descargos = [sinAyuda(fundamentos), cons5].filter(Boolean).join('\n\n');
-  [['arg',val('repAlegacion')],['desc',descargos]].forEach(([campo,valor])=>{
+  const descargos = datosRep.desc;
+  [['arg',datosRep.arg],['desc',descargos]].forEach(([campo,valor])=>{
     const anterior = '_auto_' + campo;
     if(!primera[campo] || primera[campo] === primera[anterior]){
       if(primera[campo] !== valor) cambio = true;
