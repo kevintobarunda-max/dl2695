@@ -254,6 +254,9 @@
   .bit-checklist label{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;margin:0;cursor:pointer;}
   .bit-checklist input[type="checkbox"]{margin:0;cursor:pointer;}
   .bit-checklist label.hecha{color:var(--gris-600);}
+  .bit-checklist .bit-grupo{grid-column:1/-1;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--rojo-dark);
+    margin:6px 0 1px;padding-top:5px;border-top:1px solid var(--gris-200);}
+  .bit-checklist .bit-grupo:first-child{margin-top:0;padding-top:0;border-top:none;}
   @media (max-width:520px){.bit-checklist{grid-template-columns:1fr;}}
   .bit-tbl{border-collapse:collapse;width:100%;font-size:12px;}
   .bit-tbl th,.bit-tbl td{border:1px solid var(--gris-200);padding:4px 6px;text-align:left;vertical-align:top;}
@@ -18252,30 +18255,30 @@ function padronAplicar(exp){
    BITÁCORA DE TAREAS POR EXPEDIENTE
    ============================================================ */
 
-const BITACORA_TAREAS = [
-  'Informe Jurídico 1',
-  'Resolución',
-  'Notificación',
-  'Verificación de Posesión Material',
-  'Informe Jurídico B',
-  'Resolución Rectificatoria', 'Notificación Rectificatoria',
-  'Resolución Término Anticipado por Fallecimiento',
-  'Notificación Término Anticipado por Fallecimiento',
-  'Resolución C',
-  'Notificación C',
-  'Resolución B',
-  'Notificación Resolución B',
-  'Resolución Reposición',
-  'Notificación Reposición',
-  'Minuta Recurso Jerárquico',
-  'Oficio DOM',
-  'Oficio MINVU',
-  'Oficio SERVIU',
-  'Oficio Conservador',
-  'Oficio masivo',
-  'Documento derivado a firma',
-  'Otro'
+/* Tareas agrupadas por etapa o producto, en el orden en que avanza el expediente.
+   El checklist y la tabla de cada expediente siguen este orden. */
+const BITACORA_GRUPOS = [
+  {etapa: 'Etapa A', tareas: ['Informe Jurídico 1', 'Resolución', 'Notificación']},
+  {etapa: 'Etapa B', tareas: ['Verificación de Posesión Material', 'Informe Jurídico B', 'Resolución B', 'Notificación Resolución B']},
+  {etapa: 'Etapa C', tareas: ['Resolución C', 'Notificación C']},
+  {etapa: 'Reposición y Recurso Jerárquico', tareas: ['Resolución Reposición', 'Notificación Reposición', 'Minuta Recurso Jerárquico', 'Minuta Jerárquico enviada']},
+  {etapa: 'Rectificatoria y Término por fallecimiento', tareas: ['Resolución Rectificatoria', 'Notificación Rectificatoria',
+    'Resolución Término Anticipado por Fallecimiento', 'Notificación Término Anticipado por Fallecimiento']},
+  {etapa: 'Oficios', tareas: ['Oficio DOM', 'Oficio MINVU', 'Oficio SERVIU', 'Oficio Conservador', 'Oficio masivo']},
+  {etapa: 'Generales', tareas: ['Documento derivado a firma', 'Otro']}
 ];
+const BITACORA_TAREAS = BITACORA_GRUPOS.flatMap(g => g.tareas);
+/* Posición de una tarea en ese orden. Admite los nombres con signo o número que
+   anota el generador («Informe Jurídico 1 (+)», «Resolución B (−) N° 123»). */
+function ordenTareaBitacora(nombre){
+  const n = normTxt(String(nombre || '').replace(/\s*\([^)]*\)/g, ' ')).replace(/\s+/g, ' ').trim();
+  let mejor = -1, largo = 0;
+  BITACORA_TAREAS.forEach((t, i) => {
+    const k = normTxt(t);
+    if((n === k || n.startsWith(k + ' ')) && k.length > largo){ mejor = i; largo = k.length; }
+  });
+  return mejor < 0 ? BITACORA_TAREAS.length : mejor;
+}
 
 /* Para «Tomar del formulario»: qué tarea corresponde a cada pestaña de
    documento y en qué campo está su número. */
@@ -18430,12 +18433,12 @@ function renderBitChecklist(){
   const cont = q('bitChecklist');
   if(!cont) return;
   const exp = String(val('bitExp') || '').trim();
-  cont.innerHTML = BITACORA_TAREAS.map(nombre=>{
+  cont.innerHTML = BITACORA_GRUPOS.map(gr => `<div class="bit-grupo">${escaparHtml(gr.etapa)}</div>` + gr.tareas.map(nombre=>{
     const marcada = exp && state.bitacora.some(t => t.exp === exp && t.nombre === nombre);
     return `<label class="${marcada ? 'hecha' : ''}" data-tarea="${escaparHtml(nombre)}">`
       + `<input type="checkbox" ${marcada ? 'checked' : ''} onchange="bitacoraChecklistToggle(this)">`
       + escaparHtml(nombre) + '</label>';
-  }).join('');
+  }).join('')).join('');
 }
 
 /* Al marcar: agrega la tarea al expediente de «bitExp» con la fecha del
@@ -19085,7 +19088,8 @@ function bitacoraAgrupada(){
       reg: reg,
       quien: (reg && reg.solicitante) ? reg.solicitante : '',
       tareas: (porExp.get(exp) || []).slice()
-                .sort((a,b)=> String(a.fecha).localeCompare(String(b.fecha)))
+                .sort((a,b)=> (ordenTareaBitacora(a.nombre) - ordenTareaBitacora(b.nombre))
+                  || String(a.fecha).localeCompare(String(b.fecha)))
     };
   });
 }
