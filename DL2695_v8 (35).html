@@ -1015,8 +1015,8 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
         <legend>Inscripción conservatoria (título de dominio)</legend>
         <div class="check-row" id="row-sinInscripcion" style="margin-bottom:8px">
           <input type="checkbox" id="sinInscripcion" onchange="toggleClass('row-sinInscripcion','checked',this.checked); aplicarSinInscripcionUI(); generar();">
-          <div><div class="lbl">La Inscripción Conservatoria no se acompaña en el presente procedimiento</div>
-            <div class="hint">Al marcarla, los documentos lo dicen así en vez de citar fojas, número y año.</div></div>
+          <div><div class="lbl">Carece de Inscripción Conservatoria</div>
+            <div class="hint">Los documentos dirán «la propiedad objeto de este procedimiento de regularización carece de Inscripción Conservatoria» en vez de citar fojas, número y año.</div></div>
         </div>
         <div id="inscDatosWrap">
         <div class="grid3">
@@ -8949,7 +8949,7 @@ function motivosTextos(){
   if(q('mo-subdivision').checked){
     const quien = blank(val('mo-sub-quien'),'su causante');
     const anio = blank(val('mo-sub-anio'),'____');
-    out.subdivision = `SUBDIVISIÓN DE HECHO. ${SolicitanteMay()} ${v('fundamenta','fundamentan')} su derecho en una "subdivisión de hecho" realizada por ${quien} en el año ${anio}, no obstante, al momento de la solicitud no ${v('acompaña','acompañan')} instrumento público o privado alguno que acredite legalmente dicha transferencia de derechos, lo que constituye una infracción al Artículo 3° inciso segundo del Decreto Ley N° 2.695 de 1979, toda vez que no consta dentro del procedimiento algún "título aparente" que vincule ${alALa()} con ${sinInscripcion() ? 'la inscripción de dominio, que no se acompaña en el presente procedimiento' : 'la inscripción de dominio que rola a ' + inscripcion}. En consecuencia, no es posible habilitar la suma de posesiones de los antecesores ni tener por acreditado el plazo de cinco años de posesión material, continua y exclusiva que exige el Artículo 2° N° 1 del citado Decreto Ley, ${rechazo11}.`;
+    out.subdivision = `SUBDIVISIÓN DE HECHO. ${SolicitanteMay()} ${v('fundamenta','fundamentan')} su derecho en una "subdivisión de hecho" realizada por ${quien} en el año ${anio}, no obstante, al momento de la solicitud no ${v('acompaña','acompañan')} instrumento público o privado alguno que acredite legalmente dicha transferencia de derechos, lo que constituye una infracción al Artículo 3° inciso segundo del Decreto Ley N° 2.695 de 1979, toda vez que no consta dentro del procedimiento algún "título aparente" que vincule ${alALa()} con ${sinInscripcion() ? 'la inscripción de dominio, de la cual carece la propiedad objeto de este procedimiento de regularización' : 'la inscripción de dominio que rola a ' + inscripcion}. En consecuencia, no es posible habilitar la suma de posesiones de los antecesores ni tener por acreditado el plazo de cinco años de posesión material, continua y exclusiva que exige el Artículo 2° N° 1 del citado Decreto Ley, ${rechazo11}.`;
   }
 
   if(q('mo-acreditacion').checked){
@@ -8999,7 +8999,7 @@ function motivosTextos(){
   if(q('mo-noEsParte').checked){
     const doc = blank(val('mo-noEsParte-doc'),'el contrato acompañado');
     const partes = val('mo-noEsParte-partes');
-    out.noEsParte = `${SolicitanteMay()} ${v('invoca','invocan')} como origen de su posesión ${doc}${partes? `, celebrado entre ${partes}`:''}, instrumento respecto del cual ${solicitanteMin()} no ${v('es parte','son parte')}. En consecuencia, dicho documento no resulta idóneo para este procedimiento administrativo, pues no vincula jurídicamente ${alALa()} con ${sinInscripcion() ? 'la inscripción de dominio, que no se acompaña en el presente procedimiento' : 'la inscripción de dominio que rola a ' + inscripcion}, ni permite tener por configurado el "título aparente" que exige el Artículo 3° inciso segundo del Decreto Ley N° 2.695 como antecedente necesario para hacer presumible la continuidad y legitimidad de la ocupación. Esta omisión impide al Servicio establecer una "fecha cierta" respecto del inicio del tracto posesorio, transformando el relato ${delInteresado()} en una mera declaración carente de respaldo documental. De acuerdo con el Punto 4.2.2 ${circular}, la solicitud cuyo único fundamento radica en declaraciones que no son consistentes con los antecedentes documentales de origen debe ser desechada por falta de autenticidad, ${rechazo11}.`;
+    out.noEsParte = `${SolicitanteMay()} ${v('invoca','invocan')} como origen de su posesión ${doc}${partes? `, celebrado entre ${partes}`:''}, instrumento respecto del cual ${solicitanteMin()} no ${v('es parte','son parte')}. En consecuencia, dicho documento no resulta idóneo para este procedimiento administrativo, pues no vincula jurídicamente ${alALa()} con ${sinInscripcion() ? 'la inscripción de dominio, de la cual carece la propiedad objeto de este procedimiento de regularización' : 'la inscripción de dominio que rola a ' + inscripcion}, ni permite tener por configurado el "título aparente" que exige el Artículo 3° inciso segundo del Decreto Ley N° 2.695 como antecedente necesario para hacer presumible la continuidad y legitimidad de la ocupación. Esta omisión impide al Servicio establecer una "fecha cierta" respecto del inicio del tracto posesorio, transformando el relato ${delInteresado()} en una mera declaración carente de respaldo documental. De acuerdo con el Punto 4.2.2 ${circular}, la solicitud cuyo único fundamento radica en declaraciones que no son consistentes con los antecedentes documentales de origen debe ser desechada por falta de autenticidad, ${rechazo11}.`;
   }
 
   if(q('mo-comuneros').checked){
@@ -9008,7 +9008,7 @@ function motivosTextos(){
 
   if(q('mo-herenciaRemota').checked){
     const causante = blank(val('mo-her-causante'),'su causante');
-    out.herenciaRemota = `${SolicitanteMay()} ${v('ampara','amparan')} su posesión en herencia quedada al fallecimiento de ${causante}, sin embargo, no ${v('acredita','acreditan')} el vínculo entre dicho causante y quien figura como propietario en ${sinInscripcion() ? 'la inscripción de dominio, que no se acompaña en el presente procedimiento' : 'la inscripción de dominio que rola a ' + inscripcion}, por lo que no es posible descartar la existencia de terceros que pudieran tener igual o mejor derecho que ${elElla()}, no logrando acreditar el cumplimiento de lo exigido por los Artículos 2°, 3° y 4° del D.L. N° 2.695/79.`;
+    out.herenciaRemota = `${SolicitanteMay()} ${v('ampara','amparan')} su posesión en herencia quedada al fallecimiento de ${causante}, sin embargo, no ${v('acredita','acreditan')} el vínculo entre dicho causante y quien figura como propietario en ${sinInscripcion() ? 'la inscripción de dominio, de la cual carece la propiedad objeto de este procedimiento de regularización' : 'la inscripción de dominio que rola a ' + inscripcion}, por lo que no es posible descartar la existencia de terceros que pudieran tener igual o mejor derecho que ${elElla()}, no logrando acreditar el cumplimiento de lo exigido por los Artículos 2°, 3° y 4° del D.L. N° 2.695/79.`;
   }
 
   if(q('mo-tituloInvalido').checked){
@@ -9871,8 +9871,8 @@ function inscripcionesCortas(){
 }
 function hayVariasInscripciones(){ return !sinInscripcion() && inscripcionesDominio().length > 1; }
 
-/* Casilla «La Inscripción Conservatoria no se acompaña en el presente procedimiento». */
-const TXT_SIN_INSCRIPCION = 'la Inscripción Conservatoria no se acompaña en el presente procedimiento';
+/* Casilla «Carece de Inscripción Conservatoria». */
+const TXT_SIN_INSCRIPCION = 'la propiedad objeto de este procedimiento de regularización carece de Inscripción Conservatoria';
 function sinInscripcion(){ return chk('sinInscripcion'); }
 function SinInscripcionMay(){ return TXT_SIN_INSCRIPCION.charAt(0).toUpperCase() + TXT_SIN_INSCRIPCION.slice(1); }
 /* Con la casilla marcada se ocultan fojas, número, año e inscripciones adicionales
