@@ -600,6 +600,8 @@
   .plano-fila select{width:auto;flex:none;}
   .chk-vta{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:400;color:var(--tinta-suave,#5a6a7d);margin-top:4px;cursor:pointer;}
   .chk-vta input{width:auto;margin:0;}
+  .rol-extra{border:1px solid #e3dfce;border-radius:9px;background:#fbfaf4;padding:8px 10px;margin:0 0 8px;}
+  .rol-extra .grid2{gap:8px;}
   .insc-extra{border:1px solid #e3dfce;border-radius:9px;background:#fbfaf4;padding:8px 10px;margin:0 0 8px;}
   .insc-extra-head{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:700;color:var(--azul-900,#14304f);margin-bottom:4px;}
   .insc-extra-head button{padding:1px 7px;}
@@ -1081,6 +1083,8 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
           <label>Avalúo fiscal proporcional ($) <span class="hint" id="propOrigen"></span></label>
           <input type="text" inputmode="numeric" id="avaluoProporcional" placeholder="" data-fmt="money" oninput="onPropManual()">
         </div>
+        <div id="rolesExtraLista"></div>
+        <button type="button" class="btn btn-outline btn-sm" data-lateral="rol" onclick="agregarRolExtra()" style="margin:0 0 10px">＋ Agregar otro rol de avalúo</button>
         <div data-lateral="calculo" class="aval-resumen">
           <div class="aval-linea" id="calcFormula">Proporcional = superficie a regularizar × avalúo total ÷ superficie total del rol</div>
           <div class="calc-utm" id="calcUtmCaja">
@@ -7826,7 +7830,7 @@ function bloquesObservaciones(){
   }
 
   if(marcado('obs-sinInscripcion')){
-    add('sinInscripcion', `Este Servicio obtiene de oficio el documento Consulta de Antecedentes del Bien Raíz correspondiente al Rol de Avalúo Fiscal Nº ${blank(val('rolAvaluo'),'______')}, de la Comuna de ${blank(val('comuna'),'____________')}, el cual da cuenta de que no existe inscripción conservatoria vigente a la fecha del presente informe.`);
+    add('sinInscripcion', `Este Servicio obtiene de oficio el documento Consulta de Antecedentes del Bien Raíz ${hayVariosRoles() ? 'correspondiente a los Roles de Avalúo Fiscal Nº ' + rolesNumeros() : 'correspondiente al Rol de Avalúo Fiscal Nº ' + blank(val('rolAvaluo'),'______')}, de la Comuna de ${blank(val('comuna'),'____________')}, el cual da cuenta de que no existe inscripción conservatoria vigente a la fecha del presente informe.`);
   }
 
   if(marcado('obs-relacionados')){
@@ -9247,6 +9251,7 @@ function partesInforme(){
     let avaluoLinea = `Se encuentra amparado por el Rol de Avalúo Fiscal Nº ${d.rolAvaluo}`;
     if(d.avaluoTotal) avaluoLinea += `, con un Avalúo Fiscal Total de ${money(d.avaluoTotal)}.-`;
     if(d.avaluoProporcional) avaluoLinea += ` y un Avalúo Fiscal Proporcional de ${money(d.avaluoProporcional)}.-`;
+    if(hayVariosRoles()) avaluoLinea = `Se encuentra amparado por los Roles de Avalúo Fiscal ${rolesConAvaluos(false)}`;
     bloques.push(bl('p3-avaluo', `- ${avaluoLinea}`));
 
     bloques.push(bl('p3-cierre', `Luego, se trata de un inmueble de propiedad ${d.tipoBien.toLowerCase()} que no se encuentra en alguna de las situaciones descritas en los incisos 1º y 2º del artículo 8º del citado Decreto Ley, siendo en un principio procedente la regularización de la propiedad particular de acuerdo al procedimiento establecido en el Decreto Ley Nº 2695/79 y en su reglamento.`));
@@ -9271,7 +9276,7 @@ function partesInforme(){
     bloques.push(bl('p3', `3.- La solicitud de regularización se refiere a un inmueble ${d.calidadBien.toLowerCase()} ${d.tipoBien} ubicado en ${d.ubicacion}, Comuna de ${d.comuna}, Provincia de ${d.provincia}, Región del Maule, con una superficie aproximada de ${d.superficieTexto}.`));
 
     bloques.push(bl('p3-titulo', sinInscripcion() ? `- ${SinInscripcionMay()}.` : (hayVariasInscripciones() ? `- Los Títulos de dominio que amparan el inmueble rolan a ${inscripcionFormula('Nº')}.` : `- El Título de dominio que ampara el inmueble rola a ${inscripcionFormula('Nº')}.`)));
-    bloques.push(bl('p3-avaluo', `- Se encuentra amparado por el Rol de Avalúo Fiscal Nº ${d.rolAvaluo}${d.avaluoTotal? `, con un Avalúo Fiscal Total de ${money(d.avaluoTotal)}.-`:''}${d.avaluoProporcional? ` y con un Avalúo Fiscal Proporcional de ${money(d.avaluoProporcional)}.-`:''}`));
+    bloques.push(bl('p3-avaluo', hayVariosRoles() ? `- Se encuentra amparado por los Roles de Avalúo Fiscal ${rolesConAvaluos(true)}` : `- Se encuentra amparado por el Rol de Avalúo Fiscal Nº ${d.rolAvaluo}${d.avaluoTotal? `, con un Avalúo Fiscal Total de ${money(d.avaluoTotal)}.-`:''}${d.avaluoProporcional? ` y con un Avalúo Fiscal Proporcional de ${money(d.avaluoProporcional)}.-`:''}`));
 
     bloques.push(bl('p4', `4.- De los Antecedentes de la Posesión invocada que constan en el expediente aparece que ${solicitanteMin()} ${v('posee','poseen')} el inmueble según se pasa a explicar, y que la regularización de la posesión material de la propiedad no cumple con los requisitos exigidos por la Ley, por cuanto:`));
 
@@ -9837,6 +9842,47 @@ function inscripcionRolada(d){
   return inscripcionFormula();
 }
 
+/* ---------- Roles de avalúo (principal + adicionales) ---------- */
+function rolesAvaluo(){
+  const lista = [{rol: val('rolAvaluo'), total: val('avaluoTotal'), prop: val('avaluoProporcional')}];
+  (state.rolesExtra || []).forEach(r => { if([r.rol, r.total, r.prop].some(t => String(t || '').trim())) lista.push(r); });
+  return lista;
+}
+function hayVariosRoles(){ return rolesAvaluo().length > 1; }
+/* Números de rol, unidos: «1234-5 y 1234-6». */
+function rolesNumeros(){ return unirConY(rolesAvaluo().map(r => blank(r.rol, '______')), ', '); }
+/* «Nº 1234-5, con un Avalúo Fiscal Total de $X.- y un Avalúo Fiscal Proporcional de $Y.-» por cada rol. */
+function rolesConAvaluos(conCon){
+  const y = conCon ? ' y con un' : ' y un';
+  return unirConY(rolesAvaluo().map(r => `Nº ${blank(r.rol, '______')}`
+    + (r.total ? `, con un Avalúo Fiscal Total de ${money(r.total)}.-` : '')
+    + (r.prop ? `${r.total ? y : ', con un'} Avalúo Fiscal Proporcional de ${money(r.prop)}.-` : '')), '; ');
+}
+function agregarRolExtra(){
+  if(!Array.isArray(state.rolesExtra)) state.rolesExtra = [];
+  state.rolesExtra.push({rol: '', total: '', prop: ''});
+  renderRolesExtra();
+  const ins = document.querySelectorAll('#rolesExtraLista .rol-extra:last-child input');
+  if(ins[0]) ins[0].focus();
+  generar();
+}
+function quitarRolExtra(i){ state.rolesExtra.splice(i, 1); renderRolesExtra(); generar(); }
+function editarRolExtra(i, k, v){ if(state.rolesExtra[i]){ state.rolesExtra[i][k] = v; generar(); } }
+function renderRolesExtra(){
+  const cont = q('rolesExtraLista'); if(!cont) return;
+  const lista = Array.isArray(state.rolesExtra) ? state.rolesExtra : (state.rolesExtra = []);
+  const esc = t => String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  cont.innerHTML = lista.map((r, i) => `<div class="rol-extra">
+      <div class="insc-extra-head"><span>Rol ${i + 2}</span>
+        <button type="button" class="btn btn-outline btn-sm" title="Quitar este rol" onclick="quitarRolExtra(${i})">✕</button></div>
+      <div class="grid2">
+        <div class="field"><label>Rol de avalúo fiscal</label><input type="text" data-temporal data-fmt="rol" value="${esc(r.rol)}" oninput="editarRolExtra(${i},'rol',this.value)"></div>
+        <div class="field"><label>Avalúo fiscal total ($)</label><input type="text" inputmode="numeric" data-temporal data-fmt="money" value="${esc(r.total ? formatMoneyValue(r.total) : '')}" oninput="editarRolExtra(${i},'total',this.value)" onblur="this.value = this.value ? formatMoneyValue(this.value) : ''"></div>
+      </div>
+      <div class="field"><label>Avalúo fiscal proporcional ($) <span class="hint">(opcional)</span></label><input type="text" inputmode="numeric" data-temporal data-fmt="money" value="${esc(r.prop ? formatMoneyValue(r.prop) : '')}" oninput="editarRolExtra(${i},'prop',this.value)" onblur="this.value = this.value ? formatMoneyValue(this.value) : ''"></div>
+    </div>`).join('');
+}
+
 /* ---------- Inscripciones de dominio (principal + adicionales) ---------- */
 function fojasTxt(f, vta){ const t = blank(f, '____'); return vta && String(f || '').trim() ? t + ' Vuelta' : t; }
 /* Fojas de la inscripción principal tal como se imprimen («12» o «12 vuelta»). */
@@ -10158,7 +10204,7 @@ function partesInformeB(){
   bloques.push(bl('lugarFecha', `Región del Maule, ${fechaLarga(d.fecha)}.`));
 
   bloques.push(bl('p1', `1.- Según se ha comprobado con las diligencias e informe técnico acompañado, la solicitud del antecedente se refiere a un inmueble ${d.tipoBien}, ubicado en el lugar denominado ${d.ubicacion}, Comuna de ${d.comuna}, Provincia de ${d.provincia}, Región del Maule, mencionada en el informe jurídico precedente, con una superficie aproximada de ${d.superficieTexto}., cuyos deslindes constan del ${planoTexto()} Nº ${planoNumeroFinal()}`));
-  bloques.push(bl('p2', `2.- Los títulos y antecedentes acompañados se refieren en forma ${alcance}, al mismo inmueble, el cual se encuentra amparado por Rol Nº ${d.rolAvaluo}${avaluos}`));
+  bloques.push(bl('p2', `2.- Los títulos y antecedentes acompañados se refieren en forma ${alcance}, al mismo inmueble, el cual se encuentra amparado por ${hayVariosRoles() ? 'los Roles ' + rolesConAvaluos(true) : 'Rol Nº ' + d.rolAvaluo + avaluos}`));
 
   if(positivo){
     bloques.push(bl('p3', `3.- De acuerdo con los antecedentes técnicos reunidos por el Servicio, la posesión material ${delSolicitante()} ha sido verificada ejerciéndola ${peticionario()} por más de ${blank(val('aniosPosesion'),'__')} años en forma personal, de forma exclusiva, sin violencia ni clandestinidad.`));
@@ -12701,7 +12747,7 @@ function masivoVaciar(){
 function masivoAgregarDesdeInforme(){
   const comuna = val('comuna');
   const comunaMay = upper(comuna);
-  const rol = val('rolAvaluo');
+  const rol = hayVariosRoles() ? rolesNumeros() : val('rolAvaluo');
   const fojas = fojasPrincipal(), num = val('numInsc'), anio = val('anioInsc'), cbr = val('cbr');
 
   let inscripcion = '';
@@ -13007,7 +13053,7 @@ function autocompletarOficios(){
   q('ofCbr').dataset.auto = val('cbr') ? '0' : '1';
   sincronizarCbrSelect('ofCbrSelect','ofCbr');
   autoCbrOficio();
-  q('ofRolAvaluo').value = val('rolAvaluo');
+  q('ofRolAvaluo').value = hayVariosRoles() ? rolesNumeros() : val('rolAvaluo');
   q('ofSeremi').value = seremiFirmante();
 
   generarOficioPreview();
@@ -14742,7 +14788,7 @@ function nuevoExpediente(){
     state.cuotaHer = null;
     state.utmManual = false;
     state.motivosOrden = [];
-    state.calcSup = {totales: null, reg: null}; state.propManual = false; state.inscExtra = [];
+    state.calcSup = {totales: null, reg: null}; state.propManual = false; state.inscExtra = []; state.rolesExtra = [];
     state.docEdits = {}; state.lastRender = {};
     TABS_EDICIONES.forEach(t => { state.docEdits[t] = {edits: {}, extras: []}; state.lastRender[t] = []; });
     state.lastPartes = null;
@@ -14765,7 +14811,7 @@ function nuevoExpediente(){
     q('btnFiscalSi').classList.toggle('active', false);
     q('btnFiscalNo').classList.toggle('active', true);
     aplicarResultadoUI(); sincronizarSentidoConInforme(); aplicarSentidoBUI(); aplicarSentidoRepUI(); aplicarModoFirmaUnidad();
-    renderSolicitantes(); renderPresuntos(); renderJqFilas(); renderInscripcionesExtra();
+    renderSolicitantes(); renderPresuntos(); renderJqFilas(); renderInscripcionesExtra(); renderRolesExtra();
     document.querySelectorAll('[data-raw]').forEach(t => { t.value = ''; });
     actualizarEquivalenciaSup();
     sincronizarCbrSelect('cbrSelect', 'cbr'); sincronizarNotarioSelect(); aplicarObjetoUI();
@@ -19444,6 +19490,7 @@ function guardarAhora(){
         sentidoManual: state.sentidoManual,
         calcSup: state.calcSup,
         inscExtra: state.inscExtra || [],
+        rolesExtra: state.rolesExtra || [],
         propManual: state.propManual,
         supUnidadAnterior: state.supUnidadAnterior,
         presuntos: state.presuntos,
@@ -19791,6 +19838,7 @@ function restaurarTodo(){
     };
     if(est.calcSup) state.calcSup = est.calcSup;
     state.inscExtra = Array.isArray(est.inscExtra) ? est.inscExtra : [];
+    state.rolesExtra = Array.isArray(est.rolesExtra) ? est.rolesExtra : [];
     state.propManual = (typeof est.propManual === 'boolean') ? est.propManual : undefined;
     if(est.supUnidadAnterior) state.supUnidadAnterior = est.supUnidadAnterior;
     if(Array.isArray(est.presuntos)) state.presuntos = est.presuntos;
@@ -19882,7 +19930,7 @@ function restaurarTodo(){
 
     // 4) las listas que no tienen id propio se dibujan desde el estado
     renderSolicitantes();
-    renderPresuntos(); renderInscripcionesExtra();
+    renderPresuntos(); renderInscripcionesExtra(); renderRolesExtra();
 
     // las etiquetas y equivalencias de superficie siguen a la unidad guardada
     document.querySelectorAll('.uni-sup').forEach(sp=>{ sp.textContent = etiquetaUnidad(unidadCalc()); });
@@ -20000,7 +20048,7 @@ async function borrarGuardado(){
   state.notariasPropias = [];
   state.motivosOrden = [];
   state.masivoFilas = [];
-  state.calcSup = {totales:null, reg:null}; state.propManual = false; state.inscExtra = [];
+  state.calcSup = {totales:null, reg:null}; state.propManual = false; state.inscExtra = []; state.rolesExtra = [];
   state.docEdits = {};
   state.lastRender = {};
   TABS_EDICIONES.forEach(t=>{
@@ -20077,7 +20125,7 @@ initFormatters();
 
 renderModoSub();
 renderSolicitantes();
-renderPresuntos(); renderInscripcionesExtra();
+renderPresuntos(); renderInscripcionesExtra(); renderRolesExtra();
 
 /* Se recupera el borrador ANTES de generar, así el documento se arma con los
    datos que el usuario ya tenía escritos. */
