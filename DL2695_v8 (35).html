@@ -254,6 +254,33 @@
   .bit-checklist label{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400;margin:0;cursor:pointer;}
   .bit-checklist input[type="checkbox"]{margin:0;cursor:pointer;}
   .bit-checklist label.hecha{color:var(--gris-600);}
+  .bit-vista{display:flex;gap:4px;margin:10px 0 0;}
+  .bit-vista-btn{border:1px solid #c9c2ae;background:#f6f4ee;color:var(--tinta);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;}
+  .bit-vista-btn.activo{background:var(--azul-800);border-color:var(--azul-800);color:#fff;}
+  .cal-cab{display:flex;align-items:center;gap:8px;margin:0 0 8px;}
+  .cal-cab h3{margin:0;font-size:14px;color:var(--azul-900);flex:1;text-align:center;}
+  .cal-cab button{border:1px solid #c9c2ae;background:#fff;border-radius:7px;padding:3px 10px;cursor:pointer;font-size:13px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;}
+  .cal-dsem{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tinta-suave);text-align:center;padding:2px 0;}
+  .cal-dia{min-height:84px;border:1px solid #e3dfce;border-radius:6px;background:#fff;padding:3px 4px;display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .cal-dia.fuera{background:#f6f4ee;opacity:.55;}
+  .cal-dia.hoy{border-color:var(--rojo);box-shadow:0 0 0 1px var(--rojo) inset;}
+  .cal-dia.finde{background:#fbfaf6;}
+  .cal-num{font-size:11px;font-weight:700;color:var(--tinta-suave);}
+  .cal-ev{font-size:10.5px;line-height:1.25;border-radius:4px;padding:2px 4px;background:#eef2f8;border-left:3px solid var(--azul-700);overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;cursor:default;}
+  .cal-ev b{font-weight:700;}
+  .cal-ev.e-a{background:#eef2f8;border-color:var(--azul-700);}
+  .cal-ev.e-b{background:#eef6ef;border-color:#3e7d4c;}
+  .cal-ev.e-c{background:#f4eefa;border-color:#7a4fa8;}
+  .cal-ev.e-rep{background:#fdf1e2;border-color:#c8861b;}
+  .cal-ev.e-otros{background:#f5f0f0;border-color:#9a6b6b;}
+  .cal-ev.e-of{background:#eaf5f7;border-color:#2c8a9a;}
+  .cal-ev.e-gen{background:#f1f1f1;border-color:#888;}
+  .cal-mas{font-size:10px;color:var(--tinta-suave);}
+  .cal-ley{display:flex;flex-wrap:wrap;gap:6px 12px;margin:8px 0 0;font-size:11px;color:var(--tinta-suave);}
+  .cal-ley span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px;background:var(--c);}
+  .cal-sinfecha{font-size:11.5px;color:var(--tinta-suave);margin-top:6px;}
   .bit-checklist .bit-grupo{grid-column:1/-1;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--rojo-dark);
     margin:6px 0 1px;padding-top:5px;border-top:1px solid var(--gris-200);}
   .bit-checklist .bit-grupo:first-child{margin-top:0;padding-top:0;border-top:none;}
@@ -6259,6 +6286,10 @@ function prepararImportacion(tabla){
           <button type="button" class="btn btn-primary btn-sm" onclick="bitacoraExportarDocx()">⬇ Exportar a Word (.docx)</button>
           <button type="button" class="btn btn-red btn-sm" onclick="bitacoraExportarPdf()">⬇ Exportar a PDF</button>
           <button type="button" class="btn btn-outline btn-sm" onclick="bitacoraCopiarRedaccion()">📋 Copiar la redacción</button>
+        </div>
+        <div class="bit-vista" role="tablist" aria-label="Vista de la bitácora">
+          <button type="button" class="bit-vista-btn" data-vista="tabla" role="tab" onclick="bitacoraVista('tabla')">📋 Tabla</button>
+          <button type="button" class="bit-vista-btn" data-vista="calendario" role="tab" onclick="bitacoraVista('calendario')">📅 Calendario</button>
         </div>
         <p class="hint" style="margin:6px 0 0">
           El PDF se genera por el diálogo de impresión del navegador: elige
@@ -19223,9 +19254,83 @@ function bitacoraTablaHtml(pantalla = true){
     + '</tbody></table>';
 }
 
+/* ---------- Vista de calendario: un evento por cada tarea, en su día ---------- */
+let _calMes = null;   // 'YYYY-MM' que se está mirando
+function bitacoraVistaActual(){ try{ return localStorage.getItem('dl2695_bit_vista') === 'calendario' ? 'calendario' : 'tabla'; }catch(e){ return 'tabla'; } }
+function bitacoraVista(v){
+  try{ localStorage.setItem('dl2695_bit_vista', v); }catch(e){}
+  renderBitacoraPreview();
+}
+function calMover(delta){
+  const [y, m] = (_calMes || new Date().toISOString().slice(0, 7)).split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  _calMes = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  renderBitacoraPreview();
+}
+function calHoy(){ _calMes = new Date().toISOString().slice(0, 7); renderBitacoraPreview(); }
+/* Clase de color según la etapa de la tarea (mismos grupos del checklist). */
+function calClaseTarea(nombre){
+  const i = ordenTareaBitacora(nombre);
+  const gr = BITACORA_GRUPOS.findIndex(g => g.tareas.includes(BITACORA_TAREAS[i]));
+  return ['e-a','e-b','e-c','e-rep','e-otros','e-of','e-gen'][gr] || 'e-gen';
+}
+function bitacoraCalendarioHtml(){
+  const tareas = state.bitacora.filter(t => /^\d{4}-\d{2}-\d{2}$/.test(String(t.fecha || '')));
+  const sinFecha = state.bitacora.length - tareas.length;
+  if(!_calMes){
+    const ultima = tareas.map(t => t.fecha).sort().pop();
+    _calMes = (ultima || new Date().toISOString()).slice(0, 7);
+  }
+  const [y, m] = _calMes.split('-').map(Number);
+  const primero = new Date(y, m - 1, 1);
+  const inicio = new Date(y, m - 1, 1 - ((primero.getDay() + 6) % 7));   // semana desde el lunes
+  const hoy = new Date().toISOString().slice(0, 10);
+  const porDia = {};
+  tareas.forEach(t => { (porDia[t.fecha] = porDia[t.fecha] || []).push(t); });
+  const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const t0 = primero.toLocaleDateString('es-CL', {month: 'long', year: 'numeric'});
+  const titulo = t0.charAt(0).toUpperCase() + t0.slice(1);
+  const delMes = tareas.filter(t => t.fecha.slice(0, 7) === _calMes).length;
+  let html = `<div class="cal-cab"><button type="button" onclick="calMover(-1)" title="Mes anterior">◀</button>`
+    + `<h3>${escaparHtml(titulo)} <span style="font-weight:400;font-size:12px;color:var(--tinta-suave)">· ${delMes} tarea(s)</span></h3>`
+    + `<button type="button" onclick="calHoy()" title="Ir al mes actual">Hoy</button><button type="button" onclick="calMover(1)" title="Mes siguiente">▶</button></div>`
+    + '<div class="cal-grid">' + ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d => `<div class="cal-dsem">${d}</div>`).join('');
+  const desfase = (primero.getDay() + 6) % 7, diasMes = new Date(y, m, 0).getDate();
+  const celdas = Math.ceil((desfase + diasMes) / 7) * 7;                  // semanas completas
+  for(let k = 0; k < celdas; k++){
+    const d = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + k);
+    const f = iso(d), evs = (porDia[f] || []).slice().sort((a, b) => ordenTareaBitacora(a.nombre) - ordenTareaBitacora(b.nombre));
+    const cls = ['cal-dia', d.getMonth() !== m - 1 ? 'fuera' : '', f === hoy ? 'hoy' : '', (d.getDay() % 6 === 0) ? 'finde' : ''].join(' ');
+    const max = 4;
+    html += `<div class="${cls}"><span class="cal-num">${d.getDate()}</span>`
+      + evs.slice(0, max).map(t => {
+          const reg = padronBuscar(t.exp);
+          const tip = `Exp. ${t.exp}${reg && reg.solicitante ? ' · ' + reg.solicitante : ''}\n${t.nombre}${t.numero ? ' · N° ' + t.numero : ''}${t.nota ? '\n' + t.nota : ''}`;
+          return `<div class="cal-ev ${calClaseTarea(t.nombre)}" title="${escaparHtml(tip)}"><b>${escaparHtml(t.exp)}</b> ${escaparHtml(t.nombre)}</div>`;
+        }).join('')
+      + (evs.length > max ? `<div class="cal-mas" title="${escaparHtml(evs.slice(max).map(t => t.exp + ' ' + t.nombre).join('\n'))}">+${evs.length - max} más</div>` : '')
+      + '</div>';
+  }
+  html += '</div><div class="cal-ley">'
+    + [['Etapa A','#2b4f82'],['Etapa B','#3e7d4c'],['Etapa C','#7a4fa8'],['Reposición / Jerárquico','#c8861b'],['Rectificatoria / Fallecimiento','#9a6b6b'],['Oficios','#2c8a9a'],['Generales','#888']]
+        .map(([t, c]) => `<span style="--c:${c}">${t}</span>`).join('') + '</div>';
+  if(sinFecha) html += `<div class="cal-sinfecha">${sinFecha} tarea(s) sin fecha no aparecen en el calendario.</div>`;
+  return html;
+}
+
 function renderBitacoraPreview(){
   const cont = q('bitacoraPreview');
   if(!cont) return;
+  const vista = bitacoraVistaActual();
+  document.querySelectorAll('.bit-vista-btn').forEach(b => b.classList.toggle('activo', b.dataset.vista === vista));
+  const caja = cont.closest('.bit-scroll');
+  if(caja) caja.style.maxHeight = vista === 'calendario' ? 'none' : '520px';
+  if(vista === 'calendario'){
+    cont.innerHTML = state.bitacora.length ? bitacoraCalendarioHtml()
+      : '<div class="bit-vacio">Registra tareas con fecha y aquí las verás en el calendario.</div>';
+    if(q('bitPreviewCuenta')) q('bitPreviewCuenta').textContent = bitacoraTotalGestiones() + ' gestión(es) en el calendario';
+    return;
+  }
   const filas = bitacoraFilas();
   if(!filas.length){
     cont.innerHTML = '<div class="bit-vacio">Carga tu tabla o registra tareas y aquí verás la bitácora.</div>';
