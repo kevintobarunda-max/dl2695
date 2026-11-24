@@ -19726,6 +19726,12 @@ function restaurarTodo(){
       if(!campos.vSubrogancia) delete campos.vSubrogancia;
       try{ localStorage.setItem('dl2695_subrogancia_off_2026', '1'); }catch(e){}
     }
+    /* 24-11-2026: «Carece de Inscripción Conservatoria» viene desmarcada. Se desmarca
+       una sola vez en los borradores guardados; después se respeta lo que elijas. */
+    if(!localStorage.getItem('dl2695_sin_insc_off_2026')){
+      campos.sinInscripcion = false;
+      try{ localStorage.setItem('dl2695_sin_insc_off_2026', '1'); }catch(e){}
+    }
     /* 17-11-2026: «Plano Catastral» viene desmarcado por defecto. Se desmarca
        una sola vez en los borradores guardados; después se respeta lo que elijas. */
     if(!localStorage.getItem('dl2695_plano_catastral_off_2026')){
