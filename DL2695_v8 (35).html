@@ -1013,6 +1013,12 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
 
       <fieldset data-lateral="inscripcion" class="rep-solo-fundamentos-auto">
         <legend>Inscripción conservatoria (título de dominio)</legend>
+        <div class="check-row" id="row-sinInscripcion" style="margin-bottom:8px">
+          <input type="checkbox" id="sinInscripcion" onchange="toggleClass('row-sinInscripcion','checked',this.checked); aplicarSinInscripcionUI(); generar();">
+          <div><div class="lbl">La Inscripción Conservatoria no se acompaña en el presente procedimiento</div>
+            <div class="hint">Al marcarla, los documentos lo dicen así en vez de citar fojas, número y año.</div></div>
+        </div>
+        <div id="inscDatosWrap">
         <div class="grid3">
           <div class="field">
             <label>Fojas</label>
@@ -1036,6 +1042,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
         <!-- Inscripciones adicionales: cada una con sus fojas (y vuelta), número, año y Conservador. -->
         <div id="inscExtraLista"></div>
         <button type="button" class="btn btn-outline btn-sm" onclick="agregarInscripcionExtra()" style="margin:2px 0 8px">＋ Agregar otra inscripción</button>
+        </div>
         <div data-lateral="ampara" class="field">
           <label>El título ampara en forma</label>
           <select id="ampara">
@@ -8877,7 +8884,7 @@ function textoModoAdquisicion(){
   if(modo==='comite'){
     const comite = blank(val('modoComite'));
     const lote = blank(val('modoLote'));
-    return `${SolicitanteMay()} ${v('adquirió','adquirieron')} la posesión material del inmueble mediante una compraventa de derechos al Comité ${comite}, para los efectos de lo indicado se acompaña un Certificado de Acreditación Único Definitivo de Loteo emitido por dicha organización, específicamente consta en los antecedentes que es el lote N° ${lote}. El Título de dominio que ampara el inmueble de mayor extensión rola a ${inscripcionFormula('Nº')}. ${SolicitanteMay()} ${v('declara','declaran')} como suyos los actos posesorios materiales tales como la instalación de cercos y la limpieza del inmueble, actos que constituyen hechos positivos de dominio de acuerdo con lo establecido en el Artículo 4° del Decreto Ley N° 2.695 de 1979 en relación con el Artículo 925 del Código Civil.`;
+    return `${SolicitanteMay()} ${v('adquirió','adquirieron')} la posesión material del inmueble mediante una compraventa de derechos al Comité ${comite}, para los efectos de lo indicado se acompaña un Certificado de Acreditación Único Definitivo de Loteo emitido por dicha organización, específicamente consta en los antecedentes que es el lote N° ${lote}. ${sinInscripcion() ? SinInscripcionMay() : 'El Título de dominio que ampara el inmueble de mayor extensión rola a ' + inscripcionFormula('Nº')}. ${SolicitanteMay()} ${v('declara','declaran')} como suyos los actos posesorios materiales tales como la instalación de cercos y la limpieza del inmueble, actos que constituyen hechos positivos de dominio de acuerdo con lo establecido en el Artículo 4° del Decreto Ley N° 2.695 de 1979 en relación con el Artículo 925 del Código Civil.`;
   }
   if(modo==='compraventa'){
     return `${SolicitanteMay()} ${v('ampara','amparan')} su posesión en Escritura Pública de Compraventa, celebrada con fecha ${fechaProsa(val('modoFecha'))} en la Notaría Pública de ${blank(val('modoNotario'))}, anotada bajo el repertorio N° ${blank(val('modoRepertorio'))}, donde ${elLa()} ${v('requirente adquiere','requirentes adquieren')} de ${blank(val('modoContraparte'))} ${objetoAdquirido('de las acciones y derechos que recaen en el inmueble ya singularizado y que es objeto de este procedimiento de regularización','el inmueble ya singularizado y que es objeto de este procedimiento de regularización')}. ${fundamentoTituloAparente('la escritura pública de compraventa')}`;
@@ -8942,7 +8949,7 @@ function motivosTextos(){
   if(q('mo-subdivision').checked){
     const quien = blank(val('mo-sub-quien'),'su causante');
     const anio = blank(val('mo-sub-anio'),'____');
-    out.subdivision = `SUBDIVISIÓN DE HECHO. ${SolicitanteMay()} ${v('fundamenta','fundamentan')} su derecho en una "subdivisión de hecho" realizada por ${quien} en el año ${anio}, no obstante, al momento de la solicitud no ${v('acompaña','acompañan')} instrumento público o privado alguno que acredite legalmente dicha transferencia de derechos, lo que constituye una infracción al Artículo 3° inciso segundo del Decreto Ley N° 2.695 de 1979, toda vez que no consta dentro del procedimiento algún "título aparente" que vincule ${alALa()} con la inscripción de dominio que rola a ${inscripcion}. En consecuencia, no es posible habilitar la suma de posesiones de los antecesores ni tener por acreditado el plazo de cinco años de posesión material, continua y exclusiva que exige el Artículo 2° N° 1 del citado Decreto Ley, ${rechazo11}.`;
+    out.subdivision = `SUBDIVISIÓN DE HECHO. ${SolicitanteMay()} ${v('fundamenta','fundamentan')} su derecho en una "subdivisión de hecho" realizada por ${quien} en el año ${anio}, no obstante, al momento de la solicitud no ${v('acompaña','acompañan')} instrumento público o privado alguno que acredite legalmente dicha transferencia de derechos, lo que constituye una infracción al Artículo 3° inciso segundo del Decreto Ley N° 2.695 de 1979, toda vez que no consta dentro del procedimiento algún "título aparente" que vincule ${alALa()} con ${sinInscripcion() ? 'la inscripción de dominio, que no se acompaña en el presente procedimiento' : 'la inscripción de dominio que rola a ' + inscripcion}. En consecuencia, no es posible habilitar la suma de posesiones de los antecesores ni tener por acreditado el plazo de cinco años de posesión material, continua y exclusiva que exige el Artículo 2° N° 1 del citado Decreto Ley, ${rechazo11}.`;
   }
 
   if(q('mo-acreditacion').checked){
@@ -8992,7 +8999,7 @@ function motivosTextos(){
   if(q('mo-noEsParte').checked){
     const doc = blank(val('mo-noEsParte-doc'),'el contrato acompañado');
     const partes = val('mo-noEsParte-partes');
-    out.noEsParte = `${SolicitanteMay()} ${v('invoca','invocan')} como origen de su posesión ${doc}${partes? `, celebrado entre ${partes}`:''}, instrumento respecto del cual ${solicitanteMin()} no ${v('es parte','son parte')}. En consecuencia, dicho documento no resulta idóneo para este procedimiento administrativo, pues no vincula jurídicamente ${alALa()} con la inscripción de dominio que rola a ${inscripcion}, ni permite tener por configurado el "título aparente" que exige el Artículo 3° inciso segundo del Decreto Ley N° 2.695 como antecedente necesario para hacer presumible la continuidad y legitimidad de la ocupación. Esta omisión impide al Servicio establecer una "fecha cierta" respecto del inicio del tracto posesorio, transformando el relato ${delInteresado()} en una mera declaración carente de respaldo documental. De acuerdo con el Punto 4.2.2 ${circular}, la solicitud cuyo único fundamento radica en declaraciones que no son consistentes con los antecedentes documentales de origen debe ser desechada por falta de autenticidad, ${rechazo11}.`;
+    out.noEsParte = `${SolicitanteMay()} ${v('invoca','invocan')} como origen de su posesión ${doc}${partes? `, celebrado entre ${partes}`:''}, instrumento respecto del cual ${solicitanteMin()} no ${v('es parte','son parte')}. En consecuencia, dicho documento no resulta idóneo para este procedimiento administrativo, pues no vincula jurídicamente ${alALa()} con ${sinInscripcion() ? 'la inscripción de dominio, que no se acompaña en el presente procedimiento' : 'la inscripción de dominio que rola a ' + inscripcion}, ni permite tener por configurado el "título aparente" que exige el Artículo 3° inciso segundo del Decreto Ley N° 2.695 como antecedente necesario para hacer presumible la continuidad y legitimidad de la ocupación. Esta omisión impide al Servicio establecer una "fecha cierta" respecto del inicio del tracto posesorio, transformando el relato ${delInteresado()} en una mera declaración carente de respaldo documental. De acuerdo con el Punto 4.2.2 ${circular}, la solicitud cuyo único fundamento radica en declaraciones que no son consistentes con los antecedentes documentales de origen debe ser desechada por falta de autenticidad, ${rechazo11}.`;
   }
 
   if(q('mo-comuneros').checked){
@@ -9001,7 +9008,7 @@ function motivosTextos(){
 
   if(q('mo-herenciaRemota').checked){
     const causante = blank(val('mo-her-causante'),'su causante');
-    out.herenciaRemota = `${SolicitanteMay()} ${v('ampara','amparan')} su posesión en herencia quedada al fallecimiento de ${causante}, sin embargo, no ${v('acredita','acreditan')} el vínculo entre dicho causante y quien figura como propietario en la inscripción de dominio que rola a ${inscripcion}, por lo que no es posible descartar la existencia de terceros que pudieran tener igual o mejor derecho que ${elElla()}, no logrando acreditar el cumplimiento de lo exigido por los Artículos 2°, 3° y 4° del D.L. N° 2.695/79.`;
+    out.herenciaRemota = `${SolicitanteMay()} ${v('ampara','amparan')} su posesión en herencia quedada al fallecimiento de ${causante}, sin embargo, no ${v('acredita','acreditan')} el vínculo entre dicho causante y quien figura como propietario en ${sinInscripcion() ? 'la inscripción de dominio, que no se acompaña en el presente procedimiento' : 'la inscripción de dominio que rola a ' + inscripcion}, por lo que no es posible descartar la existencia de terceros que pudieran tener igual o mejor derecho que ${elElla()}, no logrando acreditar el cumplimiento de lo exigido por los Artículos 2°, 3° y 4° del D.L. N° 2.695/79.`;
   }
 
   if(q('mo-tituloInvalido').checked){
@@ -9235,8 +9242,8 @@ function partesInforme(){
   if(esSi){
     bloques.push(bl('p3', `3.- Según se ha comprobado con las diligencias e Informe Técnico, la solicitud de regularización se refiere a un inmueble ${d.calidadBien}, ${d.tipoBien}, ubicado en ${d.ubicacion}, Comuna de ${d.comuna}, Provincia de ${d.provincia}, Región del Maule, con una superficie aproximada de ${d.superficieTexto}.`));
 
-    bloques.push(bl('p3-titulo', (hayVariasInscripciones() ? `- Los Títulos de dominio que amparan el inmueble rolan a ${inscripcionFormula('Nº')}.` : `- El Título de dominio que ampara el inmueble rola a ${inscripcionFormula('Nº')}.`)));
-    bloques.push(bl('p3-ampara', `- El Título ampara en forma ${d.ampara}, el inmueble objeto de regularización.`));
+    bloques.push(bl('p3-titulo', sinInscripcion() ? `- ${SinInscripcionMay()}.` : (hayVariasInscripciones() ? `- Los Títulos de dominio que amparan el inmueble rolan a ${inscripcionFormula('Nº')}.` : `- El Título de dominio que ampara el inmueble rola a ${inscripcionFormula('Nº')}.`)));
+    if(!sinInscripcion()) bloques.push(bl('p3-ampara', `- El Título ampara en forma ${d.ampara}, el inmueble objeto de regularización.`));
 
     let avaluoLinea = `Se encuentra amparado por el Rol de Avalúo Fiscal Nº ${d.rolAvaluo}`;
     if(d.avaluoTotal) avaluoLinea += `, con un Avalúo Fiscal Total de ${money(d.avaluoTotal)}.-`;
@@ -9264,7 +9271,7 @@ function partesInforme(){
   } else {
     bloques.push(bl('p3', `3.- La solicitud de regularización se refiere a un inmueble ${d.calidadBien.toLowerCase()} ${d.tipoBien} ubicado en ${d.ubicacion}, Comuna de ${d.comuna}, Provincia de ${d.provincia}, Región del Maule, con una superficie aproximada de ${d.superficieTexto}.`));
 
-    bloques.push(bl('p3-titulo', (hayVariasInscripciones() ? `- Los Títulos de dominio que amparan el inmueble rolan a ${inscripcionFormula('Nº')}.` : `- El Título de dominio que ampara el inmueble rola a ${inscripcionFormula('Nº')}.`)));
+    bloques.push(bl('p3-titulo', sinInscripcion() ? `- ${SinInscripcionMay()}.` : (hayVariasInscripciones() ? `- Los Títulos de dominio que amparan el inmueble rolan a ${inscripcionFormula('Nº')}.` : `- El Título de dominio que ampara el inmueble rola a ${inscripcionFormula('Nº')}.`)));
     bloques.push(bl('p3-avaluo', `- Se encuentra amparado por el Rol de Avalúo Fiscal Nº ${d.rolAvaluo}${d.avaluoTotal? `, con un Avalúo Fiscal Total de ${money(d.avaluoTotal)}.-`:''}${d.avaluoProporcional? ` y con un Avalúo Fiscal Proporcional de ${money(d.avaluoProporcional)}.-`:''}`));
 
     bloques.push(bl('p4', `4.- De los Antecedentes de la Posesión invocada que constan en el expediente aparece que ${solicitanteMin()} ${v('posee','poseen')} el inmueble según se pasa a explicar, y que la regularización de la posesión material de la propiedad no cumple con los requisitos exigidos por la Ley, por cuanto:`));
@@ -9862,7 +9869,22 @@ function inscripcionFormula(nSimbolo){
 function inscripcionesCortas(){
   return unirConY(inscripcionesDominio().map(x => `Fojas ${fojasTxt(x.fojas, x.vta)}, Nº ${blank(x.num, '____')} de ${blank(x.anio, '____')}`), ', ');
 }
-function hayVariasInscripciones(){ return inscripcionesDominio().length > 1; }
+function hayVariasInscripciones(){ return !sinInscripcion() && inscripcionesDominio().length > 1; }
+
+/* Casilla «La Inscripción Conservatoria no se acompaña en el presente procedimiento». */
+const TXT_SIN_INSCRIPCION = 'la Inscripción Conservatoria no se acompaña en el presente procedimiento';
+function sinInscripcion(){ return chk('sinInscripcion'); }
+function SinInscripcionMay(){ return TXT_SIN_INSCRIPCION.charAt(0).toUpperCase() + TXT_SIN_INSCRIPCION.slice(1); }
+/* Con la casilla marcada se ocultan fojas, número, año e inscripciones adicionales
+   (el Conservador sigue a la vista: se usa para la inscripción a nombre del solicitante). */
+function aplicarSinInscripcionUI(){
+  const sin = sinInscripcion();
+  const fila = q('row-sinInscripcion'); if(fila) fila.classList.toggle('checked', sin);
+  const wrap = q('inscDatosWrap'); if(!wrap) return;
+  wrap.querySelectorAll(':scope > .grid3, #inscExtraLista, :scope > button').forEach(el => { el.style.display = sin ? 'none' : ''; });
+  const ampara = document.querySelector('fieldset[data-lateral="inscripcion"] [data-lateral="ampara"]');
+  if(ampara) ampara.style.display = sin ? 'none' : '';
+}
 
 function agregarInscripcionExtra(){
   if(!Array.isArray(state.inscExtra)) state.inscExtra = [];
@@ -10097,7 +10119,7 @@ function partesVerificacion(){
   bloques.push(bl('p2', `2.- ${SolicitanteMay()} ${suma ? v('agrega','agregan') : v('no agrega','no agregan')} a su posesión la de sus antecesores.`));
   bloques.push(bl('p3', `3.- La posesión la ${v('ejerce','ejercen')} ${solicitanteMin()} personalmente y se ha constatado en terreno por la existencia de los siguientes hechos: ${hechos}.`));
   bloques.push(bl('p4', `4.- Ha adquirido dicha posesión por: ${tituloAparenteSolo()}.`));
-  bloques.push(bl('p5', `5.- El inmueble se encuentra amparado por ${hayVariasInscripciones() ? 'inscripciones conservatorias' : 'inscripción conservatoria'}: ${inscripcionRolada(d)}.`));
+  bloques.push(bl('p5', sinInscripcion() ? `5.- ${SinInscripcionMay()}.` : `5.- El inmueble se encuentra amparado por ${hayVariasInscripciones() ? 'inscripciones conservatorias' : 'inscripción conservatoria'}: ${inscripcionRolada(d)}.`));
   bloques.push(bl('p6', `6.- El inmueble tiene la calidad de Fiscal (art. 8 D.L. N° 2.695 de 1979) ${textoFiscalVpm()}`));
   bloques.push(bl('p7', `7.- Observaciones: ${blank(val('vpmObs'),'-')}`));
   bloques.push(bl('firma', de));
@@ -10145,7 +10167,7 @@ function partesInformeB(){
     const cancelacion = q('bCancelacionParcial') && q('bCancelacionParcial').checked
       ? ` del Registro de Propiedad del mismo Conservador de Bienes Raíces de forma parcial en relación a la superficie que se pretende regularizar y los derechos ${delSolicitante()}`
       : ' del mismo Conservador';
-    bloques.push(bl('p4', `4.- En lo demás, habiéndose cumplido las diligencias sugeridas, y de conformidad a lo expuesto en el primer Informe Jurídico, se estima pertinente continuar con la tramitación de la solicitud y disponer las diligencias necesarias, de acuerdo con el Art. 11º y siguientes del D.L. Nº 2.695 y su Reglamento, para que en definitiva el inmueble se inscriba a nombre ${delSolicitante()} en el Registro de Propiedad del Conservador de Bienes Raíces de ${d.cbr}, debiendo requerirse la cancelación material, en su oportunidad, de ${hayVariasInscripciones() ? 'las inscripciones' : 'la inscripción'} de ${inscripcionesCortas()}${cancelacion}.`));
+    bloques.push(bl('p4', `4.- En lo demás, habiéndose cumplido las diligencias sugeridas, y de conformidad a lo expuesto en el primer Informe Jurídico, se estima pertinente continuar con la tramitación de la solicitud y disponer las diligencias necesarias, de acuerdo con el Art. 11º y siguientes del D.L. Nº 2.695 y su Reglamento, para que en definitiva el inmueble se inscriba a nombre ${delSolicitante()} en el Registro de Propiedad del Conservador de Bienes Raíces de ${d.cbr}${sinInscripcion() ? '' : `, debiendo requerirse la cancelación material, en su oportunidad, de ${hayVariasInscripciones() ? 'las inscripciones' : 'la inscripción'} de ${inscripcionesCortas()}${cancelacion}`}.`));
   } else {
     bloques.push(bl('p3', `3.- Que, ${solicitanteMin()} no ${v('logra','logran')} acreditar el hecho de tener la posesión material indicada en la postulación, ni que esta reúna los requisitos de plazo, continuidad y exclusividad, contemplados y exigidos por el Artículo 2° del Decreto Ley antes citado, ni los requisitos ordenados por el artículo 4° del D.L. N° 2.695/79, en concordancia con lo dispuesto en el Artículo 925° del Código Civil, que dispone que: "Se deberá probar la posesión del suelo por hechos positivos, de aquellos que da el dominio como el corte de maderas, la construcción de edificios, la de cerramientos, las plantaciones o sementeras, y otros de igual significación, ejecutados sin el consentimiento del que disputa la posesión".`));
     if(usaSuperficieB()) bloques[bloques.length - 1] = bl('p3', '3.- ' + textoDiscrepanciaSuperficie());
@@ -10201,7 +10223,7 @@ function partesResolucionB(){
     bloques.push(bl('cons-2', `2.- Que, según minuta de deslindes y ${planoTexto()} N° ${planoNumero()}, el inmueble individualizado tiene una superficie de ${d.superficieTexto}, y los siguientes deslindes particulares:`));
     bloquesDeslindes().forEach(b => bloques.push(bl(b.id, b.texto)));
 
-    bloques.push(bl('cons-3', `3.- Que, el inmueble se encuentra amparado por ${hayVariasInscripciones() ? 'las inscripciones conservatorias que rolan' : 'la inscripción conservatoria que rola'} a ${inscripcionRolada(d)}.`));
+    bloques.push(bl('cons-3', sinInscripcion() ? `3.- Que, ${TXT_SIN_INSCRIPCION}.` : `3.- Que, el inmueble se encuentra amparado por ${hayVariasInscripciones() ? 'las inscripciones conservatorias que rolan' : 'la inscripción conservatoria que rola'} a ${inscripcionRolada(d)}.`));
     bloques.push(bl('cons-4', `4.- Que, mediante declaración jurada se acredita que no existe juicio pendiente en contra ${delPeticionario()}, en el cual se discuta el dominio o posesión del mismo inmueble, iniciado con antelación a la fecha de presentación de la solicitud administrativa de regularización, tratándose de propiedad con avalúo inferior al límite fijado por la ley, según Rol Matriz Nº ${blank(val('bRolMatriz') || d.rolAvaluo,'______')} de la Comuna de ${d.comuna}.`));
     bloques.push(bl('cons-5', `5.- Que, se realizó la visita a terreno que ordena la Ley, en donde fue verificado por el Servicio y consta de los antecedentes relacionados, que ${solicitanteMin()} ${v('ejerce','ejercen')}, efectivamente, por más de cinco años, la posesión material sobre el mencionado inmueble, en forma exclusiva y continua, sin violencia ni clandestinidad, la que adquirió por ${modoAdquisicionCorto()}, según se constata en documentos que se agregan al expediente ya individualizado.`));
     bloques.push(bl('cons-6', `6.- Que, mediante Informe Jurídico final, se estima procedente acoger la solicitud de autos y disponer las diligencias necesarias, de acuerdo con el Art. 11 y siguientes del D.L. N° 2.695, de 1979 y su Reglamento, para que en definitiva el inmueble se inscriba a nombre ${delSolicitante()} en el Conservador de Bienes Raíces competente.`));
@@ -10217,7 +10239,7 @@ function partesResolucionB(){
   } else {
     /* Al denegar y archivar no se ordenan publicaciones, así que la minuta de
        deslindes no cumple ninguna función en el acto. */
-    bloques.push(bl('cons-2', `2.- Que, el inmueble se encuentra amparado por ${hayVariasInscripciones() ? 'las inscripciones conservatorias que rolan' : 'la inscripción conservatoria que rola'} a ${inscripcionRolada(d)}.`));
+    bloques.push(bl('cons-2', sinInscripcion() ? `2.- Que, ${TXT_SIN_INSCRIPCION}.` : `2.- Que, el inmueble se encuentra amparado por ${hayVariasInscripciones() ? 'las inscripciones conservatorias que rolan' : 'la inscripción conservatoria que rola'} a ${inscripcionRolada(d)}.`));
     bloques.push(bl('cons-3', `3.- Que, ${solicitanteMin()} no ${v('logra','logran')} acreditar el hecho de tener la posesión material indicada en la postulación, ni que esta reúna los requisitos de plazo, continuidad y exclusividad, contemplados y exigidos por el Artículo 2° del Decreto Ley antes citado, ni los requisitos ordenados por el artículo 4° del D.L. N° 2.695/79, en concordancia con lo dispuesto en el Artículo 925° del Código Civil, que dispone que: "Se deberá probar la posesión del suelo por hechos positivos, de aquellos que da el dominio como el corte de maderas, la construcción de edificios, la de cerramientos, las plantaciones o sementeras, y otros de igual significación, ejecutados sin el consentimiento del que disputa la posesión".`));
     if(usaSuperficieB()) bloques[bloques.length - 1] = bl('cons-3', '3.- ' + textoDiscrepanciaSuperficie());
     else if(usaMoradoresB()) bloques[bloques.length - 1] = bl('cons-3', '3.- ' + textoSinMoradoresB());
@@ -11125,6 +11147,7 @@ function generarAhora(){
   actualizarProvinciaFallecimiento();
   avisoDomicilioFallecimiento();
   sincronizarSiglaPlano();
+  aplicarSinInscripcionUI();
   ubicarMinutaCompartida(activeMainTab());
   document.body.dataset.documento = activeMainTab();
   // Informe 1 puede aportar fundamentos que dependen de los datos comunes.
