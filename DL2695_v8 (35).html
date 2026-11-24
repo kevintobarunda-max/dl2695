@@ -972,15 +972,6 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
           <input type="text" id="expN" placeholder="" data-fmt="digits" list="padronLista">
           <datalist id="padronLista"></datalist>
         </div>
-        <!-- Desplegable del padrón: al elegir un expediente se rellenan los
-             datos que la unidad ya tiene registrados en su tabla. -->
-        <div class="field" id="padronFila" style="display:none">
-          <label>Elegir del padrón <span class="hint">· <span id="padronCuenta">0</span> expedientes cargados</span></label>
-          <select id="padronSelect" onchange="padronAplicar(this.value)"></select>
-          <p class="hint" style="margin:4px 0 0">
-            El padrón se carga en la pestaña <b>Bitácora</b>, desde tu archivo Word.
-          </p>
-        </div>
         <p class="hint" id="padronVacio" style="margin:4px 0 0">
           Puedes cargar tu tabla de expedientes en la pestaña <b>Bitácora</b> y luego
           elegirlos aquí de una lista.
