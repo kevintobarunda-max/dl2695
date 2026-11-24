@@ -1691,10 +1691,6 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
             <option value="parcial">Parcial</option>
           </select>
         </div>
-        <div class="check-row" id="row-bCancelacionParcial">
-          <input type="checkbox" id="bCancelacionParcial" onchange="toggleClass('row-bCancelacionParcial','checked',this.checked); generar();">
-          <div><div class="lbl">La cancelación de la inscripción se pide en forma parcial, según la superficie y los derechos que se regularizan</div></div>
-        </div>
         <div id="bBloqueSuperficie" style="display:none">
           <p class="hint" style="margin:0 0 6px;"><b>Motivo del rechazo</b> · elige uno; si no marcas ninguno se usa el texto estándar.</p>
           <div class="check-row" id="row-bMotivoSup">
@@ -10231,10 +10227,9 @@ function partesInformeB(){
   if(positivo){
     bloques.push(bl('p3', `3.- De acuerdo con los antecedentes técnicos reunidos por el Servicio, la posesión material ${delSolicitante()} ha sido verificada ejerciéndola ${peticionario()} por más de ${blank(val('aniosPosesion'),'__')} años en forma personal, de forma exclusiva, sin violencia ni clandestinidad.`));
 
-    const cancelacion = q('bCancelacionParcial') && q('bCancelacionParcial').checked
-      ? ` del Registro de Propiedad del mismo Conservador de Bienes Raíces de forma parcial en relación a la superficie que se pretende regularizar y los derechos ${delSolicitante()}`
-      : ' del mismo Conservador';
-    bloques.push(bl('p4', `4.- En lo demás, habiéndose cumplido las diligencias sugeridas, y de conformidad a lo expuesto en el primer Informe Jurídico, se estima pertinente continuar con la tramitación de la solicitud y disponer las diligencias necesarias, de acuerdo con el Art. 11º y siguientes del D.L. Nº 2.695 y su Reglamento, para que en definitiva el inmueble se inscriba a nombre ${delSolicitante()} en el Registro de Propiedad del Conservador de Bienes Raíces de ${d.cbr}${sinInscripcion() ? '' : `, debiendo requerirse la cancelación material, en su oportunidad, de ${hayVariasInscripciones() ? 'las inscripciones' : 'la inscripción'} de ${inscripcionesCortas()}${cancelacion}`}.`));
+    /* La cancelación de la inscripción anterior (y si es parcial o total) se ordena en
+       la Resolución C; el Informe B ya no la menciona. */
+    bloques.push(bl('p4', `4.- En lo demás, habiéndose cumplido las diligencias sugeridas, y de conformidad a lo expuesto en el primer Informe Jurídico, se estima pertinente continuar con la tramitación de la solicitud y disponer las diligencias necesarias, de acuerdo con el Art. 11º y siguientes del D.L. Nº 2.695 y su Reglamento, para que en definitiva el inmueble se inscriba a nombre ${delSolicitante()} en el Registro de Propiedad del Conservador de Bienes Raíces de ${d.cbr}.`));
   } else {
     bloques.push(bl('p3', `3.- Que, ${solicitanteMin()} no ${v('logra','logran')} acreditar el hecho de tener la posesión material indicada en la postulación, ni que esta reúna los requisitos de plazo, continuidad y exclusividad, contemplados y exigidos por el Artículo 2° del Decreto Ley antes citado, ni los requisitos ordenados por el artículo 4° del D.L. N° 2.695/79, en concordancia con lo dispuesto en el Artículo 925° del Código Civil, que dispone que: "Se deberá probar la posesión del suelo por hechos positivos, de aquellos que da el dominio como el corte de maderas, la construcción de edificios, la de cerramientos, las plantaciones o sementeras, y otros de igual significación, ejecutados sin el consentimiento del que disputa la posesión".`));
     if(usaSuperficieB()) bloques[bloques.length - 1] = bl('p3', '3.- ' + textoDiscrepanciaSuperficie());
