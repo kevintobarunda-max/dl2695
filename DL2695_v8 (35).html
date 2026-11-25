@@ -10382,7 +10382,7 @@ function partesNotificacionB(){
 
   const nombresDest = tratamientoYNombre(destinatarios);
   const materia = positivo
-    ? `Notifica la resolución que acepta la solicitud de ${nombresDest} y ordena las publicaciones.`
+    ? `Acepta solicitud de ${unirConY(destinatarios.map(p => conTrato(p, upper(blank(p.nombre,'____________________')))), ', ')}${destinatarios.length > 1 ? ',' : ''} y ordena las publicaciones.`
     : `Deniega solicitud de ${nombresDest}.`;
 
   const de = `SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES${sufijoS} REGIÓN DEL MAULE.`;
