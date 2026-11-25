@@ -1056,7 +1056,9 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
         <div class="field">
           <label>Conservador de Bienes Raíces de</label>
           <select id="cbrSelect" onchange="onCbrSelectChange()"></select>
-          <input type="text" id="cbr" style="margin-top:6px;display:none;" placeholder="Escribe el Conservador" oninput="generar()">
+          <input type="text" id="cbr" style="margin-top:6px;display:none;" placeholder="Escribe el Conservador" oninput="q('cbrAuto').value=''; generar()">
+          <input type="hidden" id="cbrAuto">
+          <p class="hint" id="cbrAviso" style="margin:4px 0 0"></p>
         </div>
         <!-- Inscripciones adicionales: cada una con sus fojas (y vuelta), número, año y Conservador. -->
         <div id="inscExtraLista"></div>
@@ -6746,7 +6748,27 @@ function onComunaChange(){
   const sel = q('comuna');
   const opt = sel.options[sel.selectedIndex];
   q('provincia').value = opt ? (opt.dataset.provincia || '') : '';
+  autoCbrPrincipal();
   generar();
+}
+
+/* Conservador de la inscripción principal según la comuna del inmueble. Se pone solo
+   si está vacío o si lo había puesto el generador; si lo elegiste a mano, se respeta. */
+function autoCbrPrincipal(){
+  const input = q('cbr'), marca = q('cbrAuto'), aviso = q('cbrAviso');
+  if(!input || !marca) return;
+  const r = cbrDeComuna(val('comuna'));
+  const vacio = !String(input.value || '').trim();
+  if(r && (vacio || marca.value === '1')){
+    if(input.value !== r.cbr){ input.value = r.cbr; sincronizarCbrSelect('cbrSelect', 'cbr'); }
+    marca.value = '1';
+  }
+  if(aviso){
+    const auto = marca.value === '1' && r && input.value === r.cbr;
+    aviso.textContent = auto ? '✓ Conservador competente para la comuna de ' + r.comuna + '.'
+      : (r && input.value && input.value !== r.cbr ? '⚠ Elegido a mano. Para ' + r.comuna + ' el competente es el de ' + r.cbr + '.' : '');
+    aviso.style.color = auto ? '' : '#8a6d1f';
+  }
 }
 
 /* ============================================================
@@ -6771,23 +6793,33 @@ const CBR_MAULE = [
   'Talca'
 ];
 
-/* Conservador que corresponde a cada comuna del inmueble, para llenarlo solo
-   en los oficios. Las marcadas como dudosas tienen asignaciones distintas
-   según la norma consultada: se llenan igual, pero con aviso para revisar. */
+/* Conservador competente para cada comuna de la Región del Maule (30 comunas).
+   Fuentes: D.E. N° 1.515 de 2017 del Ministerio de Justicia (crea los Conservadores
+   de Maule, San Clemente y Longaví, cada uno «para el servicio de la comuna del mismo
+   nombre»), sitios oficiales de los Conservadores (Curicó, Constitución,
+   Chanco-Pelluhue, San Javier, Molina) y directorios notariales. Revisado: 11-2026.
+   >>> Si cambia la competencia de algún Conservador, edita SOLO este mapa. <<< */
 const CBR_POR_COMUNA = {
-  'Talca':'Talca','San Clemente':'San Clemente','Pelarco':'Talca','Pencahue':'Talca','Maule':'Maule','San Rafael':'Talca','Río Claro':'Talca',
+  // Talca
+  'Talca':'Talca','Pelarco':'Talca','Pencahue':'Talca','Río Claro':'Talca','San Rafael':'Talca',
+  // Conservadores creados en 2017 para su propia comuna
+  'San Clemente':'San Clemente','Maule':'Maule','Longaví':'Longaví',
+  // Curicó
   'Curicó':'Curicó','Teno':'Curicó','Romeral':'Curicó','Rauco':'Curicó',
   'Molina':'Molina','Sagrada Familia':'Molina',
   'Licantén':'Licantén','Hualañé':'Licantén','Vichuquén':'Licantén',
   'Curepto':'Curepto',
   'Constitución':'Constitución','Empedrado':'Constitución',
-  'Linares':'Linares','Yerbas Buenas':'Linares','Colbún':'Linares','Longaví':'Longaví',
+  // Linares
+  'Linares':'Linares','Yerbas Buenas':'Linares','Colbún':'Linares',
   'San Javier':'San Javier','Villa Alegre':'San Javier',
   'Parral':'Parral','Retiro':'Parral',
-  'Cauquenes':'Cauquenes','Pelluhue':'Cauquenes',
-  'Chanco':'Chanco'
+  // Cauquenes
+  'Cauquenes':'Cauquenes',
+  'Chanco':'Chanco','Pelluhue':'Chanco'
 };
-const CBR_DUDOSO = ['Río Claro','Empedrado','Retiro','Pelluhue','Villa Alegre'];
+/* Comunas cuya asignación conviene revisar (fuentes no concluyentes). */
+const CBR_DUDOSO = [];
 function cbrDeComuna(comuna){
   const n = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   const k = Object.keys(CBR_POR_COMUNA).find(c => n(c) === n(comuna));
@@ -6809,7 +6841,7 @@ function autoCbrOficio(){
     aviso.innerHTML = (input.dataset.auto === '1' && r)
       ? (r.dudoso
           ? '⚠ Puesto según la comuna (' + r.comuna + '). Esta comuna tiene asignación dudosa: revisa que sea el Conservador correcto.'
-          : '✓ Puesto solo según la comuna del inmueble (' + r.comuna + ').')
+          : '✓ Conservador competente para la comuna de ' + r.comuna + '.')
       : '';
     aviso.style.color = r && r.dudoso && input.dataset.auto === '1' ? '#8a6d1f' : '';
   }
@@ -7019,6 +7051,8 @@ function recordarNotaria(texto){
 function onCbrSelectChange(){
   const sel = q('cbrSelect');
   const input = q('cbr');
+  /* Elegido a mano: se respeta. En blanco: vuelve a ponerse solo según la comuna. */
+  q('cbrAuto').value = sel.value ? '' : '1';
   if(sel.value === 'otro'){
     input.style.display = 'block';
     input.value = '';
@@ -11212,6 +11246,7 @@ function generarAhora(){
   avisoDomicilioFallecimiento();
   sincronizarSiglaPlano();
   aplicarSinInscripcionUI();
+  autoCbrPrincipal();
   ubicarMinutaCompartida(activeMainTab());
   document.body.dataset.documento = activeMainTab();
   // Informe 1 puede aportar fundamentos que dependen de los datos comunes.
