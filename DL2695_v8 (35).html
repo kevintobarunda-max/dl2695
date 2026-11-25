@@ -835,6 +835,8 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
 
     <button type="button" class="otros-causa" aria-expanded="false" aria-controls="otrosRectificatoria">Rectificatoria</button>
 
+    <button type="button" class="otros-causa" aria-expanded="false" aria-controls="otrosRevocacion">Revocación</button>
+
     <button type="button" class="otros-directo" data-tab="cuotaHereditaria">Cuota hereditaria</button>
     <button type="button" class="otros-directo" data-tab="campamentos">Campamentos Serviu</button>
 
@@ -847,6 +849,10 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
     <div id="otrosRectificatoria" class="otros-productos" role="group" aria-label="Productos de rectificatoria" hidden>
       <button type="button" data-tab="resolucionRectificatoria">Resolución</button>
       <button type="button" data-tab="notificacionRectificatoria">Notificación</button>
+    </div>
+    <div id="otrosRevocacion" class="otros-productos" role="group" aria-label="Productos de revocación" hidden>
+      <button type="button" data-tab="resolucionRevocacion">Resolución</button>
+      <button type="button" data-tab="notificacionRevocacion">Notificación</button>
     </div>
 </div>
 <button type="button" data-tab="oficios">Oficios</button><button type="button" data-tab="bitacora">Bitácora</button><button type="button" data-tab="reporte" data-solo-abogado>Reporte</button><button type="button" data-tab="asignaciones">Asignaciones</button><button type="button" data-tab="reloj">Reloj Control</button>
@@ -1594,6 +1600,26 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
 
 <div class="panel-body" id="tab-resolucionC" style="display:none"><fieldset><legend>Sentido de la resolución C</legend><select id="cSentido" onchange="generar()"><option value="positiva">Positiva · acepta y ordena inscripción</option><option value="negativa">Negativa · deniega la solicitud</option></select><p class="hint">La resolución y su notificación comparten este resultado.</p></fieldset><fieldset id="cBloqueNegativo"><legend>Fundamentos de C negativa</legend><p class="hint">Según los modelos de resolución y notificación C negativas del repositorio. Completa los antecedentes del expediente; no se copian los hechos ni las personas del ejemplo.</p><div class="field"><label for="cNegCons3">Considerando 3 · adquisición de la posesión y antecedentes analizados</label><textarea id="cNegCons3" rows="5"></textarea><p class="hint">Escribe el texto completo del considerando, sin el número 3.</p></div><div class="field"><label for="cNegCons4">Considerando 4 · fundamento específico de la denegación</label><textarea id="cNegCons4" rows="5"></textarea><p class="hint">Escribe el texto completo del considerando, sin el número 4.</p></div><div class="field"><label for="vTexto_resolucionCNegativa">Visto completo de C negativa (opcional)</label><textarea id="vTexto_resolucionCNegativa" rows="5"></textarea><p class="hint">En blanco usa la base normativa del modelo con los antecedentes variables de C; no cita el certificado de publicaciones de C positiva.</p></div></fieldset><input type="hidden" id="vCgrN" value="36"><input type="hidden" id="vCgrAnio" value="2024"><input type="hidden" id="vDelegacion" value="1917, 107 y 108"><input type="hidden" id="vDelegacionAnio" value="1996"><input type="hidden" id="vNomN" value="30"><input type="hidden" id="vNomFecha" value="2026-03-26"><input type="hidden" id="vSubrogancia" value="Decreto Exento RA N° 324/88/2024 de fecha 14 de marzo de 2024 de la Subsecretaría de Bienes Nacionales, que establece orden de subrogancia para el cargo Seremi Maule."><fieldset id="cDatosPositivos"><legend>Datos variables del inmueble · C</legend><p class="hint">Completa estos recuadros con los antecedentes de cada expediente. Dirección, Comuna y Provincia se toman del panel izquierdo; la identidad y domicilio de cada solicitante, de su ficha.</p><div class="grid2"><div class="field"><label for="cPlano">Número de plano</label><input type="text" id="cPlano" autocomplete="off"></div><div class="field"><label for="cRol">Rol de Avalúo</label><input type="text" id="cRol" autocomplete="off"></div><div class="field"><label for="cSuperficie">Superficie y unidad</label><input type="text" id="cSuperficie" autocomplete="off"></div><div class="field"><label for="cCbrMenu">Conservador de Bienes Raíces para la inscripción</label><select id="cCbrMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cCbr" oninput="generar()" autocomplete="off"></div><div class="field"><label for="cModoAdqMenu">Forma de adquisición de la posesión</label><select id="cModoAdqMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cModoAdq" oninput="generar()" autocomplete="off"></div></div></fieldset><fieldset id="cMinutaPositiva"><legend>Minuta de deslindes · B y C</legend><p class="hint">El mismo recuadro y contenido de la etapa B. Los cambios se aplican a ambos procedimientos.</p><div id="slotMinutaC"></div></fieldset><fieldset id="cInscripcionSelector"><legend>Inscripción conservatoria · C positiva</legend><select id="cTieneInscripcion" onchange="generar()"><option value="con">Con inscripción anterior · ordenar cancelación</option><option value="sin">Sin inscripción conservatoria · ordenar primera inscripción</option></select></fieldset><fieldset id="cInscripcionAnteriorCampos"><legend>Inscripción anterior y cancelación · C</legend><div class="grid2"><div class="field"><label for="cFojas">Fojas de la inscripción anterior</label><input type="text" id="cFojas" autocomplete="off"></div><div class="field"><label for="cNumeroInsc">Número de la inscripción anterior</label><input type="text" id="cNumeroInsc" autocomplete="off"></div><div class="field"><label for="cAnioInsc">Año de la inscripción anterior</label><input type="text" id="cAnioInsc" autocomplete="off"></div><div class="field"><label for="cCbrAnteriorMenu">Conservador de la inscripción anterior</label><select id="cCbrAnteriorMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cCbrAnterior" oninput="generar()" autocomplete="off"></div></div><div class="field"><label for="cAlcanceCancelacion">Alcance de la cancelación · completa si es parcial o total según el expediente</label><textarea id="cAlcanceCancelacion" rows="3"></textarea></div></fieldset><fieldset><legend>Resolución C · Datos del acto</legend><p class="hint">Basada en «Resolución C tipo Positiva.html.pdf». Completa los recuadros de esta pestaña con el plano, deslindes e inscripción anterior de cada expediente. La profesión, estado civil y domicilio de cada persona se completan en su ficha.</p><div class="field"><label for="resCN">Número de resolución C (después de E-)</label><input type="text" id="resCN" value=""></div><div class="field"><label for="resCFecha">Fecha de resolución C</label><input type="date" id="resCFecha" value=""></div></fieldset><fieldset id="cVistoPositivo"><legend>Visto C · antecedentes del expediente</legend><div class="field"><label for="cResPreviaN">Resolución previa que ordenó publicaciones · número (después de E-)</label><input type="text" id="cResPreviaN" value=""></div><div class="field"><label for="cResPreviaFecha">Fecha de la resolución previa</label><input type="date" id="cResPreviaFecha" value=""></div><div class="field"><label for="cCertN">Certificado de publicaciones, carteles y no oposición · número (si tiene)</label><input type="text" id="cCertN" value=""></div><div class="field"><label for="cCertFecha">Fecha del certificado (si consta)</label><input type="date" id="cCertFecha" value=""></div><div class="field"><label for="cCertTexto">Contenido del certificado citado en el Visto</label><textarea id="cCertTexto" rows="4"></textarea><p class="hint">Comprueba su correspondencia con el certificado del expediente.</p></div><div class="field"><label for="vTexto_resolucionC">Visto completo (opcional)</label><textarea id="vTexto_resolucionC" rows="4"></textarea><p class="hint">En blanco se construye con los antecedentes anteriores y los datos variables del panel izquierdo.</p></div></fieldset></div><div class="panel-body" id="tab-notificacionC" style="display:none"><fieldset><legend>Resultado que se notifica</legend><select id="cNotSentido" onchange="q('cSentido').value=this.value; generar();"><option value="positiva">C positiva</option><option value="negativa">C negativa</option></select></fieldset><fieldset><legend>Notificación C · Resultado de la solicitud</legend><p class="hint">Basada en los modelos C positivos y negativos del repositorio. Comparte el resultado y los solicitantes con la resolución C. Usa la fecha general del documento.</p><div class="field"><label for="ordCN">Número de ordinario (después de E-)</label><input type="text" id="ordCN" value=""></div><div class="field"><label for="cDestDireccion">Dirección de notificación (opcional; incluye Comuna, Provincia y Región)</label><input type="text" id="cDestDireccion" value=""></div></fieldset></div>
 <div class="panel-body" id="tab-resolucionRectificatoria" style="display:none"><fieldset id="rectReferencia"><legend>Resolución que se rectifica</legend><div class="field"><label for="rectAnterior">Número de la resolución original (E-…)</label><input type="text" id="rectAnterior" value="" oninput="generar()"></div><div class="field"><label for="rectFechaAnterior">Fecha de la resolución original</label><input type="date" id="rectFechaAnterior" value="" oninput="generar()"></div></fieldset><fieldset><legend>Resolución rectificatoria</legend><div class="field"><label for="rectNumero">Número de la resolución rectificatoria</label><input type="text" id="rectNumero" value="" oninput="generar()"></div><div class="field"><label for="rectVistos">Vistos y antecedentes del nombramiento</label><textarea rows="4" id="rectVistos" oninput="generar()">Las normas contenidas en el D.L. N°2.695 de 1979 y su Reglamento contenido en el D.S. N° 541 del 20 de agosto del año 1996; la Resolución N°36 de 2024, de la Contraloría General de la República; el Decreto Supremo N°30 de fecha 26 de marzo de 2026 de nombramiento del Seremi.</textarea></div><div class="field"><label for="rectMotivo">Qué se debe corregir (p. ej., la denominación del inmueble)</label><input type="text" id="rectMotivo" value="" oninput="generar()"></div></fieldset><fieldset><legend>Partes de la resolución que se rectifican</legend><input id="rectListaDatos" type="hidden"><details open><summary>Seleccionar una o más partes</summary><p class="hint">Marca cada parte y escribe debajo su redacción corregida. Se incorporarán al resuelvo en el orden en que las marques.</p><div id="rectListaOpciones"></div><div class="field"><label for="rectOtraParte">Otro apartado o numeral</label><input id="rectOtraParte" data-temporal placeholder="Ej.: Considerando 12 o Anexo 2"><button type="button" onclick="agregarParteRect()">Agregar a la selección</button></div></details></fieldset></div><div class="panel-body" id="tab-notificacionRectificatoria" style="display:none"><fieldset><legend>Notificación de rectificatoria</legend><div class="field"><label for="rectOrd">Número de ordinario</label><input type="text" id="rectOrd" value="" oninput="generar()"></div><div class="field"><label for="rectDomicilio">Domicilio de notificación, si falta en los datos del solicitante</label><input type="text" id="rectDomicilio" value="" oninput="generar()"></div></fieldset></div>
+<div class="panel-body" id="tab-resolucionRevocacion" style="display:none"><fieldset id="revReferencia"><legend>Resolución que se revoca</legend>
+  <p class="hint" style="margin:0 0 8px">Revocación conforme al artículo 61 de la Ley N° 19.880 (modelo Res. Ex. N° 620 de 2025).</p>
+  <div class="grid2">
+    <div class="field"><label for="revResN">N° resolución que se revoca (después de «E-»)</label><input type="text" id="revResN" oninput="generar()"></div>
+    <div class="field"><label for="revResFecha">Fecha de esa resolución</label><input type="date" id="revResFecha" onchange="generar()"></div>
+  </div>
+  <div class="field"><label for="revResMateria">Lo que resolvió <span class="hint">· en blanco: «ACEPTA SOLICITUD Y ORDENA PUBLICACIONES DE …»</span></label><input type="text" id="revResMateria" oninput="generar()"></div>
+  <div class="field"><label for="revMotivo">Motivo de la revocación <span class="hint">· qué error o hecho nuevo la hace necesaria; se agrega al considerando 11</span></label>
+    <textarea id="revMotivo" rows="4" oninput="generar()" placeholder="erra en su considerando N°4 al señalar como Rol Matriz el N°266-133 de la comuna de Río Claro, toda vez que el Rol Matriz correcto correspondería al N°26-133 de la comuna de Río Claro según Certificado de Avalúo Fiscal que consta en el expediente administrativo."></textarea></div>
+  <div class="grid2">
+    <div class="field"><label for="revRolMatriz">Rol Matriz SII (considerando 9)</label><input type="text" id="revRolMatriz" data-fmt="rol" oninput="generar()"></div>
+    <div class="field"><label for="revComunaRol">Comuna del Rol Matriz</label><input type="text" id="revComunaRol" oninput="generar()"></div>
+  </div>
+</fieldset>
+<fieldset><legend>Resolución de revocación</legend>
+  <div class="field"><label for="revN">N° de esta resolución (después de «E-»)</label><input type="text" id="revN" oninput="generar()"></div>
+</fieldset></div>
+<div class="panel-body" id="tab-notificacionRevocacion" style="display:none"><fieldset><legend>Notificación de revocación</legend>
+  <div class="field"><label for="revOrdN">N° de Ordinario (SE07-)</label><input type="text" id="revOrdN" oninput="generar()"></div>
+</fieldset></div>
 <div class="panel-body" id="tab-resolucionFallecimiento" style="display:none"><fieldset><legend>Término Anticipado por Fallecimiento · Resolución</legend><p class="hint">Basada en el modelo de resolución por muerte del repositorio. Los datos del expediente, inmueble y fecha de solicitud se toman del panel izquierdo. No contiene los datos del ejemplo.</p><div class="field"><label for="tfResN">Número de resolución exenta (después de E-)</label><input type="text" id="tfResN"><p class="hint"></p></div></fieldset><fieldset><legend>Solicitante fallecido</legend><p class="hint">Si nombre, RUT y tratamiento se dejan en blanco, se usan los del primer solicitante del expediente. Con varios solicitantes, indica expresamente a cuál corresponde este término.</p><div class="field"><label for="tfNombre">Nombre del solicitante fallecido (si difiere del primero)</label><input type="text" id="tfNombre"><p class="hint"></p></div><div class="field"><label for="tfRut">RUT del solicitante fallecido (si difiere del primero)</label><input type="text" id="tfRut"><p class="hint"></p></div><div class="field"><label for="tfGenero">Tratamiento</label><select id="tfGenero"><option value="">Usar el del primer solicitante</option><option value="M">don</option><option value="F">doña</option></select></div><div class="field"><label for="tfFechaDefuncion">Fecha de fallecimiento</label><input type="date" id="tfFechaDefuncion"><p class="hint"></p></div><div class="field"><label for="tfFolioCertificado">Número / folio del certificado de defunción</label><input type="text" id="tfFolioCertificado"><p class="hint"></p></div></fieldset></div><div class="panel-body" id="tab-notificacionFallecimiento" style="display:none"><fieldset><legend>Término Anticipado por Fallecimiento · Notificación</legend><p class="hint">Basada en QEPD-NOT168908.pdf. Se dirige a la sucesión del solicitante fallecido indicado en la resolución. Completa el domicilio que consta en el expediente.</p><div class="field"><label for="tfOrdN">Número de ordinario (después de E-)</label><input type="text" id="tfOrdN"><p class="hint"></p></div><div class="field"><label for="tfDestinatario">Destinatario (opcional; en blanco: sucesión del solicitante fallecido)</label><input type="text" id="tfDestinatario"><p class="hint"></p></div><div class="field"><label for="tfDestDireccion">Domicilio de notificación · calle / sector</label><input type="text" id="tfDestDireccion"><p class="hint"></p></div><div class="field"><label for="tfDestComuna">Comuna del domicilio · Región del Maule</label><select id="tfDestComuna" onchange="actualizarProvinciaFallecimiento(); generar();"><option value="">Selecciona la Comuna</option></select></div><div class="field"><label for="tfDestProvincia">Provincia (según la Comuna)</label><input type="text" id="tfDestProvincia" readonly><p class="hint"></p></div></fieldset></div>
     <!-- ---- RESOLUCIÓN specific fields ---- -->
     <div class="panel-body" id="tab-resolucion" style="display:none">
@@ -6601,6 +6627,7 @@ const TABS_TEXTO = [
   'informe', 'resolucion', 'notificacion',
   'posesion', 'informeB', 'resolucionB', 'notificacionB',
   'resolucionRectificatoria', 'notificacionRectificatoria',
+  'resolucionRevocacion', 'notificacionRevocacion',
   'resolucionFallecimiento', 'notificacionFallecimiento', 'resolucionC', 'notificacionC', 'resolucionRep', 'notificacionRep', 'jerarquico'
 ];
 
@@ -6613,11 +6640,12 @@ const TABS_EDICIONES = TABS_TEXTO.concat(
 
 /* Documentos que se pegan completos en la casilla "Cuerpo" del portal, porque
    llevan su propia cabecera (Exp / ORD / ANT / MAT / DE / A). */
-const TABS_CON_CABECERA = ['notificacionRectificatoria', 'notificacionFallecimiento', 'notificacionC', 'notificacion', 'notificacionB', 'notificacionRep'];
+const TABS_CON_CABECERA = ['notificacionRectificatoria', 'notificacionRevocacion', 'notificacionFallecimiento', 'notificacionC', 'notificacion', 'notificacionB', 'notificacionRep'];
 
 /* Nombre del archivo .txt de cada documento. */
 const NOMBRES_ARCHIVO = {
   resolucionRectificatoria:"Resolución Rectificatoria", notificacionRectificatoria:"Notificación Rectificatoria",
+  resolucionRevocacion:"Resolución Revocación", notificacionRevocacion:"Notificación Revocación",
   resolucionFallecimiento: 'Resolucion_Termino_Anticipado_Fallecimiento',
   notificacionFallecimiento: 'Notificacion_Termino_Anticipado_Fallecimiento',
   resolucionC: 'Resolucion_C', notificacionC: 'Notificacion_C',
@@ -8146,6 +8174,7 @@ mainTabs.forEach(btn=>{
        pestaña. */
     if(TABS_TEXTO.indexOf(tab) >= 0) state.ultimaTabDoc = tab;
     if(tab.endsWith('Rectificatoria')) q('tab-'+tab).prepend(q('rectReferencia'));
+    if(tab.endsWith('Revocacion')) q('tab-'+tab).prepend(q('revReferencia'));
     moverOrigenPosesion(tab);
     if(tab === 'jerarquico'){ renderJqFilas(); if(!correspondeMinutaJerarquica()) setTimeout(()=> flashStatus('⚠ ' + motivoNoCorrespondeJerarquico()), 50); }
 
@@ -9449,7 +9478,10 @@ function mayusculasAutoridad(texto, institucionEnProsa = false){
 }
 
 function textoSegunContexto(tab, bloque, texto){
-  const considerando = tab.startsWith('resolucion') && /^cons(?:-|$)/.test(bloque);
+  /* En la revocación (modelo Res. Ex. N° 620) la institución va en prosa en todo el texto,
+     salvo la firma y el «DE:». */
+  const considerando = (tab.startsWith('resolucion') && /^cons(?:-|$)/.test(bloque))
+    || (/Revocacion$/.test(tab) && !/^(firma|de|cabecera|contacto)$/.test(bloque));
   const normalizado = mayusculasAutoridad(tratamientosEnMinuscula(texto), considerando);
   if(bloque === 'titulo' || bloque === 'materia'){
     const sinTratamientos = normalizado.replace(/\b(?:don|doña)\b/gi, '');
@@ -11047,8 +11079,87 @@ function partesRectificatoria(tab){
   return {materia,fecha,de,a,cabecera,bloques};
 }
 
+/* ============================================================
+   REVOCACIÓN — Resolución y Notificación (art. 61 Ley N° 19.880)
+   Redacción tomada del modelo Res. Ex. N° 620 de 2025 y su notificación.
+   ============================================================ */
+/* «1.- TÉNGANSE POR REVOCADA la …» → la parte en mayúsculas va en negrita. */
+function runsVerboMayus(linea){
+  const m = String(linea).match(/^(\d+\.-\s*(?:[A-ZÁÉÍÓÚÑÜ]{2,}\s?)+)([\s\S]*)$/);
+  if(!m) return [{texto: String(linea), negrita: false}];
+  return [{texto: m[1], negrita: true}, {texto: m[2], negrita: false}];
+}
+function partesRevocacion(tab){
+  const d = encabezadoComun();
+  const notifica = tab === 'notificacionRevocacion';
+  const exp = blank(val('expN'), '______');
+  const nombres = upper(tratamientoYNombre());
+  const resN = blank(val('revResN'), '______');
+  const resFecha = fechaProsa(val('revResFecha'));
+  const resMateria = (val('revResMateria').trim() || `ACEPTA SOLICITUD Y ORDENA PUBLICACIONES DE ${nombres}`).replace(/[.\s]+$/, '');
+  const resuelto = resMateria.replace(/\s+DE\s+(?:DON|DOÑA|LOS|LAS)\b[\s\S]*$/i, '').replace(/^ACEPTA SOLICITUD\b/i, 'ACEPTA SOLICITUD DE REGULARIZACIÓN');
+  const sufijoS = d.subrogancia ? ' (S)' : '';
+  const de = `SECRETARIO REGIONAL MINISTERIAL DE BIENES NACIONALES${sufijoS} REGIÓN DEL MAULE.`;
+  const bloques = [];
+
+  if(notifica){
+    const anio = (val('fecha') || new Date().toISOString()).slice(0, 4);
+    const cabecera = `ORD.: SE07- ${blank(val('revOrdN'), '______')} - ${anio}\nMAT.: Notifica Resolución Exenta a través de la cual se Revoca y deja sin efecto la Resolución Exenta que allí se indica.\nEXP.: ${exp}.\nTALCA, ${fechaProsa(d.fecha)}`;
+    bloques.push(bl('cabecera', cabecera), bl('de', 'DE: ' + de));
+    solicitantesNotificados().forEach((p, i) => bloques.push(bl('a-' + i, (i === 0 ? 'A: ' : '')
+      + lineaDestinatarioNotif(p, p.domicilio || val('destDireccion') || val('ubicacion'), val('comuna')))));
+    const ud = variosSolicitantes() ? 'Uds.' : 'Ud.';
+    bloques.push(bl('intro', `Mediante la presente, envío a ${ud} copia de Resolución Exenta de la Seremi de Bienes Nacionales de la Región del Maule, que revoca y deja sin efecto la Resolución Exenta Nº E-${resN} de fecha ${resFecha} de la Seremi de Bienes Nacionales de la Región del Maule.`));
+    bloques.push(bl('recursos', `Informo a ${variosSolicitantes() ? 'ustedes' : 'usted'} que, en contra de la presente Resolución, podrán interponerse los recursos contemplados en el Título IV de la Ley 19.880, que establece las Bases de los Procedimientos Administrativos que rigen los actos de los Órganos de la administración del Estado.`));
+    bloques.push(bl('contacto', 'Para mayor información, sus consultas realícelas a la línea 800 104 559, de manera gratuita, o bien comunicándose directamente al fono 71-2616288 de la SECRETARÍA REGIONAL MINISTERIAL DE BIENES NACIONALES DE LA REGIÓN DEL MAULE.'));
+    bloques.push(bl('saluda', `Saluda atentamente a ${ud},`));
+    bloques.push(bl('firma', `${upper(d.seremi)}\n${de}`));
+    bloques.push(bl('distribucion', `DISTRIBUCIÓN:\n-${g('El indicado','La indicada','Los indicados','Las indicadas')}\n-Unidad de Regularización\n-Oficina de Partes\n${inicialesDistribucion()}`));
+    return {materia: 'Notifica revocación', fecha: fechaCorta(d.fecha), de, a: '', bloques, cabecera};
+  }
+
+  const materia = `Revoca Resolución Exenta que se indica de la Secretaría Regional Ministerial de Bienes Nacionales del Maule, expediente administrativo N°${exp}, Decreto Ley N°2.695 de 1979, conforme al artículo 61 de la Ley N° 19.880.`;
+  const vistos = 'Lo dispuesto en el Decreto Ley N° 3.274, de 1980, que establece la Ley Orgánica del Ministerio, y su reglamento aprobado por el Decreto Supremo Nº 386, de 1981; el Decreto Ley N° 2.695, de 1979, su reglamento aprobado por el Decreto Supremo N° 541 de 1996, del Ministerio de Bienes Nacionales; las disposiciones del Decreto con Fuerza de Ley N° 1/19.653, que fija texto refundido, coordinado y sistematizado de la Ley N° 18.575, Orgánica Constitucional de Bases Generales de la Administración del Estado; las normas de la Ley N° 19.880 y sus modificaciones, que establece las Bases de los Procedimientos Administrativos que rigen los Actos de los Órganos de la Administración del Estado; la delegación de facultades efectuada mediante Resoluciones Exentas N° 1917, N° 107 y N° 108 de 1996 del Ministerio de Bienes Nacionales; Decreto Supremo N° 30, de 26 de marzo de 2026, de nombramiento del SEREMI; y la Resolución N° 36 de 2024, de la Contraloría General de la República.';
+  const rolMatriz = blank(val('revRolMatriz') || val('bRolMatriz') || val('rolAvaluo'), '______');
+  const comunaRol = blank(val('revComunaRol') || d.comuna, '____________');
+  const motivo = val('revMotivo').trim().replace(/[.\s]+$/, '');
+
+  bloques.push(bl('exp', `Exp.Nº: ${exp}`), bl('materia', materia),
+    bl('lugarFecha', `TALCA, ${fechaProsa(d.fecha)}`), bl('resN', `RES. EXENTA N°: E-${blank(val('revN'), '______')}`),
+    bl('vistos-titulo', 'VISTOS:'), bl('vistos', vistos), bl('cons-titulo', 'CONSIDERANDO:'));
+  [
+    'Que, el Ministerio de Bienes Nacionales es el órgano de la Administración del Estado responsable de aplicar las políticas y directrices en materia de administración y regularización del territorio. En relación a esta última potestad, a través de las Secretarías Regionales Ministeriales de Bienes Nacionales, el Ministerio tiene a su cargo la aplicación del D.L. N° 2695/79, encontrándose facultado para regularizar la posesión irregular de aquellos inmuebles particulares, sean éstos urbanos o rurales, cuyos poseedores carezcan de título inscrito o lo tengan imperfecto.',
+    'Que, el mencionado Decreto Ley tiene su origen en la búsqueda de una solución jurídica a un imperativo socioeconómico derivado de la dificultad de constituir dominio en pequeñas propiedades raíces tanto urbanas como rurales, cuando la historia de la posesión inscrita no ha sido del todo clara. En este sentido, el D.L. N° 2695/79 es para el Ministerio un mecanismo social, que persigue desde sus inicios el fomentar y promover un valor de carácter constitucional, que consiste en permitir el acceso a la propiedad a aquellas personas que no pueden obtenerla mediante los procedimientos ordinarios.',
+    'Que, en este contexto es que esta Secretaría de Estado ha dado aplicación histórica al D.L. N° 2695/79, desde una perspectiva social, con el objeto de dar una solución real a aquellas personas cuya posesión se motiva en razones históricas, de naturaleza familiar e incluso ancestral, para quienes es indispensable contar con un título de dominio que les permita acceder a diversos beneficios estatales.',
+    'Que, el título IV de la Ley N° 19.880, que Establece Bases de los Procedimientos Administrativos que Rigen los Actos de los Órganos de la Administración del Estado, titulado “Revisión de los actos administrativos”, establece los mecanismos por los cuales los entes de la Administración tendrán a su disposición medios de revisión, impugnación o en general formas de extinción de los actos administrativos terminales.',
+    'Que, específicamente, el artículo 61 de la norma antes citada establece que los actos administrativos podrán ser revocados por el órgano que los hubiere dictado. Así el artículo 61º inciso primero de la Ley Nro. 19.880, establece que: “Los actos administrativos podrán ser revocados por el órgano que los hubiere dictado”.',
+    'Que, al respecto, la jurisprudencia administrativa de la Contraloría General de la República ha señalado que “… la revocación consiste en dejar sin efecto un acto administrativo por la propia Administración, mediante un acto de contrario imperio, en caso que aquel vulnere el interés público general o específico de la autoridad emisora, debiendo fundarse en razones de mérito, conveniencia u oportunidad, entendiéndose limitada por la consumación de los efectos del acto o por la existencia de derechos adquiridos.” (Dictámenes N°s 27.285, de 2001; 47.372, de 2013; 58.502, de 2014, y 61.007, de 2014).',
+    'Que, la doctrina ha entendido que la revocación consiste en el retiro de los actos administrativos válidamente emitidos por razones de mérito, oportunidad o conveniencia, esto es, la remoción voluntaria de un acto administrativo válidamente emitido cuyos efectos son inoportunos o inconvenientes por ser contrarios al interés público o a la buena administración. Por su parte, el destacado jurista don Enrique Silva Cimma, concibe la revocación “como la medida que adopta la propia Administración Activa tendiente a dejar sin efecto un acto administrativo por causa de mérito, oportunidad o conveniencia, es decir, cuando la ponderación del bien común así lo aconseja”.',
+    'Que, por su parte, la Excma. Corte Suprema en sentencia Rol N° 6379-2011 de 23 de junio de 2011, entre otras, ha señalado respecto de esta institución que “(…) ante nuevos escenarios fácticos o necesidades públicas cambiantes, aparece razonable dotar a la Administración de una especial potestad revocatoria que sea de su exclusiva y discrecional competencia, a fin de eliminar los efectos inconvenientes o inoportunos de un acto administrativo.”.',
+    `Que, el expediente administrativo N°${exp} de ${tratamientoYNombre()} fue una solicitud originada en el Rol Matriz SII N° ${rolMatriz} de la comuna de ${comunaRol}, referente al inmueble ubicado en el lugar denominado ${upper(blank(val('ubicacion'), '____________________'))}, comuna de ${blank(d.comuna, '____________')}, provincia de ${blank(d.provincia, '____________')}, Región del Maule.`,
+    `Que, mediante, la Resolución Exenta N°: E-${resN} de fecha ${resFecha} de ésta Secretaría Regional Ministerial de Bienes Nacionales, Región del Maule, se ${resMateria}.`,
+    `Que, en el caso específico de la Resolución Exenta antes indicada, conforme lo establecido en el Decreto Ley N°2.695, de 1979, se ha estimado, tras un análisis ulterior, que existen puntos de hecho y de derecho que al ser ponderados nuevamente hacen necesaria la revocación de acto administrativo indicado para el correcto desarrollo del procedimiento administrativo de regularización regido por el D.L. N°2695/79, esto, ya que la Resolución Exenta N° E-${resN} que ${resMateria} ${motivo || '[indica aquí el motivo de la revocación]'}.`,
+    'Que, la Resolución Exenta que se viene a revocar, no se encuentra dentro de aquellos actos cuya revocación se encuentra prohibida, de acuerdo con lo dispuesto en el inciso segundo del artículo 61 de la Ley N°19.880.',
+    'Que, en virtud de lo razonado anteriormente y conforme a las facultades que me han sido otorgadas; en consecuencia.'
+  ].forEach((t, i) => bloques.push(bl('cons-' + (i + 1), `${i + 1}.- ${t}`)));
+  bloques.push(bl('resuelvo-titulo', 'RESUELVO:'));
+  [
+    `TÉNGANSE POR REVOCADA la Resolución Exenta N°: E-${resN} de fecha ${resFecha} de la Secretaría Regional Ministerial de Bienes Nacionales, Región del Maule que ${resuelto}, contenida en el expediente administrativo N°${exp} de ${tratamientoYNombre()}, conforme lo establecido en el Decreto Ley Nº 2695/79.`,
+    `RETROTRÁIGASE el expediente administrativo de regularización N°${exp}, a fin de dar curso a su tramitación.`,
+    `EMÍTASE un nuevo acto administrativo que se pronuncie una vez más sobre la solicitud de regularización en la etapa respectiva a la que se ha retrotraído el procedimiento N°${exp}, realizando las demás actuaciones que correspondan, en especial lo dispuesto en el Informe Técnico de Mensura.`,
+    'INFÓRMESE que, en contra de la presente resolución, podrán interponerse los recursos contemplados en el Título IV de la Ley N°19.880, que establece las Bases de los Procedimientos Administrativos que rigen los actos de los Órganos de la administración del Estado.',
+    `NOTIFÍQUESE la presente resolución ${alALa()} de autos N°${exp}.`,
+    'PUBLÍQUESE la presente resolución en el sitio electrónico del Gobierno Transparente del Ministerio de Bienes Nacionales en la sección “actos y resoluciones”, en la categoría “actos con efectos sobre terceros”, a objeto de dar cumplimiento con lo previsto en el artículo 7°, de la letra g), de la Ley N°20.285 sobre Acceso a la Información Pública, teniendo presente el deber de confidencialidad acerca de los datos personales que la presente resolución pudiera contener, en virtud de lo dispuesto en la Ley N°19.628, debiendo ser estos utilizados estrictamente dentro del marco de las funciones del servicio y respetarse las demás exigencias que para su tratamiento establece el ordenamiento jurídico.'
+  ].forEach((t, i) => bloques.push(bl('res-' + (i + 1), `${i + 1}.- ${t}`)));
+  bloques.push(bl('cierre', 'Notifíquese, comuníquese y archívese.'));
+  bloques.push(bl('firma', `${upper(d.seremi)}\n${de}`));
+  bloques.push(bl('distribucion', `DISTRIBUCIÓN:\n1.- Solicitante.\n2.- Expediente.\n3.- Encargado Unidad de Regularización.\n4.- Oficina de Partes.\n${inicialesDistribucion()}`));
+  return {materia, fecha: fechaCorta(d.fecha), de, a: '', bloques};
+}
+
 function partesDe(tab){
   if(tab.endsWith('Rectificatoria')) return partesRectificatoria(tab);
+  if(tab.endsWith('Revocacion')) return partesRevocacion(tab);
   if(tab === 'resolucionFallecimiento' || tab === 'notificacionFallecimiento') return partesFallecimiento(tab);
   if(tab === 'resolucionC' || tab === 'notificacionC') return partesC(tab);
   if(tab === 'informe') return partesInforme();
@@ -11856,6 +11967,10 @@ function aplicarVisibilidadEtapaB(tab){
       break;
     case 'resolucionRectificatoria':
       incluir('comuna', 'territorio');
+      break;
+    case 'resolucionRevocacion':
+      ubicacion();
+      incluir('rol');
       break;
     case 'resolucionFallecimiento':
     case 'notificacionFallecimiento':
@@ -14356,7 +14471,7 @@ const LOGO_RESOLUCION = {x:432435, y:269240, cx:1341765, cy:1219200};
 
 /* "Exp.Nº: 150041" → etiqueta en negrita + valor normal. */
 function runsEtiquetaPdfB(linea){
-  const m = String(linea).match(/^(Exp\.Nº:|ORD\. Nº:|ANT\.:|MAT\.:|Fecha:|RES\. EXENTA N°:)\s*([\s\S]*)$/);
+  const m = String(linea).match(/^(Exp\.Nº:|ORD\. Nº:|ORD\.:|EXP\.:|ANT\.:|MAT\.:|Fecha:|RES\. EXENTA N°:)\s*([\s\S]*)$/);
   if(!m) return [{texto: String(linea), negrita: false}];
   return [{texto: m[1], negrita: true}, {texto: ' ' + m[2], negrita: false}];
 }
@@ -14447,6 +14562,8 @@ async function paginasDocumentoBPdf(tab, bloques){
       else if(b.id === 'distribucion') distribucion(b.texto, P.inter);
       else if(tab === 'resolucionRectificatoria')
         String(b.texto).split('\n').forEach((l, i)=> parrafo(runsRectificatoria(b.id, l), {align: 'justify', antes: (!i || /^\s*“/.test(l)) ? P.inter : 0}));
+      else if(tab === 'resolucionRevocacion' && /^res-\d/.test(b.id))
+        parrafo(runsVerboMayus(b.texto), {align: 'justify', antes: P.inter});
       else                           parrafo(N(b.texto), {align: 'justify', antes: P.inter});
     });
   } else if(tab === 'informe'){
@@ -14519,7 +14636,7 @@ function nombreArchivoPdfB(tab){
   if(tab === 'notificacion') return `${exp}-Notificación Resolución A ${state.tipoNotificacion === 'acoge' ? 'Positiva' : 'Negativa'}.pdf`;
   if(tab === 'resolucionRep') return `${exp}-Resolución Reposición ${esRepAcoge() ? 'Acoge' : esRepExtemporaneo() ? 'Inadmisible' : 'Rechaza'}.pdf`;
   if(tab === 'notificacionRep') return `${exp}-Notificación Reposición ${esRepAcoge() ? 'Acoge' : esRepExtemporaneo() ? 'Inadmisible' : 'Rechaza'}.pdf`;
-  if(tab.endsWith('Rectificatoria')) return exp+'-'+NOMBRES_ARCHIVO[tab]+'.pdf';
+  if(tab.endsWith('Rectificatoria') || tab.endsWith('Revocacion')) return exp+'-'+NOMBRES_ARCHIVO[tab]+'.pdf';
   if(tab === 'resolucionFallecimiento') return `${exp}-Resolución Término Anticipado por Fallecimiento.pdf`;
   if(tab === 'notificacionFallecimiento') return `${exp}-Notificación Término Anticipado por Fallecimiento.pdf`;
   if(tab === 'resolucionC') return `${exp}-Resolución C tipo ${esCPositiva() ? 'Positiva' : 'Negativa'}.pdf`;
@@ -15669,6 +15786,7 @@ const RP = (()=>{
   function tareaActual(tabElegida){
     const tab = tabElegida || state.ultimaTabDoc || activeMainTab();
     if(/Rectificatoria/.test(tab)) return 'RECTIFICATORIA';
+    if(/Revocacion/.test(tab)) return 'REVOCACIÓN';
     if(/Fallecimiento/.test(tab)) return 'FALLECIMIENTO';
     if(/Rep$/.test(tab)) return 'REPOSICIÓN';
     if(tab === 'jerarquico') return 'JERÁRQUICO';
@@ -17145,6 +17263,7 @@ function documentoFallecimientoWordXml(tab, bloques, cxLogo, cyLogo){
   const runsXml = (runs)=> wordRuns(runs, {sz: esRep ? 17 : 21}).replace(/\t/g, '</w:t><w:tab/><w:t xml:space="preserve">');
   const parrafo = (texto, opciones={})=>String(texto).split('\n').map((linea,i)=>{
     const runs = (esRect && opciones.id) ? runsRectificatoria(opciones.id, linea)
+      : (tab === 'resolucionRevocacion' && /^res-\d/.test(opciones.id || '')) ? runsVerboMayus(linea)
       : (esRep && (opciones.id === 'exp' || opciones.id === 'resN')) ? runsEtiquetaPdfB(linea)
       : [{texto:linea, negrita:!!opciones.negrita || (esRep && opciones.id === 'distribucion' && i === 0)}];
     /* Rectificatoria: una línea en blanco antes del texto citado (“…”). */
@@ -18384,7 +18503,8 @@ const BITACORA_GRUPOS = [
   {etapa: 'Etapa B', tareas: ['Verificación de Posesión Material', 'Informe Jurídico B', 'Resolución B', 'Notificación Resolución B']},
   {etapa: 'Etapa C', tareas: ['Resolución C', 'Notificación C']},
   {etapa: 'Reposición y Recurso Jerárquico', tareas: ['Resolución Reposición', 'Notificación Reposición', 'Minuta Recurso Jerárquico', 'Minuta Jerárquico enviada']},
-  {etapa: 'Rectificatoria y Término por fallecimiento', tareas: ['Resolución Rectificatoria', 'Notificación Rectificatoria',
+  {etapa: 'Rectificatoria, Revocación y Término por fallecimiento', tareas: ['Resolución Rectificatoria', 'Notificación Rectificatoria',
+    'Resolución Revocación', 'Notificación Revocación',
     'Resolución Término Anticipado por Fallecimiento', 'Notificación Término Anticipado por Fallecimiento']},
   {etapa: 'Oficios', tareas: ['Oficio DOM', 'Oficio MINVU', 'Oficio SERVIU', 'Oficio Conservador', 'Oficio masivo']},
   {etapa: 'Generales', tareas: ['Documento derivado a firma', 'Otro']}
@@ -18407,6 +18527,8 @@ function ordenTareaBitacora(nombre){
 const BITACORA_DESDE_TAB = {
   resolucionRectificatoria:{nombre:'Resolución Rectificatoria',num:'rectNumero'},
   notificacionRectificatoria:{nombre:'Notificación Rectificatoria',num:'rectOrd'},
+  resolucionRevocacion:{nombre:'Resolución Revocación',num:'revN'},
+  notificacionRevocacion:{nombre:'Notificación Revocación',num:'revOrdN'},
   resolucionFallecimiento: {nombre:'Resolución Término Anticipado por Fallecimiento', num:'tfResN'},
   notificacionFallecimiento: {nombre:'Notificación Término Anticipado por Fallecimiento', num:'tfOrdN'},
   resolucionC: {nombre:'Resolución C', num:'resCN', signo:'C'},
@@ -19335,7 +19457,7 @@ function bitacoraCalendarioHtml(){
       + '</div>';
   }
   html += '</div><div class="cal-ley">'
-    + [['Etapa A','#2b4f82'],['Etapa B','#3e7d4c'],['Etapa C','#7a4fa8'],['Reposición / Jerárquico','#c8861b'],['Rectificatoria / Fallecimiento','#9a6b6b'],['Oficios','#2c8a9a'],['Generales','#888']]
+    + [['Etapa A','#2b4f82'],['Etapa B','#3e7d4c'],['Etapa C','#7a4fa8'],['Reposición / Jerárquico','#c8861b'],['Rectificatoria / Revocación / Fallecimiento','#9a6b6b'],['Oficios','#2c8a9a'],['Generales','#888']]
         .map(([t, c]) => `<span style="--c:${c}">${t}</span>`).join('') + '</div>';
   if(sinFecha) html += `<div class="cal-sinfecha">${sinFecha} tarea(s) sin fecha no aparecen en el calendario.</div>`;
   return html;
