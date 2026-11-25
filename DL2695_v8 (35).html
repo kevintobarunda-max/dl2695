@@ -6768,8 +6768,7 @@ const CBR_MAULE = [
   'Parral',
   'San Clemente',
   'San Javier',
-  'Talca',
-  'Villa Alegre'
+  'Talca'
 ];
 
 /* Conservador que corresponde a cada comuna del inmueble, para llenarlo solo
@@ -6783,12 +6782,12 @@ const CBR_POR_COMUNA = {
   'Curepto':'Curepto',
   'Constitución':'Constitución','Empedrado':'Constitución',
   'Linares':'Linares','Yerbas Buenas':'Linares','Colbún':'Linares','Longaví':'Longaví',
-  'San Javier':'San Javier','Villa Alegre':'Villa Alegre',
+  'San Javier':'San Javier','Villa Alegre':'San Javier',
   'Parral':'Parral','Retiro':'Parral',
   'Cauquenes':'Cauquenes','Pelluhue':'Cauquenes',
   'Chanco':'Chanco'
 };
-const CBR_DUDOSO = ['Río Claro','Empedrado','Retiro','Pelluhue'];
+const CBR_DUDOSO = ['Río Claro','Empedrado','Retiro','Pelluhue','Villa Alegre'];
 function cbrDeComuna(comuna){
   const n = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   const k = Object.keys(CBR_POR_COMUNA).find(c => n(c) === n(comuna));
