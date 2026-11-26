@@ -247,6 +247,39 @@
 
   /* ---- Bitácora y padrón ---- */
   .bit-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding:16px;max-width:1180px;margin:0 auto;}
+  /* Bitácora: tarjetas numeradas, formulario en una fila y ayudas breves */
+  .bit-card .panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .bit-card .panel-head h2{display:flex;align-items:center;gap:8px;}
+  .bit-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--azul-900);color:#fff;font-size:11.5px;letter-spacing:0;}
+  .bit-form{display:grid;grid-template-columns:1fr 1fr 2fr 1fr;gap:10px;}
+  @media (max-width:900px){ .bit-form{grid-template-columns:1fr 1fr;} }
+  .bit-ayuda{font-weight:400;font-size:11.5px;color:var(--tinta-suave);line-height:1.45;}
+  .bit-aviso{font-size:12px;color:var(--tinta-suave);margin:-2px 0 8px;}
+  .bit-acciones{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+  .bit-sep{flex:1;}
+  #bitacoraView .bit-status{font-size:12.5px;margin-top:8px;min-height:18px;}
+  .bit-det{margin-top:12px;border-top:1px solid var(--gris-200);padding-top:10px;}
+  .bit-det > summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--azul-900);list-style:none;}
+  .bit-det > summary::-webkit-details-marker{display:none;}
+  .bit-det > summary::before{content:'▸ ';color:var(--tinta-suave);}
+  .bit-det[open] > summary::before{content:'▾ ';}
+  .bit-det > summary span{font-weight:400;font-size:11.5px;color:var(--tinta-suave);margin-left:6px;}
+  .bit-det[open] > summary{margin-bottom:10px;}
+  #bitChecklist.bit-checklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;border:none;padding:0;}
+  #bitChecklist .bit-gbox{border:1px solid var(--gris-200);border-radius:10px;padding:8px 10px;background:#fbfcfe;display:flex;flex-direction:column;gap:3px;}
+  #bitChecklist .bit-gbox .bit-grupo{margin:0 0 4px;padding:0;border:none;}
+  #bitChecklist label{font-size:12.5px;line-height:1.35;align-items:flex-start;}
+  #bitChecklist label input{margin-top:2px;}
+  #bitChecklist label.hecha{color:#17623a;}
+  .bit-barra{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;}
+  .bit-barra .bit-vista{margin:0;}
+  .bit-export{display:flex;flex-wrap:wrap;gap:8px;}
+  .bit-padron > summary{cursor:pointer;list-style:none;border-bottom:none;}
+  .bit-padron > summary::-webkit-details-marker{display:none;}
+  .bit-padron > summary h2::after{content:'▸';margin-left:6px;color:var(--tinta-suave);font-size:12px;}
+  .bit-padron[open] > summary h2::after{content:'▾';}
+  .bit-padron[open] > summary{border-bottom:1px solid var(--gris-200);}
+  #bitacoraView .panel-body p.hint{font-size:11.5px;color:var(--tinta-suave);line-height:1.45;}
   .bit-mapeo{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;}
   .bit-mapeo label{display:block;font-size:12px;color:var(--gris-600);margin-bottom:2px;}
   .bit-scroll{overflow:auto;max-height:340px;border:1px solid var(--gris-200);border-radius:8px;}
@@ -6338,23 +6371,108 @@ function prepararImportacion(tabla){
 <div id="bitacoraView" style="display:none">
   <div class="bit-wrap">
 
-    <section class="panel">
+    <!-- 1 · Registrar tarea -->
+    <section class="panel bit-card">
       <div class="panel-head">
-        <h2>Padrón de expedientes</h2>
-        <span class="hint">tu tabla de Word, leída en este computador</span>
+        <h2><span class="bit-num">1</span>Registrar tarea</h2>
+        <span class="hint">qué se hizo en cada expediente</span>
       </div>
       <div class="panel-body">
-        <p class="hint" style="margin:0 0 10px">
-          Elige el archivo Word con la tabla de expedientes. Si lo tienes en OneDrive,
-          se sincroniza a una carpeta de tu computador: elige esa copia. Los datos
-          <b>no se envían a ninguna parte</b>, quedan guardados sólo en este navegador.
+        <div class="bit-form">
+          <div class="field">
+            <label for="bitExp">Expediente</label>
+            <input type="text" id="bitExp" placeholder="N°" data-fmt="digits" list="padronLista"
+                   oninput="bitacoraExpMostrar(this.value)" onchange="bitacoraExpMostrar(this.value)">
+          </div>
+          <div class="field">
+            <label for="bitFecha">Fecha</label>
+            <input type="date" id="bitFecha">
+          </div>
+          <div class="field">
+            <label for="bitNombre">Tarea / documento</label>
+            <!-- Lista de sugerencias, pero se puede escribir libremente: hay
+                 variantes («Resolución (−)») y tareas que no están previstas. -->
+            <input type="text" id="bitNombre" list="bitTareas" placeholder="Elige de la lista o escríbela">
+            <datalist id="bitTareas"></datalist>
+          </div>
+          <div class="field">
+            <label for="bitNumero">N° documento <span class="bit-ayuda">· sin «E-»</span></label>
+            <input type="text" id="bitNumero" placeholder="Res. u ord.">
+          </div>
+        </div>
+        <p class="bit-aviso" id="bitExpAviso" style="display:none"></p>
+        <div class="field">
+          <label for="bitNota">Observación <span class="bit-ayuda">· opcional</span></label>
+          <input type="text" id="bitNota" placeholder="">
+        </div>
+        <div class="bit-acciones">
+          <button type="button" class="btn btn-primary btn-sm" onclick="bitacoraAgregar()">➕ Agregar tarea</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="bitacoraDesdeFormulario()" title="Toma el expediente, el documento de la pestaña activa y su número tal como los tienes ahora">⤵ Tomar del formulario</button>
+          <span class="bit-sep"></span>
+          <button type="button" class="btn btn-outline btn-sm" onclick="masivoAgregarExpediente('bitExp','bitStatus')">📨 Agregar al oficio masivo</button>
+        </div>
+        <div class="bit-status status" id="bitStatus">&nbsp;</div>
+
+        <details class="bit-det" open>
+          <summary>☑ Marcado rápido por etapa <span>se agregan solas al expediente de arriba, con su fecha</span></summary>
+          <div class="bit-checklist" id="bitChecklist"></div>
+        </details>
+      </div>
+    </section>
+
+    <!-- 2 · Tareas registradas -->
+    <section class="panel bit-card">
+      <div class="panel-head">
+        <h2><span class="bit-num">2</span>Tareas registradas</h2>
+        <button type="button" class="btn btn-outline btn-sm" onclick="bitacoraCopiar()">📋 Copiar como tabla</button>
+      </div>
+      <div class="panel-body">
+        <div id="bitacoraTablas"></div>
+      </div>
+    </section>
+
+    <!-- 3 · Vista previa y exportación -->
+    <section class="panel bit-card">
+      <div class="panel-head">
+        <h2><span class="bit-num">3</span>Vista previa y exportación</h2>
+        <span class="hint"><span id="bitPreviewCuenta">sin datos</span></span>
+      </div>
+      <div class="panel-body">
+        <div class="bit-barra">
+          <div class="bit-vista" role="tablist" aria-label="Vista de la bitácora">
+            <button type="button" class="bit-vista-btn" data-vista="tabla" role="tab" onclick="bitacoraVista('tabla')">📋 Tabla</button>
+            <button type="button" class="bit-vista-btn" data-vista="calendario" role="tab" onclick="bitacoraVista('calendario')">📅 Calendario</button>
+          </div>
+          <div class="bit-export">
+            <button type="button" class="btn btn-outline btn-sm" onclick="bitacoraCopiarRedaccion()">📋 Copiar redacción</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="bitacoraExportarDocx()">⬇ Word</button>
+            <button type="button" class="btn btn-red btn-sm" onclick="bitacoraExportarPdf()" title="Se abre el diálogo de impresión: elige «Guardar como PDF», en horizontal">⬇ PDF</button>
+          </div>
+        </div>
+        <p class="bit-ayuda" style="margin:6px 0 0">El PDF sale por el diálogo de impresión: elige «Guardar como PDF», en horizontal.</p>
+        <div class="bit-scroll" style="margin-top:10px;max-height:520px">
+          <div id="bitacoraPreview"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 · Padrón (plegable) -->
+    <details class="panel bit-card bit-padron" id="bitPadronDet">
+      <summary class="panel-head">
+        <h2><span class="bit-num">4</span>Padrón de expedientes</h2>
+        <span class="hint" id="bitPadronResumen">tu tabla de Word, leída en este computador</span>
+      </summary>
+      <div class="panel-body">
+        <p class="bit-ayuda" style="margin:0 0 10px">
+          Elige el archivo Word con la tabla de expedientes (si está en OneDrive, elige la copia
+          sincronizada en tu computador). Los datos <b>no se envían a ninguna parte</b>: quedan sólo en este navegador.
         </p>
-        <div class="btn-row" style="margin-top:0">
+        <div class="bit-acciones">
           <button type="button" class="btn btn-primary btn-sm" onclick="q('padronArchivo').click()">📄 Cargar tabla desde Word</button>
           <input type="file" id="padronArchivo" accept=".docx" style="display:none" onchange="padronCargarArchivo(this)">
           <button type="button" class="btn btn-outline btn-sm" onclick="padronVaciar()">🗑 Vaciar padrón</button>
         </div>
-        <div class="status" id="padronStatus" style="margin-top:10px">Todavía no has cargado ninguna tabla.</div>
+        <div class="bit-status status" id="padronStatus">Todavía no has cargado ninguna tabla.</div>
 
         <fieldset id="padronBitBloque" style="display:none;margin-top:12px">
           <legend>Armar la bitácora con esta tabla</legend>
@@ -6396,88 +6514,7 @@ function prepararImportacion(tabla){
           </div>
         </div>
       </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head">
-        <h2>Bitácora de tareas</h2>
-        <span class="hint">qué se hizo en cada expediente</span>
-      </div>
-      <div class="panel-body">
-        <fieldset>
-          <legend>Agregar tarea</legend>
-          <div class="grid2">
-            <div class="field">
-              <label>Expediente</label>
-              <input type="text" id="bitExp" placeholder="" data-fmt="digits" list="padronLista"
-                     oninput="bitacoraExpMostrar(this.value)" onchange="bitacoraExpMostrar(this.value)">
-            </div>
-            <div class="field">
-              <label>Fecha</label>
-              <input type="date" id="bitFecha">
-            </div>
-          </div>
-          <p class="hint" id="bitExpAviso" style="margin:2px 0 8px;display:none"></p>
-          <div class="grid2">
-            <div class="field">
-              <label>Tarea / documento</label>
-              <!-- Lista de sugerencias, pero se puede escribir libremente: hay
-                   variantes («Resolución (−)») y tareas que no están previstas. -->
-              <input type="text" id="bitNombre" list="bitTareas" placeholder="Elige de la lista o escribe la tarea">
-              <datalist id="bitTareas"></datalist>
-            </div>
-            <div class="field">
-              <label>N° del documento <span class="hint">· resolución u ordinario</span></label>
-              <input type="text" id="bitNumero" placeholder="">
-            </div>
-          </div>
-          <div class="field">
-            <label>O marca directamente las que correspondan <span class="hint">· se agregan solas, con la fecha de arriba, al expediente indicado</span></label>
-            <div class="bit-checklist" id="bitChecklist"></div>
-          </div>
-          <div class="field">
-            <label>Observación <span class="hint">· opcional</span></label>
-            <input type="text" id="bitNota" placeholder="">
-          </div>
-          <div class="btn-row">
-            <button type="button" class="btn btn-primary btn-sm" onclick="bitacoraAgregar()">➕ Agregar tarea a expediente</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="masivoAgregarExpediente('bitExp','bitStatus')">Agregar expediente al oficio masivo</button>
-            <button type="button" class="btn btn-outline btn-sm" onclick="bitacoraDesdeFormulario()" title="Toma el expediente, el documento de la pestaña activa y su número tal como los tienes ahora">⤵ Tomar del formulario</button>
-          </div>
-          <div class="status" id="bitStatus" style="margin-top:8px">&nbsp;</div>
-        </fieldset>
-
-        <div class="btn-row" style="margin-top:12px">
-          <button type="button" class="btn btn-outline btn-sm" onclick="bitacoraCopiar()">📋 Copiar como tabla</button>
-        </div>
-        <div id="bitacoraTablas" style="margin-top:10px"></div>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head">
-        <h2>Vista previa de la bitácora</h2>
-        <span class="hint"><span id="bitPreviewCuenta">sin datos</span> · lista para exportar</span>
-      </div>
-      <div class="panel-body">
-        <div class="btn-row" style="margin-top:0">
-          <button type="button" class="btn btn-primary btn-sm" onclick="bitacoraExportarDocx()">⬇ Exportar a Word (.docx)</button>
-          <button type="button" class="btn btn-red btn-sm" onclick="bitacoraExportarPdf()">⬇ Exportar a PDF</button>
-          <button type="button" class="btn btn-outline btn-sm" onclick="bitacoraCopiarRedaccion()">📋 Copiar la redacción</button>
-        </div>
-        <div class="bit-vista" role="tablist" aria-label="Vista de la bitácora">
-          <button type="button" class="bit-vista-btn" data-vista="tabla" role="tab" onclick="bitacoraVista('tabla')">📋 Tabla</button>
-          <button type="button" class="bit-vista-btn" data-vista="calendario" role="tab" onclick="bitacoraVista('calendario')">📅 Calendario</button>
-        </div>
-        <p class="hint" style="margin:6px 0 0">
-          El PDF se genera por el diálogo de impresión del navegador: elige
-          «Guardar como PDF» como destino. Conviene dejarlo en horizontal.
-        </p>
-        <div class="bit-scroll" style="margin-top:10px;max-height:520px">
-          <div id="bitacoraPreview"></div>
-        </div>
-      </div>
-    </section>
+    </details>
 
   </div>
 </div>
@@ -13621,8 +13658,17 @@ function masivoAgregarDesdePadron(){
 }
 
 /* Muestra u oculta los atajos del padrón según haya expedientes cargados. */
+/* Título plegable del padrón en la Bitácora: cuántos expedientes hay; abierto mientras no haya tabla. */
+function resumenPadronBitacora(){
+  const hay = (state.padron || []).length > 0;
+  const resumen = q('bitPadronResumen');
+  if(resumen) resumen.textContent = hay ? state.padron.length + ' expedientes cargados' + (state.padronArchivo ? ' · ' + state.padronArchivo : '') : 'sin tabla cargada · ábrelo para cargar tu Word';
+  const det = q('bitPadronDet');
+  if(det && !det.dataset.inicial){ det.dataset.inicial = '1'; det.open = !hay; }
+}
 function renderOficioPadron(){
   const hay = state.padron.length > 0;
+  resumenPadronBitacora();
   const bloque = q('ofPadronBloque');
   if(bloque) bloque.style.display = hay ? 'block' : 'none';
   const fila = q('ofMasPadronFila');
@@ -19303,12 +19349,12 @@ function renderBitChecklist(){
   const cont = q('bitChecklist');
   if(!cont) return;
   const exp = String(val('bitExp') || '').trim();
-  cont.innerHTML = BITACORA_GRUPOS.map(gr => `<div class="bit-grupo">${escaparHtml(gr.etapa)}</div>` + gr.tareas.map(nombre=>{
+  cont.innerHTML = BITACORA_GRUPOS.map(gr => `<div class="bit-gbox"><div class="bit-grupo">${escaparHtml(gr.etapa)}</div>` + gr.tareas.map(nombre=>{
     const marcada = exp && state.bitacora.some(t => t.exp === exp && t.nombre === nombre);
     return `<label class="${marcada ? 'hecha' : ''}" data-tarea="${escaparHtml(nombre)}">`
       + `<input type="checkbox" ${marcada ? 'checked' : ''} onchange="bitacoraChecklistToggle(this)">`
       + escaparHtml(nombre) + '</label>';
-  }).join('')).join('');
+  }).join('') + '</div>').join('');
 }
 
 /* Al marcar: agrega la tarea al expediente de «bitExp» con la fecha del
@@ -19814,6 +19860,7 @@ function bitacoraSigno(texto){
 const BITACORA_LEYENDA = '<div class="bit-leyenda"><span class="bit-pos">● Positivo / acoge</span><span class="bit-neg">● Negativo / rechaza</span></div>';
 
 function renderBitacora(){
+  resumenPadronBitacora();
   const cont = q('bitacoraTablas');
   if(!cont) return;
   if(!state.bitacora.length && !state.padron.length){
@@ -19874,7 +19921,7 @@ const BITACORA_VERBO = 'elaboré';
    propio generador: las resoluciones llevan "RES. EXENTA N°: E-", las
    notificaciones "ORD. Nº: E-" y los oficios "ORD. N°SE07-". */
 function bitacoraCitaNumero(nombre, numero){
-  const n = String(numero == null ? '' : numero).trim();
+  const n = String(numero == null ? '' : numero).trim().replace(/^(?:SE\s*07|E)\s*-\s*/i, '');
   if(!n) return '';
   const t = String(nombre || '');
   if(/^oficio/i.test(t))        return ', Ord. N° SE07-' + n;
