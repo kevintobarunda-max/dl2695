@@ -10276,7 +10276,7 @@ function parsearRumbos(t){
     // al deslinde («Superficie total…», «Escala…», «Observaciones…», firmas)
     const cortes = /^\s*(?:superficie\b|sup\.|total\b|observaci|notas?\b|escala\b|fecha\b|firma|propietari|solicitante\b|rol\b|plano\b|coordenadas|v[ée]rtice|cuadro\b|datum|huso|proyecci|ingeniero|top[óo]grafo|profesional|lugar\b|comuna\b|provincia\b|regi[óo]n\b)/i;
     const lineas = t.slice(x.fin, fin).split('\n'); let corte = lineas.length;
-    for(let k = 1; k < lineas.length; k++){ if(cortes.test(lineas[k])){ corte = k; break; } }
+    for(let k = 1; k < lineas.length; k++){ if(cortes.test(lineas[k]) || (!lineas[k].trim() && k > 1)){ corte = k; break; } }
     const txt = lineas.slice(0, corte).join(' ').replace(/\s+/g, ' ').trim().replace(/[;.,\s]+$/, '').trim().replace(/^(?:\S{0,5}[¡=¿!|~_*<>]\S{0,3}\s+)+/, '');
     if(txt && /[A-Za-zÁÉÍÓÚáéíóúñÑ]{3}/.test(txt)) rumbos[x.clave] = rumbos[x.clave] ? rumbos[x.clave] + '; ' + txt : txt;   // «NORTE: 6.123.456» (coordenadas) no es un deslinde
   });
@@ -10325,7 +10325,11 @@ function deslindesActuales(){
   const bruto = val('bDeslindes');
   if(bruto){
     const p = parsearDeslindes(bruto);
-    return p.hallados ? {sitios: p.sitios, libre: '', notas: p.notas || []} : {sitios: [], libre: bruto.replace(/\s+/g, ' ').trim()};
+    if(!p.hallados) return {sitios: [], libre: bruto.replace(/\s+/g, ' ').trim()};
+    /* Notas: las líneas «NOTA: …» y el resto del texto transcrito que no es deslinde. */
+    const notas = (p.notas || []).slice(), vistas = new Set(notas.map(n => normTxt(n)));
+    textosNoDeslindeOcr(bruto).forEach(o => { if(!vistas.has(normTxt(o))){ vistas.add(normTxt(o)); notas.push(o); } });
+    return {sitios: p.sitios, libre: '', notas};
   }
   /* Con el recuadro vacío no hay deslindes (ya no se usan datos de borradores antiguos). */
   return {sitios: [], libre: ''};
@@ -17105,7 +17109,8 @@ async function obtenerOcrB(){
 const ESTRATEGIAS_OCR_B = [
   {o: {fondo: true, enderezar: true, rojo: true, ancho: 3600}, psm: '6'},
   {o: {fondo: true, enderezar: true, rojo: true, ancho: 3000}, psm: '3'},
-  {o: {fondo: true, enderezar: true, rojo: true, binario: true, ancho: 3600}, psm: '6'}
+  {o: {fondo: true, enderezar: true, rojo: true, binario: true, ancho: 3600}, psm: '6'},
+  {o: {fondo: true, enderezar: true, rojo: true, ancho: 4200}, psm: '4'}
 ];
 /* Distancia de edición (Levenshtein) entre dos palabras cortas: sirve para
    reconocer «metros» mal leído por el OCR («metres», «rnetros»). */
@@ -17125,8 +17130,7 @@ function limpiarOcrDeslindes(t){
     if((num.match(/[0-9]/g) || []).length < 2) return m;
     return pre + num.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1').replace(/[Ss]/g, '5').replace(/B/g, '8').replace(/[Zz]/g, '2');
   });
-  // decimales con punto («12.01 metros») → coma, como se escribe en Chile
-  x = x.replace(/(\d)\.(\d{2})(\s*(?:metros|metro|mts?\.?|m)\b)/gi, '$1,$2$3');
+  /* (Ya no se cambian los decimales «12.01» por «12,01»: se transcribe tal cual la imagen.) */
   // «metros» mal leído justo después de una cifra («metres», «rnetros»)
   x = x.replace(/(\d)\s+([A-Za-z]{4,8})\b/g, (m, d, p)=>{
     const l = p.toLowerCase();
@@ -17146,21 +17150,36 @@ function limpiarOcrDeslindes(t){
 async function reconocerLienzoB(w, lienzo, cfg){
   await w.setParameters({tessedit_pageseg_mode: cfg.psm, preserve_interword_spaces: '1', user_defined_dpi: '300'});
   const r = await w.recognize(prepararLienzoOcrB(lienzo, cfg.o).toDataURL('image/png'));
-  const palabras = [];
-  (r.data.blocks || []).forEach(b => (b.paragraphs || []).forEach(p => (p.lines || []).forEach(l => (l.words || []).forEach(wd => palabras.push({t: wd.text, c: wd.confidence})))));
-  const res = {texto: r.data.text, conf: r.data.confidence, palabras};
+  const palabras = [], lineas = [];
+  (r.data.blocks || []).forEach(b => (b.paragraphs || []).forEach(p => (p.lines || []).forEach(l => {
+    (l.words || []).forEach(wd => palabras.push({t: wd.text, c: wd.confidence}));
+    if(l.bbox && String(l.text || '').trim()) lineas.push({t: String(l.text).replace(/\s+$/, ''), y0: l.bbox.y0, y1: l.bbox.y1});
+  })));
+  /* Saltos de línea según la posición real de cada renglón en la imagen: una línea
+     en blanco solo donde en la foto hay un espacio vertical grande entre renglones. */
+  let texto = r.data.text;
+  if(lineas.length > 1){
+    lineas.sort((a, b) => a.y0 - b.y0);
+    const altos = lineas.map(l => l.y1 - l.y0).sort((a, b) => a - b);
+    const alto = altos[Math.floor(altos.length / 2)] || 1;
+    texto = lineas.map((l, i) => (i && (l.y0 - lineas[i - 1].y1) > alto * 1.1 ? '\n' : '') + l.t).join('\n');
+  }
+  const res = {texto, conf: r.data.confidence, palabras};
   res.rumbos = parsearDeslindes(limpiarOcrDeslindes(res.texto)).hallados;
   return res;
 }
 async function ocrDeLienzoB(lienzo, progreso, rapido){
   _ocrProgresoB = progreso || null;
   const w = await obtenerOcrB();
+  /* Se prueban TODAS las estrategias y gana la que reconoce más rumbos y, entre
+     ellas, la de mayor confianza del OCR: así la transcripción queda lo más fiel
+     posible a la imagen (es más lento, pero más preciso). */
   let mejor = null;
-  for(let i = 0; i < (rapido ? 1 : ESTRATEGIAS_OCR_B.length); i++){
-    if(i) progreso && progreso('reintentando con otra estrategia (' + (i + 1) + '/' + ESTRATEGIAS_OCR_B.length + ')');
+  const total = rapido ? 1 : ESTRATEGIAS_OCR_B.length;
+  for(let i = 0; i < total; i++){
+    progreso && progreso('leyendo (pasada ' + (i + 1) + ' de ' + total + ')');
     const r = await reconocerLienzoB(w, lienzo, ESTRATEGIAS_OCR_B[i]);
-    if(!mejor || r.rumbos > mejor.rumbos) mejor = r;          // en empate se queda la primera (la más precisa)
-    if(mejor.rumbos >= 4) break;
+    if(!mejor || r.rumbos > mejor.rumbos || (r.rumbos === mejor.rumbos && r.conf > mejor.conf)) mejor = r;
   }
   if(mejor.rumbos < 2 && !rapido){                               // último recurso: foto tomada de lado
     for(const ang of [90, 270]){
@@ -17215,12 +17234,11 @@ async function ocrDeslindesArchivos(files){
   if(!bruto){ decir('⚠ No se encontró texto en el archivo. Prueba con una imagen más nítida o escríbelos a mano.', '#a33'); return; }
 
   const p = parsearDeslindes(bruto);
-  /* Todo lo que no es deslinde (notas, observaciones, superficie, servidumbres…) se
-     conserva como NOTA, para revisarlo o borrarlo en el recuadro. */
+  /* Transcripción LITERAL: el recuadro recibe el texto tal como está en la imagen,
+     línea por línea (deslindes, notas, superficie, todo). Los documentos igual
+     reconocen los rumbos. «↕ Ordenar por rumbo» lo reordena si se prefiere. */
   const otros = p.hallados ? textosNoDeslindeOcr(bruto) : [];
-  const yaNotas = new Set((p.notas || []).map(n => normTxt(n)));
-  otros.forEach(o => { if(!yaNotas.has(normTxt(o))) (p.notas = p.notas || []).push(o); });
-  const nuevo = p.hallados ? textoDeslindesOrdenado(p) : bruto;
+  const nuevo = bruto.split('\n').map(l => l.replace(/[ \t]+$/, '')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
   if(ta){
     const previo = ta.value.trim();
     if(previo && previo !== nuevo){
@@ -17229,8 +17247,10 @@ async function ocrDeslindesArchivos(files){
     } else ta.value = nuevo;
     generar();
   }
+  const nNotas = new Set([...(p.notas || []), ...otros].map(n => normTxt(n))).size;
   const sitios = (p.sitios.length > 1 ? ' en ' + p.sitios.length + ' lotes/sitios' : '')
-    + ((p.notas || []).length ? ', y ' + p.notas.length + ' nota' + (p.notas.length === 1 ? '' : 's') + ' con el resto del texto' : '');
+    + (nNotas ? ', y ' + nNotas + ' texto' + (nNotas === 1 ? '' : 's') + ' adicional' + (nNotas === 1 ? '' : 'es') + ' (notas)' : '')
+    + '. Se transcribió tal cual la imagen; <a href="#" onclick="ordenarDeslindesOcr();return false">↕ ordenar por rumbo</a>';
   decir(p.hallados
     ? '✓ Leído' + (conOcr ? ' con OCR' : '') + ': se reconocieron ' + p.hallados + ' rumbo' + (p.hallados === 1 ? '' : 's') + sitios + '. '
       + (conOcr ? '<b>Revisa las cifras y nombres</b>: el OCR puede confundir letras y números.' : 'Revisa el resultado.')
@@ -17257,6 +17277,19 @@ async function pegarCapturaDeslindes(){
   const zona = q('bDeslindesOcr'); if(zona) zona.focus();
   decir('👉 Presiona <b>Ctrl+V</b> ahora para pegar la captura.');
 }
+/* Botón «↕ ordenar por rumbo»: reordena el recuadro (deslindes en orden y el resto
+   del texto como NOTA), como hacía antes el lector. */
+function ordenarDeslindesOcr(){
+  const ta = q('bDeslindes'); if(!ta) return;
+  const p = parsearDeslindes(ta.value);
+  if(!p.hallados){ flashStatus('No se reconocieron rumbos para ordenar.'); return; }
+  const yaNotas = new Set((p.notas || []).map(n => normTxt(n)));
+  textosNoDeslindeOcr(ta.value).forEach(o => { if(!yaNotas.has(normTxt(o))) (p.notas = p.notas || []).push(o); });
+  ta.value = textoDeslindesOrdenado(p);
+  generar();
+  flashStatus('Deslindes ordenados por rumbo ✓');
+}
+
 /* Líneas del texto leído que no forman parte de ningún deslinde: lo que va antes
    del primer rumbo, lo que viene después de una línea en blanco o de un bloque
    ajeno (Superficie, Observaciones, Escala…). Se juntan por párrafo. Se omiten
