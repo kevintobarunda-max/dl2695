@@ -526,6 +526,9 @@
   }
 
   /* ---------- Oficio (Word) live preview ---------- */
+  .of-doc-preview{min-height:520px;}
+  .of-vp-estado{font-size:11.5px;color:var(--tinta-suave);padding:6px 18px 0;}
+  .of-vp-estado:empty{display:none;}
   .of-paper{
     background:#fff;
     border:1px solid var(--papel-borde);
@@ -6619,7 +6622,9 @@ function prepararImportacion(tabla){
         <p class="hint" id="ofExportarAyuda" style="flex-basis:100%;margin:0;display:none">SERVIU / MINVU: un oficio para cada institución con todos los expedientes. DOM por comunas: un oficio por Comuna con sus expedientes. Se descargan juntos en un ZIP.</p>
       </div>
     </div>
-    <div class="paper-wrap">
+    <div class="of-vp-estado" id="ofVistaEstado"></div>
+    <div class="doc-preview of-doc-preview" id="ofVistaPdf" hidden><div id="ofVistaPaginas" class="doc-paginas"></div></div>
+    <div class="paper-wrap" id="ofVistaHtml">
       <div class="of-paper">
         <div class="of-header-logo">
           <div class="mark"><img id="ofLogoPreview" alt="Ministerio de Bienes Nacionales" src=""></div>
@@ -14045,11 +14050,13 @@ function xmlOficioABloques(xml){
       runs.forEach(r=>{
         const rPr = r.getElementsByTagNameNS('*','rPr')[0];
         const negrita = !!(rPr && rPr.getElementsByTagNameNS('*','b').length);
+        const iEl = rPr ? rPr.getElementsByTagNameNS('*','i')[0] : null;
+        const cursiva = !!(iEl && !/^(0|false)$/.test(iEl.getAttribute('w:val') || ''));
         let texto = '';
         Array.from(r.getElementsByTagNameNS('*','t')).forEach(t=>{ texto += t.textContent; });
         if(r.getElementsByTagNameNS('*','tab').length) texto += '\t';
         if(r.getElementsByTagNameNS('*','br').length) texto += '\n';
-        if(texto) out.push({texto, negrita});
+        if(texto) out.push({texto, negrita, cursiva});
       });
       return out;
     };
@@ -14058,12 +14065,11 @@ function xmlOficioABloques(xml){
     const textoPlano = (p)=> leerRuns(p).map(r => r.texto).join('');
 
     const bloques = [];
-    // Se recorren los hijos directos del cuerpo en orden, para que la tabla de
-    // expedientes del oficio masivo aparezca en su lugar exacto.
-    Array.from(body.childNodes).forEach(nodo=>{
-      if(nodo.nodeType !== 1) return;
-
-      if(nodo.localName === 'p'){
+    /* Listas numeradas de la plantilla (numbering.xml: «a)», «b)»…, nivel 0 lowerLetter). */
+    const contadoresLista = {};
+    const letra = n => String.fromCharCode(96 + ((n - 1) % 26) + 1);
+    const procesarParrafo = (nodo)=>{
+      {
         const runs = leerRuns(nodo);
         const texto = runs.map(r => r.texto).join('');
         const pPr = nodo.getElementsByTagNameNS('*','pPr')[0];
@@ -14084,11 +14090,42 @@ function xmlOficioABloques(xml){
              : ind.getAttribute('w:hanging') ? -twipsAPt(ind.getAttribute('w:hanging')) : 0)
           : 0;
 
+        /* Espacio antes/después: el de cada párrafo o, si no lo trae, el de la
+           plantilla (docDefaults: w:after="160" = 8 pt). */
+        const sp = pPr ? pPr.getElementsByTagNameNS('*','spacing')[0] : null;
+        const antes = sp && sp.getAttribute('w:before') ? twipsAPt(sp.getAttribute('w:before')) : 0;
+        const despues = sp && sp.getAttribute('w:after') ? twipsAPt(sp.getAttribute('w:after')) : 8;
+        /* Viñeta de lista («a)») si el párrafo está numerado. */
+        const numPr = pPr ? pPr.getElementsByTagNameNS('*','numPr')[0] : null;
+        if(numPr && texto.trim()){
+          const idEl = numPr.getElementsByTagNameNS('*','numId')[0];
+          const id = idEl ? idEl.getAttribute('w:val') : '0';
+          if(id !== '0'){
+            contadoresLista[id] = (contadoresLista[id] || 0) + 1;
+            runs.unshift({texto: letra(contadoresLista[id]) + ')\t', negrita: false, cursiva: (runs[0] || {}).cursiva});
+          }
+        }
+        const textoFinal = runs.map(r => r.texto).join('');
         bloques.push({
-          tipo:'p', texto, runs, alineacion, vacio: !texto.trim(),
-          sangriaIzq, sangriaPrimera
+          tipo:'p', texto: textoFinal, runs, alineacion, vacio: !textoFinal.trim(),
+          sangriaIzq, sangriaPrimera, antes, despues
         });
+      }
+    };
+    // Se recorren los hijos directos del cuerpo en orden, para que la tabla de
+    // expedientes del oficio masivo aparezca en su lugar exacto.
+    Array.from(body.childNodes).forEach(nodo=>{
+      if(nodo.nodeType !== 1) return;
 
+      if(nodo.localName === 'p'){
+        procesarParrafo(nodo);
+      } else if(nodo.localName === 'tbl' && (()=>{
+        /* Tabla de una sola celda: en la plantilla es solo un contenedor invisible
+           de un párrafo («Por lo anterior…»); se trata como párrafos normales. */
+        const filas = Array.from(nodo.childNodes).filter(n => n.nodeType === 1 && n.localName === 'tr');
+        return filas.length === 1 && Array.from(filas[0].childNodes).filter(n => n.nodeType === 1 && n.localName === 'tc').length === 1;
+      })()){
+        Array.from(nodo.getElementsByTagNameNS('*','p')).forEach(procesarParrafo);
       } else if(nodo.localName === 'tbl'){
         const filas = Array.from(nodo.childNodes)
           .filter(n => n.nodeType === 1 && n.localName === 'tr')
@@ -14445,9 +14482,10 @@ async function paginasOficioPdf(bloques){
     if(b.tipo === 'p'){
       if(b.vacio){
         asegurarEspacio(OFICIO_PDF_INTERLINEA);
-        topY += OFICIO_PDF_INTERLINEA;
+        topY += OFICIO_PDF_INTERLINEA + (b.antes || 0) + (b.despues || 0);
         return;
       }
+      if(topY > P.margenSup) topY += (b.antes || 0);
       const margenParrafo = P.margenIzq + (b.sangriaIzq || 0);
       const anchoParrafo = anchoContenido - (b.sangriaIzq || 0);
       const sangriaPrimera = b.sangriaPrimera || 0;
@@ -14476,6 +14514,7 @@ async function paginasOficioPdf(bloques){
           b.alineacion, anchoLinea, i === lineas.length - 1);
         topY += OFICIO_PDF_INTERLINEA;
       });
+      topY += (b.despues || 0);
     } else if(b.tipo === 'tabla'){
       const anchosBase = (b.anchos && b.anchos.length === (b.filas[0] || []).length) ? b.anchos : (b.filas[0] || []).map(()=>1);
       const sumaAnchos = anchosBase.reduce((a,x)=>a + x, 0) || 1;
@@ -17749,7 +17788,10 @@ async function minutaJerarquicoExportarDocx(){
   }
 }
 
-// Muestra el oficio en el panel de vista previa de la pantalla.
+// Muestra el oficio en el panel de vista previa de la pantalla. Se dibuja el
+// mismo PDF que genera «Exportar a PDF» (logo, márgenes, tabla y saltos de
+// página reales); la versión HTML queda solo de respaldo si algo falla.
+let _ofVpSeq = 0;
 function renderOficioXmlEnPreview(xml){
   const contenedor = q('ofPreview');
   if(!contenedor) return;
@@ -17759,6 +17801,58 @@ function renderOficioXmlEnPreview(xml){
     console.error(err);
     contenedor.innerHTML = '<p class="of-empty">No se pudo generar la vista previa.</p>';
   }
+  renderOficioPdfEnPreview(xml);
+}
+function bloquesPdfOficio(xml){
+  const bloques = xmlOficioABloques(xml);
+  if(val('ofTipo') === 'masivo') bloques.forEach(b => { if(b.tipo === 'tabla') b.anchos = MASIVO_ANCHOS_COLUMNAS_TABLA; });
+  return bloques;
+}
+async function renderOficioPdfEnPreview(xml){
+  const vista = q('ofVistaPdf'), cont = q('ofVistaPaginas'), html = q('ofVistaHtml'), estado = q('ofVistaEstado');
+  if(!vista || !cont) return;
+  const seq = ++_ofVpSeq;
+  try{
+    const blob = await pdfBlobDesdeBloques(bloquesPdfOficio(xml));
+    const pdfjs = await cargarPdfJsB();
+    const doc = await pdfjs.getDocument({data: new Uint8Array(await blob.arrayBuffer())}).promise;
+    if(seq !== _ofVpSeq) return;
+    vista.hidden = false;
+    const ancho = Math.max(320, Math.min((vista.clientWidth || cont.clientWidth || 800) - 30, 880));
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const hojas = [];
+    for(let i = 1; i <= doc.numPages; i++){
+      const pagina = await doc.getPage(i);
+      const vp = pagina.getViewport({scale: ancho / pagina.getViewport({scale: 1}).width * dpr});
+      const c = document.createElement('canvas');
+      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      c.style.width = Math.round(vp.width / dpr) + 'px'; c.style.height = Math.round(vp.height / dpr) + 'px';
+      c.className = 'doc-pagina';
+      c.setAttribute('aria-label', 'Página ' + i + ' de ' + doc.numPages);
+      await pagina.render({canvasContext: c.getContext('2d'), viewport: vp}).promise;
+      if(seq !== _ofVpSeq) return;
+      hojas.push(c);
+    }
+    cont.style.minHeight = cont.offsetHeight + 'px';
+    cont.replaceChildren(...hojas);
+    cont.style.minHeight = '';
+    if(html) html.hidden = true;
+    if(estado) estado.textContent = doc.numPages + (doc.numPages === 1 ? ' página' : ' páginas') + ' · así queda al exportar a PDF';
+    doc.destroy();
+  } catch(err){
+    console.error('Vista previa del oficio:', err);
+    if(seq !== _ofVpSeq) return;
+    vista.hidden = true;
+    if(html) html.hidden = false;
+    if(estado) estado.textContent = 'Vista aproximada (no se pudo dibujar el PDF en este navegador).';
+  }
+}
+async function descargarBlobComo(blob, nombre){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nombre;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
 // Vista previa "diferida": al escribir en la tabla del oficio masivo se
@@ -18163,8 +18257,6 @@ async function exportarOficioPdf(){
   try{
     const datos = (tipo === 'masivo') ? datosOficioMasivo() : datosOficioActuales();
     const {xml} = await construirOficioXml(tipo, datos);
-    iniciarImpresionOficios();
-    await agregarOficioAImpresion(xml);
 
     const nombreArchivo = {
       dom: 'Oficio_DOM_' + (val('ofComunaDom')||val('ofComuna')||'comuna'),
@@ -18174,8 +18266,9 @@ async function exportarOficioPdf(){
       masivo: 'Oficio_Masivo'
     }[tipo].replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_');
 
-    q('ofStatus').textContent = 'Se abrió el diálogo de impresión: elige «Guardar como PDF» como destino.';
-    imprimirConTitulo(nombreArchivo);
+    /* El mismo PDF que se ve en la vista previa, descargado directo. */
+    await descargarBlobComo(await pdfBlobDesdeBloques(bloquesPdfOficio(xml)), nombreArchivo + '.pdf');
+    q('ofStatus').textContent = '✓ PDF descargado: ' + nombreArchivo + '.pdf';
   } catch(err){
     console.error(err);
     q('ofStatus').textContent = 'Ocurrió un error generando el PDF: ' + err.message;
