@@ -10326,10 +10326,10 @@ function deslindesActuales(){
   if(bruto){
     const p = parsearDeslindes(bruto);
     if(!p.hallados) return {sitios: [], libre: bruto.replace(/\s+/g, ' ').trim()};
-    /* Notas: las líneas «NOTA: …» y el resto del texto transcrito que no es deslinde. */
-    const notas = (p.notas || []).slice(), vistas = new Set(notas.map(n => normTxt(n)));
-    textosNoDeslindeOcr(bruto).forEach(o => { if(!vistas.has(normTxt(o))){ vistas.add(normTxt(o)); notas.push(o); } });
-    return {sitios: p.sitios, libre: '', notas};
+    /* En los documentos solo van como NOTA las líneas que empiezan con «NOTA:» u
+       «OBSERVACIÓN:». El resto de lo transcrito (encabezado, logo, firmas…) queda en
+       el recuadro para consultarlo, pero no se imprime en la resolución. */
+    return {sitios: p.sitios, libre: '', notas: p.notas || []};
   }
   /* Con el recuadro vacío no hay deslindes (ya no se usan datos de borradores antiguos). */
   return {sitios: [], libre: ''};
@@ -17124,6 +17124,12 @@ function distLev(a, b){
 }
 function limpiarOcrDeslindes(t){
   let x = String(t).normalize('NFC').replace(/[“”«»„]/g, '"').replace(/[‘’´`]/g, "'");
+  // «NORESTE 1: Berta…», «PROVINCIA 1 CURICÓ»: los dos puntos se leyeron como 1, l, I o i
+  x = x.replace(/(^|\n)(\s*(?:NOR[\s-]?(?:ESTE|OESTE|ORIENTE|PONIENTE)|SUR[\s-]?(?:ESTE|OESTE|ORIENTE|PONIENTE)|NORTE|SUR|ESTE|ORIENTE|OESTE|PONIENTE|REGI[OÓ]N|PROVINCIA|COMUNA|LUGAR|SOLICITANTE|EXPEDIENTE|MATERIA|PLANO|SUPERFICIE|ROL)\b)[ \t]+[1lIi|!](?:[ \t]*:[ \t]*|[ \t]+(?=[^\d\s]))/gi, '$1$2 : ');
+  // rótulo de la minuta sin sus dos puntos («SOLICITANTE   MARÍA…») o con muchos espacios → «RÓTULO : valor»
+  x = x.replace(/(^|\n)(\s*(?:REGI[OÓ]N|PROVINCIA|COMUNA|LUGAR|SOLICITANTE|EXPEDIENTE|MATERIA|PLANO|SUPERFICIE|ROL(?: MATRIZ)?)\b)[ \t]*(?::[ \t]*|[ \t]{2,})(?=\S)/gi, '$1$2 : ');
+  // «N9 2.695», «N0 123» → «Nº»
+  x = x.replace(/\bN[9o0][ \t]+(?=\d)/g, 'Nº ');
   x = x.replace(/[|¦\\~^]/g, ' ').replace(/[-–—_=·•]{3,}|\.{4,}/g, '  ');            // rayas y puntos de relleno
   // cifras: dentro de un número, letras parecidas a dígitos pasan a dígito
   x = x.replace(/(^|[^A-Za-zÁ-ÿ0-9])([0-9OoIl|SsBZz][0-9OoIl|SsBZz.,]*[0-9OoIl|SsBZz])(?![A-Za-zÁ-ÿ0-9])/g, (m, pre, num)=>{
@@ -17153,16 +17159,29 @@ async function reconocerLienzoB(w, lienzo, cfg){
   const palabras = [], lineas = [];
   (r.data.blocks || []).forEach(b => (b.paragraphs || []).forEach(p => (p.lines || []).forEach(l => {
     (l.words || []).forEach(wd => palabras.push({t: wd.text, c: wd.confidence}));
-    if(l.bbox && String(l.text || '').trim()) lineas.push({t: String(l.text).replace(/\s+$/, ''), y0: l.bbox.y0, y1: l.bbox.y1});
+    if(l.bbox && String(l.text || '').trim()) lineas.push({t: String(l.text).replace(/\s+$/, ''), x0: l.bbox.x0, x1: l.bbox.x1, y0: l.bbox.y0, y1: l.bbox.y1});
   })));
   /* Saltos de línea según la posición real de cada renglón en la imagen: una línea
      en blanco solo donde en la foto hay un espacio vertical grande entre renglones. */
   let texto = r.data.text;
   if(lineas.length > 1){
-    lineas.sort((a, b) => a.y0 - b.y0);
     const altos = lineas.map(l => l.y1 - l.y0).sort((a, b) => a - b);
     const alto = altos[Math.floor(altos.length / 2)] || 1;
-    texto = lineas.map((l, i) => (i && (l.y0 - lineas[i - 1].y1) > alto * 1.1 ? '\n' : '') + l.t).join('\n');
+    /* Se agrupan en un mismo renglón los trozos que se solapan en altura (p. ej.
+       «SOLICITANTE» y «: MARÍA …» de una tabla de dos columnas) y se ordenan de
+       izquierda a derecha, como se leen en la hoja. */
+    lineas.sort((a, b) => (a.y0 + a.y1) - (b.y0 + b.y1));
+    const filas = [];
+    lineas.forEach(l => {
+      const f = filas[filas.length - 1];
+      const solapa = f && (Math.min(f.y1, l.y1) - Math.max(f.y0, l.y0)) > 0.45 * Math.min(f.y1 - f.y0, l.y1 - l.y0);
+      if(solapa){ f.items.push(l); f.y0 = Math.min(f.y0, l.y0); f.y1 = Math.max(f.y1, l.y1); }
+      else filas.push({items: [l], y0: l.y0, y1: l.y1});
+    });
+    texto = filas.map((f, i) => {
+      const t = f.items.sort((a, b) => a.x0 - b.x0).map(x => x.t.trim()).join('   ');
+      return (i && (f.y0 - filas[i - 1].y1) > alto * 1.1 ? '\n' : '') + t;
+    }).join('\n');
   }
   const res = {texto, conf: r.data.confidence, palabras};
   res.rumbos = parsearDeslindes(limpiarOcrDeslindes(res.texto)).hallados;
@@ -17247,10 +17266,10 @@ async function ocrDeslindesArchivos(files){
     } else ta.value = nuevo;
     generar();
   }
-  const nNotas = new Set([...(p.notas || []), ...otros].map(n => normTxt(n))).size;
+  const nNotas = (p.notas || []).length;
   const sitios = (p.sitios.length > 1 ? ' en ' + p.sitios.length + ' lotes/sitios' : '')
-    + (nNotas ? ', y ' + nNotas + ' texto' + (nNotas === 1 ? '' : 's') + ' adicional' + (nNotas === 1 ? '' : 'es') + ' (notas)' : '')
-    + '. Se transcribió tal cual la imagen; <a href="#" onclick="ordenarDeslindesOcr();return false">↕ ordenar por rumbo</a>';
+    + (nNotas ? ', y ' + nNotas + ' nota' + (nNotas === 1 ? '' : 's') : '')
+    + '. Se transcribió tal cual la imagen (lo que no es deslinde queda en el recuadro; para que salga en la resolución, escríbele «NOTA:» al comienzo de la línea) · <a href="#" onclick="ordenarDeslindesOcr();return false">↕ ordenar por rumbo</a>';
   decir(p.hallados
     ? '✓ Leído' + (conOcr ? ' con OCR' : '') + ': se reconocieron ' + p.hallados + ' rumbo' + (p.hallados === 1 ? '' : 's') + sitios + '. '
       + (conOcr ? '<b>Revisa las cifras y nombres</b>: el OCR puede confundir letras y números.' : 'Revisa el resultado.')
