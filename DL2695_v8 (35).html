@@ -11721,8 +11721,6 @@ function bloquesFinales(tab, base){
   }
   const final = salida.map(b => ({...b, texto: lineaANotifMayus(tab, b.id, firmaSubrogante(b.id, vistoInvestidura(textoSegunContexto(tab,b.id,b.texto))))}));
   if(/Rectificatoria$/.test(tab)) return final.map(b => ({...b, texto: ajustarTextoRectificatoria(b.id, b.texto)}));
-  /* Resolución C: «comuna de …, provincia de …» en minúscula, como en todos los modelos C. */
-  if(tab === 'resolucionC') return final.map(b => ({...b, texto: String(b.texto).replace(/\bComuna de\b/g, 'comuna de').replace(/\bProvincia de\b/g, 'provincia de')}));
   return final;
 }
 
