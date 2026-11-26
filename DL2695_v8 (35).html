@@ -8187,6 +8187,7 @@ mainTabs.forEach(btn=>{
     mainTabs.forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     const tab = btn.dataset.tab;
+    { const g = btn.closest('.nav-etapa'); if(g){ try{ localStorage.setItem('dl2695_ult_' + g.id, tab); }catch(e){} } }
     document.querySelectorAll('#mainTabs .nav-etapa').forEach(grupo=>{
       grupo.classList.toggle('grupo-activo', grupo.contains(btn));
       abrirGrupoNavegacion(grupo, grupo.contains(btn));
@@ -8246,6 +8247,15 @@ mainTabs.forEach(btn=>{
 });
 
 
+function abrirProductoDeEtapa(grupo){
+  let ult = ''; try{ ult = localStorage.getItem('dl2695_ult_' + grupo.id) || ''; }catch(e){}
+  const botones = [...grupo.querySelectorAll('button[data-tab]')].filter(b => !b.disabled);
+  const elegido = botones.find(b => b.dataset.tab === ult)
+    || (grupo.id === 'navGrupo-otros' ? grupo.querySelector('#otrosFallecimiento button[data-tab]') : null)
+    || botones[0];
+  if(elegido) elegido.click();
+}
+
 function abrirGrupoNavegacion(grupo, abierto){
   grupo.classList.toggle('menu-abierto', abierto);
   const boton = grupo.querySelector('.nav-etapa-toggle');
@@ -8276,7 +8286,9 @@ otrosMenu.addEventListener('click',event=>{
   const productos=q(causa.getAttribute('aria-controls'));
   productos.hidden=false;
   causa.setAttribute('aria-expanded','true');
-  productos.querySelector('button').focus({preventScroll:true});
+  const primero = productos.querySelector('button[data-tab]');
+  if(primero && !productos.contains(document.querySelector('#mainTabs button[data-tab].active'))) primero.click();
+  else if(primero) primero.focus({preventScroll:true});
   productos.scrollIntoView({block:'nearest',inline:'nearest'});
 });
 otrosGrupo.addEventListener('click',event=>{
@@ -8300,6 +8312,10 @@ gruposNavegacion.forEach(grupo=>{
   boton.addEventListener('click',()=>{
     const abrir = !grupo.classList.contains('menu-abierto');
     gruposNavegacion.forEach(otro=>abrirGrupoNavegacion(otro, otro === grupo && abrir));
+    /* Al elegir una etapa distinta de la que se está viendo se abre de inmediato
+       un producto suyo: el último usado en ella o, la primera vez, el primero
+       disponible (en «Otros», la Resolución de la primera causa). */
+    if(abrir && !grupo.classList.contains('grupo-activo')) abrirProductoDeEtapa(grupo);
   });
 });
 // Los productos se expanden en la misma fila y permanecen visibles al trabajar.
