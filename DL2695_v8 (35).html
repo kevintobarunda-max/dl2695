@@ -1648,8 +1648,8 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
   <div class="field"><label for="revMotivo">Motivo de la revocación <span class="hint">· qué error o hecho nuevo la hace necesaria; se agrega al considerando 11</span></label>
     <textarea id="revMotivo" rows="4" oninput="generar()" placeholder="erra en su considerando N°4 al señalar como Rol Matriz el N°266-133 de la comuna de Río Claro, toda vez que el Rol Matriz correcto correspondería al N°26-133 de la comuna de Río Claro según Certificado de Avalúo Fiscal que consta en el expediente administrativo."></textarea></div>
   <div class="grid2">
-    <div class="field"><label for="revRolMatriz">Rol Matriz SII (considerando 9)</label><input type="text" id="revRolMatriz" data-fmt="rol" oninput="generar()"></div>
-    <div class="field"><label for="revComunaRol">Comuna del Rol Matriz</label><input type="text" id="revComunaRol" oninput="generar()"></div>
+    <div class="field"><label for="revRolMatriz">Rol Matriz SII (considerando 9)</label><input type="text" id="revRolMatriz" data-fmt="rol" oninput="generar()" placeholder="En blanco: el Rol Matriz de B o el rol del inmueble"></div>
+    <div class="field"><label for="revComunaRol">Comuna del Rol Matriz</label><select id="revComunaRol" onchange="generar()"><option value="">Igual a la comuna del inmueble</option><optgroup label="Provincia de Talca"><option value="Talca">Talca</option><option value="Constitución">Constitución</option><option value="Curepto">Curepto</option><option value="Empedrado">Empedrado</option><option value="Maule">Maule</option><option value="Pelarco">Pelarco</option><option value="Pencahue">Pencahue</option><option value="Río Claro">Río Claro</option><option value="San Clemente">San Clemente</option><option value="San Rafael">San Rafael</option></optgroup><optgroup label="Provincia de Cauquenes"><option value="Cauquenes">Cauquenes</option><option value="Chanco">Chanco</option><option value="Pelluhue">Pelluhue</option></optgroup><optgroup label="Provincia de Curicó"><option value="Curicó">Curicó</option><option value="Hualañé">Hualañé</option><option value="Licantén">Licantén</option><option value="Molina">Molina</option><option value="Rauco">Rauco</option><option value="Romeral">Romeral</option><option value="Sagrada Familia">Sagrada Familia</option><option value="Teno">Teno</option><option value="Vichuquén">Vichuquén</option></optgroup><optgroup label="Provincia de Linares"><option value="Linares">Linares</option><option value="Colbún">Colbún</option><option value="Longaví">Longaví</option><option value="Parral">Parral</option><option value="Retiro">Retiro</option><option value="San Javier">San Javier</option><option value="Villa Alegre">Villa Alegre</option><option value="Yerbas Buenas">Yerbas Buenas</option></optgroup></select></div>
   </div>
 </fieldset>
 <fieldset><legend>Resolución de revocación</legend>
@@ -11503,6 +11503,7 @@ function generarAhora(){
   avisoDomicilioFallecimiento();
   sincronizarSiglaPlano();
   aplicarSinInscripcionUI();
+  { const o = q('revComunaRol') && q('revComunaRol').options[0]; if(o) o.textContent = 'Igual a la comuna del inmueble' + (val('comuna') ? ' (' + val('comuna') + ')' : ''); }
   if(activeMainTab() === 'resolucionC') renderRevisionC();
   autoCbrPrincipal();
   ubicarMinutaCompartida(activeMainTab());
