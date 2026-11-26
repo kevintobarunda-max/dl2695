@@ -16422,14 +16422,17 @@ function datosReposicionParaMinuta(){
     jqFundFecha: val('repResDenegFecha'),
     jqDecision: resumenDecisionJq(fundamentos)
   };
-  const sinAyuda = t => String(t || '').replace(/\[[^\]]*\]/g, '').replace(/[ \t]{2,}/g, ' ').trim();
-  let cons5 = '';
+  /* Tabla de la minuta = considerandos 4 y 5 de la Resolución de Reposición, tal como
+     quedaron redactados (con sus ediciones), sin el número: parten con «Que, …». */
+  const sinAyuda = t => String(t || '').replace(/\[[^\]]*\]/g, '').replace(/[ \t]{2,}/g, ' ').replace(/\s+([.,;])/g, '$1').trim();
+  let cons4 = '', cons5 = '';
   try{
-    const b5 = bloquesFinales('resolucionRep', partesDe('resolucionRep').bloques).find(b => b.id === 'cons-5');
-    if(b5) cons5 = sinAyuda(quitarNumeracion(b5.texto)).replace(/^Que,\s*/i, '');
-    cons5 = cons5 ? cons5.charAt(0).toUpperCase() + cons5.slice(1) : '';
-  }catch(e){ console.warn('Considerando 5 de Reposición:', e); }
-  return {compartidos, arg: val('repAlegacion'), desc: [sinAyuda(fundamentos), cons5].filter(Boolean).join('\n\n')};
+    const fin = bloquesFinales('resolucionRep', partesDe('resolucionRep').bloques);
+    const texto = id => { const b = fin.find(x => x.id === id); return b ? sinAyuda(quitarNumeracion(b.texto)) : ''; };
+    cons4 = texto('cons-4');
+    cons5 = texto('cons-5');
+  }catch(e){ console.warn('Considerandos 4 y 5 de Reposición:', e); }
+  return {compartidos, arg: cons4 || val('repAlegacion'), desc: cons5};
 }
 
 /* Botón manual: pasa ahora mismo los datos de Reposición a la Minuta, aunque la
