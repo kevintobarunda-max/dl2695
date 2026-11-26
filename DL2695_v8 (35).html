@@ -7400,7 +7400,7 @@ function sincronizarMenusTerrenoC(){
     if(!menu.options.length){
       menu.add(new Option('Seleccionar…',''));
       if(id==='cModoAdq'){
-        const nombres={comite:'compraventa de derechos a comité o loteo',herenciaCesion:'herencia y cesión de derechos',herencia:'herencia',simple:'simple posesión material'};
+        const nombres=MODO_ADQ_TEXTO_C;
         for(const op of q('modoAdq').options){
           if(op.value==='libre') continue;
           menu.add(new Option(op.text,nombres[op.value] || op.text.toLocaleLowerCase('es-CL')));
@@ -9494,15 +9494,31 @@ function vistoInvestidura(texto){
 function vistoConfigurable(tab, base, campoTexto){
   if(tab !== 'resolucionC') return base;
   if(val(campoTexto || 'vTexto_' + tab)) return val(campoTexto || 'vTexto_' + tab);
-  const nombramiento = `Decreto Supremo Nº ${blank(val('vNomN'))}, de ${fechaProsa(val('vNomFecha'))}, de nombramiento del SEREMI.`;
+  /* Redacción de los modelos C del repositorio: «Decreto Supremo Nº 30 de fecha 26 de marzo
+     del año 2026 de nombramiento del SEREMI.» */
+  const fechaNom = fechaProsa(val('vNomFecha')).replace(/ de (\d{4})$/, ' del año $1');
+  const nombramiento = `Decreto Supremo Nº ${blank(val('vNomN'))} de fecha ${fechaNom} de nombramiento del SEREMI.`;
+  /* «1917, 107 y 108» → «Nº 1917, Nº 107 y N° 108», como en el modelo. */
+  const delegacion = String(val('vDelegacion') || '').split(/\s*,\s*|\s+y\s+/).map(x => x.replace(/^N[º°]\s*/i, '').trim()).filter(Boolean);
+  const delegTexto = delegacion.length ? unirConY(delegacion.map(n => 'Nº ' + n), ', ') : blank('');
   const investidura = chk('subrogancia')
     ? (val('vSubrogancia') || VISTO_SUBROGANCIA + '.')
     : nombramiento;
   return base
-    .replace(/Resolución Nº 36, de 2024,?/g, `Resolución Nº ${blank(val('vCgrN'))}, de ${blank(val('vCgrAnio'))},`)
-    .replace(/Resoluciones Exentas Nº 1917, Nº 107 y N[º°] 108, todas de 1996/g, `Resoluciones Exentas Nº ${blank(val('vDelegacion'))}, todas de ${blank(val('vDelegacionAnio'))}`)
+    .replace(/Resolución Nº 36, de 2024,?/g, `Resolución Nº ${blank(val('vCgrN'))} de ${blank(val('vCgrAnio'))}`)
+    .replace(/Resoluciones Exentas Nº 1917, Nº 107 y N[º°] 108, todas de 1996/g, `Resoluciones Exentas ${delegTexto}, todas de ${blank(val('vDelegacionAnio'))}`)
     .replace(/Decreto Supremo Nº 30, de 26 de marzo de 2026, de nombramiento del SEREMI[.,]/g, investidura)
     .replace('Artículo 80 de la Ley N° 18.834, sobre Estatuto Administrativo, que establece subrogancia del SEREMI.', investidura);
+}
+
+/* Cómo se nombra la forma de adquisición en el considerando 2 de la Resolución C
+   (modelos del repositorio: «…la que adquirió por Promesa de Compraventa.»). */
+const MODO_ADQ_TEXTO_C = {comite:'compraventa de derechos a comité o loteo', herenciaCesion:'herencia y cesión de derechos',
+  herencia:'herencia', simple:'simple posesión material', promesa:'Promesa de Compraventa'};
+function modoAdqTextoC(){
+  const sel = q('modoAdq'); if(!sel || !sel.value || sel.value === 'libre') return '';
+  const op = sel.options[sel.selectedIndex];
+  return MODO_ADQ_TEXTO_C[sel.value] || (op ? op.text.toLocaleLowerCase('es-CL') : '');
 }
 
 function ubicacionAdministrativa(d){
@@ -9564,7 +9580,8 @@ function textoSegunContexto(tab, bloque, texto){
   /* En la revocación (modelo Res. Ex. N° 620) la institución va en prosa en todo el texto,
      salvo la firma y el «DE:». */
   const considerando = (tab.startsWith('resolucion') && /^cons(?:-|$)/.test(bloque))
-    || (/Revocacion$/.test(tab) && !/^(firma|de|cabecera|contacto)$/.test(bloque));
+    || (/Revocacion$/.test(tab) && !/^(firma|de|cabecera|contacto)$/.test(bloque))
+    || (tab === 'resolucionC' && bloque === 'vistos');
   const normalizado = mayusculasAutoridad(tratamientosEnMinuscula(texto), considerando);
   if(bloque === 'titulo' || bloque === 'materia'){
     const sinTratamientos = normalizado.replace(/\b(?:don|doña)\b/gi, '');
@@ -9790,7 +9807,7 @@ function partesCPositiva(tab){
       bl('cons-titulo', 'CONSIDERANDO:'),
       bl('cons-1', `1.- Que, según consta del plano Nº ${blank(val('cPlano'))} el inmueble objeto de la petición, se encuentra ubicado en el lugar ${ubicacionAdministrativa(d)}, Rol de Avalúo N° ${d.rolAvaluo} de una superficie aproximada de ${d.superficieTexto}, cuyos deslindes son los siguientes:`));
     bloquesDeslindes().forEach(b=>bloques.push(bl(b.id,b.texto)));
-    bloques.push(bl('cons-2', `2.- Que fue verificado por el Servicio y consta de los antecedentes relacionados, que ${peticionario()} ${v('ejerce','ejercen')} efectivamente por más de cinco años la posesión material sobre el mencionado inmueble, en forma exclusiva y continua, sin violencia ni clandestinidad, la que ${v('adquirió','adquirieron')} por ${blank(val('cModoAdq'))}.`),
+    bloques.push(bl('cons-2', `2.- Que fue verificado por el Servicio y consta de los antecedentes relacionados, que ${peticionario()} ${v('ejerce','ejercen')} efectivamente por más de cinco años la posesión material sobre el mencionado inmueble, en forma exclusiva y continua, sin violencia ni clandestinidad, la que ${v('adquirió','adquirieron')} por ${blank(val('cModoAdq') || modoAdqTextoC())}.`),
       bl('cons-3', `3.- Que, mediante declaración jurada acompañada se acredita que no existe juicio pendiente, en contra ${delSolicitante()}, en el cual se discuta el dominio o posesión del mismo inmueble, iniciado con antelación a la fecha de presentación de la solicitud administrativa de regularización, tratándose de propiedad con avalúo inferior al límite fijado por la ley.`),
       bl('resuelvo-titulo', 'RESUELVO:'));
     const personas = sols().map(p=> esJuridica(p)
