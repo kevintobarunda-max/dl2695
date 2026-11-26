@@ -1279,7 +1279,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
         </div>
         <div data-lateral="seremi" class="field">
           <label>SEREMI de Bienes Nacionales</label>
-          <input type="text" id="seremi" value="Flavio Esteban Bazzi Pezoa" autocomplete="off">
+          <input type="text" id="seremi" value="Flavio Bazzi Pezoa" autocomplete="off">
         </div>
         <div data-lateral="subrogancia" class="check-row" id="rowSubrogancia">
           <input type="checkbox" id="subrogancia" onchange="toggleClass('rowSubrogancia','checked',this.checked); generar();">
@@ -6589,7 +6589,7 @@ function prepararImportacion(tabla){
              este campo no tendría efecto y se oculta en ese modo. -->
         <div class="field" id="ofFieldSeremi">
           <label>SEREMI de Bienes Nacionales (firma)</label>
-          <input type="text" id="ofSeremi" value="Flavio Esteban Bazzi Pezoa" autocomplete="off">
+          <input type="text" id="ofSeremi" value="Flavio Bazzi Pezoa" autocomplete="off">
         </div>
         <div class="field">
           <label>Iniciales de distribución</label>
@@ -9429,7 +9429,7 @@ function partesInforme(){
 /* Nombres del Seremi titular y subrogante. Si el campo trae algo que no es un nombre
    (números, una sola palabra: p. ej. lo que mete el autocompletado del navegador),
    se usa el nombre de siempre. */
-const SEREMI_TITULAR = 'Flavio Esteban Bazzi Pezoa', SEREMI_SUBROGANTE = 'Octavio Fredes Fuenzalida';
+const SEREMI_TITULAR = 'Flavio Bazzi Pezoa', SEREMI_SUBROGANTE = 'Octavio Fredes Fuenzalida';
 function esNombrePersona(t){
   const v = String(t || '').trim();
   return !/\d/.test(v) && v.split(/\s+/).filter(p => /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.-]{2,}$/.test(p)).length >= 2;
@@ -9443,6 +9443,8 @@ function seremiFirmante(){
    navegador en todo el generador (rellenaba campos con datos de direcciones). */
 function repararCamposSeremi(){
   const t = q('seremi'), sb = q('seremiSubrogante');
+  /* 26-11-2026: el nombre del Seremi va sin el segundo nombre. */
+  ['seremi', 'ofSeremi'].forEach(id => { const e = q(id); if(e && /^\s*flavio\s+esteban\s+bazzi\s+pezoa\s*$/i.test(e.value)) e.value = SEREMI_TITULAR; });
   if(t && !esNombrePersona(t.value)) t.value = SEREMI_TITULAR;
   if(sb && !esNombrePersona(sb.value)) sb.value = SEREMI_SUBROGANTE;
   const of = q('ofSeremi'); if(of && !esNombrePersona(of.value)) of.value = SEREMI_TITULAR;
@@ -11069,7 +11071,7 @@ const SIGLAS_ABOGADOS = {
 function inicialesDistribucion(){
   /* Convención del Servicio: inicial del primer nombre + inicial de cada
      apellido, ignorando los nombres intermedios.
-     "Flavio Esteban Bazzi Pezoa" -> FBP · "Mario Brevis Morales" -> MBM */
+     "Flavio Bazzi Pezoa" -> FBP · "Mario Brevis Morales" -> MBM */
   const ini = (nombre)=>{
     const partes = (nombre||'').trim().split(/\s+/).filter(Boolean);
     if(partes.length === 0) return '';
