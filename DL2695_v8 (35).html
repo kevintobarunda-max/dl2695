@@ -10285,8 +10285,15 @@ function parsearRumbos(t){
 
 /* Texto pegado → lista de sitios. Un sitio nuevo empieza con «Lote "a"», «Sitio 2», «Parcela B»…
    (con o sin «Superficie : 2.304,93 m²»). Sin encabezados es un único sitio. */
+/* Líneas «NOTA: …» / «OBSERVACIÓN: …» del recuadro: no son deslindes, van aparte. */
+const RE_NOTA_DESLINDE = /^\s*(?:NOTAS?|OBSERVACI[OÓ]N(?:ES)?|OBS\.?)\s*[:.\-–]\s*(.*)$/i;
 function parsearDeslindes(texto){
-  const t = String(texto || '').replace(/\r/g, '');
+  const notas = [];
+  const t = String(texto || '').replace(/\r/g, '').split('\n').filter(l => {
+    const m = l.match(RE_NOTA_DESLINDE);
+    if(m){ if(m[1].trim()) notas.push(m[1].trim()); return false; }
+    return true;
+  }).join('\n');
   const reSitio = new RegExp('(^|[\\n;]|\\.\\s|\\s)(Lote|Sitio|Parcela|Retazo|Predio|Hijuela|Fracci[oó]n)\\s+(?:N[°º.]?\\s*)?([“”"\']?[A-Za-z0-9]{1,3}[“”"\']?)(?![' + LETRAS_ES + '0-9])\\s*(?:[:\\-–]\\s*)?(?:Superficie\\s*:?\\s*([\\d.,]+\\s*(?:mts2|mt2|m[²2?*³]|hect[áa]reas?|há|hás|ha)))?', 'gi');
   const cabeceras = []; let m;
   while((m = reSitio.exec(t))){
@@ -10311,14 +10318,14 @@ function parsearDeslindes(texto){
     if(z.c){ slug = slug || 's' + (sitios.length + 1); if(usados[slug]) slug += (sitios.length + 1); usados[slug] = 1; }
     sitios.push({nombre: z.c ? z.c.nombre : '', slug, superficie: z.c ? z.c.superficie : '', rumbos: r.rumbos});
   });
-  return {sitios, hallados};
+  return {sitios, hallados, notas};
 }
 
 function deslindesActuales(){
   const bruto = val('bDeslindes');
   if(bruto){
     const p = parsearDeslindes(bruto);
-    return p.hallados ? {sitios: p.sitios, libre: ''} : {sitios: [], libre: bruto.replace(/\s+/g, ' ').trim()};
+    return p.hallados ? {sitios: p.sitios, libre: '', notas: p.notas || []} : {sitios: [], libre: bruto.replace(/\s+/g, ' ').trim()};
   }
   /* Con el recuadro vacío no hay deslindes (ya no se usan datos de borradores antiguos). */
   return {sitios: [], libre: ''};
@@ -10330,6 +10337,7 @@ function textoDeslindesOrdenado(p){
     if(si.nombre) lineas.push(si.nombre + (si.superficie ? ' Superficie : ' + si.superficie : ''));
     RUMBOS_DESLINDE.filter(r => si.rumbos[r[0]]).forEach(r => lineas.push(r[1] + ': ' + si.rumbos[r[0]]));
   });
+  (p.notas || []).forEach(n => lineas.push('NOTA: ' + n));
   return lineas.join('\n');
 }
 
@@ -10378,6 +10386,7 @@ function bloquesDeslindes(){
     });
   });
   if(!out.length) return [{id: 'deslinde-vacio', texto: '[Completa el recuadro de minuta de deslindes compartido por B y C.]'}];
+  (d.notas || []).forEach((n, i) => out.push({id: 'deslinde-nota-' + (i + 1), texto: 'NOTA: ' + n.replace(/\s+/g, ' ').trim().replace(/[;\s]*$/, '').replace(/([^.])$/, '$1.')}));
   return out;
 }
 
@@ -17098,6 +17107,16 @@ const ESTRATEGIAS_OCR_B = [
   {o: {fondo: true, enderezar: true, rojo: true, ancho: 3000}, psm: '3'},
   {o: {fondo: true, enderezar: true, rojo: true, binario: true, ancho: 3600}, psm: '6'}
 ];
+/* Distancia de edición (Levenshtein) entre dos palabras cortas: sirve para
+   reconocer «metros» mal leído por el OCR («metres», «rnetros»). */
+function distLev(a, b){
+  a = String(a); b = String(b);
+  const d = Array.from({length: a.length + 1}, (_, i) => [i]);
+  for(let j = 1; j <= b.length; j++) d[0][j] = j;
+  for(let i = 1; i <= a.length; i++) for(let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return d[a.length][b.length];
+}
 function limpiarOcrDeslindes(t){
   let x = String(t).normalize('NFC').replace(/[“”«»„]/g, '"').replace(/[‘’´`]/g, "'");
   x = x.replace(/[|¦\\~^]/g, ' ').replace(/[-–—_=·•]{3,}|\.{4,}/g, '  ');            // rayas y puntos de relleno
@@ -17196,6 +17215,11 @@ async function ocrDeslindesArchivos(files){
   if(!bruto){ decir('⚠ No se encontró texto en el archivo. Prueba con una imagen más nítida o escríbelos a mano.', '#a33'); return; }
 
   const p = parsearDeslindes(bruto);
+  /* Todo lo que no es deslinde (notas, observaciones, superficie, servidumbres…) se
+     conserva como NOTA, para revisarlo o borrarlo en el recuadro. */
+  const otros = p.hallados ? textosNoDeslindeOcr(bruto) : [];
+  const yaNotas = new Set((p.notas || []).map(n => normTxt(n)));
+  otros.forEach(o => { if(!yaNotas.has(normTxt(o))) (p.notas = p.notas || []).push(o); });
   const nuevo = p.hallados ? textoDeslindesOrdenado(p) : bruto;
   if(ta){
     const previo = ta.value.trim();
@@ -17205,7 +17229,8 @@ async function ocrDeslindesArchivos(files){
     } else ta.value = nuevo;
     generar();
   }
-  const sitios = p.sitios.length > 1 ? ' en ' + p.sitios.length + ' lotes/sitios' : '';
+  const sitios = (p.sitios.length > 1 ? ' en ' + p.sitios.length + ' lotes/sitios' : '')
+    + ((p.notas || []).length ? ', y ' + p.notas.length + ' nota' + (p.notas.length === 1 ? '' : 's') + ' con el resto del texto' : '');
   decir(p.hallados
     ? '✓ Leído' + (conOcr ? ' con OCR' : '') + ': se reconocieron ' + p.hallados + ' rumbo' + (p.hallados === 1 ? '' : 's') + sitios + '. '
       + (conOcr ? '<b>Revisa las cifras y nombres</b>: el OCR puede confundir letras y números.' : 'Revisa el resultado.')
@@ -17232,6 +17257,33 @@ async function pegarCapturaDeslindes(){
   const zona = q('bDeslindesOcr'); if(zona) zona.focus();
   decir('👉 Presiona <b>Ctrl+V</b> ahora para pegar la captura.');
 }
+/* Líneas del texto leído que no forman parte de ningún deslinde: lo que va antes
+   del primer rumbo, lo que viene después de una línea en blanco o de un bloque
+   ajeno (Superficie, Observaciones, Escala…). Se juntan por párrafo. Se omiten
+   títulos («MINUTA DE DESLINDES») y basura de pocas letras. */
+function textosNoDeslindeOcr(texto){
+  const reRumbo = /^\s*(?:al\s+|lado\s+)?(?:nor[\s-]?(?:este|oeste|oriente|poniente)|sur[\s-]?(?:este|oeste|oriente|poniente)|norte|sur|este|oriente|oeste|poniente)\b\s*(?:[:：.)\-–—]|\s{2,}|$)/i;
+  const reSitio = /^\s*(?:lote|sitio|parcela|retazo|predio|hijuela|fracci[oó]n)\s+(?:n[°º.]?\s*)?["“”']?[a-z0-9]{1,3}\b/i;
+  const reCorte = /^\s*(?:superficie\b|sup\.|total\b|observaci|notas?\b|escala\b|fecha\b|firma|propietari|solicitante\b|rol\b|plano\b|coordenadas|v[ée]rtice|cuadro\b|datum|huso|proyecci|ingeniero|top[óo]grafo|profesional|servidumbre)/i;
+  const reTitulo = /^\s*(?:minuta(?:\s+de)?\s+deslindes?|deslindes?(?:\s+particulares)?|cuadro\s+de\s+deslindes?|deslindes\s+y\s+medidas)\s*[:.]?\s*$/i;
+  const util = l => (l.match(/[A-Za-zÁÉÍÓÚáéíóúÑñ]{3,}/g) || []).length >= 2;
+  const parrafos = []; let actual = [], enDeslinde = false;
+  const cerrar = () => { if(actual.length){ parrafos.push(actual.join(' ').replace(/\s+/g, ' ').trim()); actual = []; } };
+  String(texto || '').replace(/\r/g, '').split('\n').forEach(linea => {
+    const l = linea.trim();
+    if(!l){ enDeslinde = false; cerrar(); return; }
+    if(reRumbo.test(l) || reSitio.test(l)){ enDeslinde = true; cerrar(); return; }
+    if(enDeslinde && !reCorte.test(l)) return;                 // continuación del deslinde
+    enDeslinde = false;
+    if(reTitulo.test(l) || !util(l)) return;
+    const nota = l.match(RE_NOTA_DESLINDE);
+    if(nota){ cerrar(); actual.push(nota[1]); return; }
+    actual.push(l);
+  });
+  cerrar();
+  return parrafos.filter(util);
+}
+
 /* Arrastrar y soltar sobre la zona o sobre el recuadro; pegar una captura (Ctrl+V) en el recuadro o en la zona. */
 (function(){
   const arrancar = ()=>{
