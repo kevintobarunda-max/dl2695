@@ -48,8 +48,8 @@
     --azul-800:#d0688f;
     --azul-700:#e087a9;
     --azul-100:#fde9f1;
-    --rojo:#e98bb0;
-    --rojo-dark:#b04a74;
+    --rojo:#c4527f;
+    --rojo-dark:#9c3f68;
     --papel:#fffafc;
     --papel-borde:#f1d0dc;
     --tinta:#4b2c39;
@@ -63,12 +63,25 @@
     background-attachment:fixed;
   }
   body[data-tema="rosa"] header.app{
-    background:linear-gradient(120deg,#f2a7c3 0%,#e88fb3 45%,#c9a2e6 100%);
-    border-bottom:2px solid #fff0f6;
+    background:linear-gradient(120deg,#b94d7a 0%,#a8508a 50%,#8a5aa6 100%);
+    border-bottom:3px solid #f7c6d9;
     box-shadow:0 6px 18px rgba(185,82,124,.25);
   }
-  body[data-tema="rosa"] nav.tabs .nav-etapa-toggle,body[data-tema="rosa"] nav.tabs>button[data-tab]{background:rgba(255,255,255,.32) !important;color:#fff !important;border-color:rgba(255,255,255,.65) !important;border-radius:999px;text-shadow:0 1px 2px rgba(150,60,100,.35);}
-  body[data-tema="rosa"] nav.tabs .nav-etapa-toggle:hover,body[data-tema="rosa"] nav.tabs>button[data-tab]:hover{background:rgba(255,255,255,.5) !important;}
+  body[data-tema="rosa"] nav.tabs .nav-etapa-toggle,body[data-tema="rosa"] nav.tabs>button[data-tab]{background:rgba(255,255,255,.16) !important;color:#fff !important;border-color:rgba(255,255,255,.55) !important;border-radius:999px;}
+  body[data-tema="rosa"] nav.tabs .nav-etapa-toggle:hover,body[data-tema="rosa"] nav.tabs>button[data-tab]:hover{background:rgba(255,255,255,.3) !important;}
+  body[data-tema="rosa"] nav.tabs :is(.nav-documentos,.otros-productos) button{color:#fff !important;opacity:1 !important;border-color:rgba(255,255,255,.45) !important;background:rgba(255,255,255,.1) !important;}
+  body[data-tema="rosa"] nav.tabs :is(.nav-documentos,.otros-productos) button.active{background:#fff !important;color:#9c3f68 !important;}
+  body[data-tema="rosa"] nav.tabs button:disabled{opacity:.75 !important;color:#fbe3ee !important;}
+  body[data-tema="rosa"] header.app,body[data-tema="rosa"] header.app .hint,body[data-tema="rosa"] #avisoGuardado,body[data-tema="rosa"] #relojNombre,
+  body[data-tema="rosa"] .reloj-display span{color:#fff !important;opacity:1 !important;}
+  body[data-tema="rosa"] .save-bar button,body[data-tema="rosa"] .perfil-chip{color:#fff !important;border-color:rgba(255,255,255,.6) !important;background:rgba(255,255,255,.14) !important;}
+  body[data-tema="rosa"] .reloj-mini button{color:#9c3f68;}
+  body[data-tema="rosa"] .footer-note,body[data-tema="rosa"] .footer-note a{color:#7a4a60 !important;}
+  body[data-tema="rosa"] .btn-red{background:linear-gradient(135deg,#c4527f,#a8508a);color:#fff;}
+  body[data-tema="rosa"] .btn-red:hover{background:#9c3f68;}
+  body[data-tema="rosa"] .reloj-mini button:disabled{opacity:.7;color:#9c3f68;}
+  body[data-tema="rosa"] .reloj-display{background:rgba(70,20,50,.35) !important;}
+  body[data-tema="rosa"] .reloj-display b{color:#ffd6e7 !important;}
   body[data-tema="rosa"] nav.tabs .grupo-activo>.nav-etapa-toggle,body[data-tema="rosa"] nav.tabs>button[data-tab].active,
   body[data-tema="rosa"] nav.tabs button.active{background:#fff !important;color:#b04a74 !important;border-color:#fff !important;text-shadow:none;box-shadow:0 2px 10px rgba(176,74,116,.3) !important;}
   body[data-tema="rosa"] .panel{border-radius:18px;box-shadow:0 8px 24px rgba(185,82,124,.12);border-color:#f3d3df;}
@@ -16131,6 +16144,11 @@ const CH = (()=>{
    ============================================================ */
 const PERFIL_CLAVE = 'dl2695_perfil';
 const TEMAS_PERFIL = {'nicolas munoz mora': 'rosa'};
+function temaDePerfil(nombre){
+  const n = normPerfil(nombre);
+  if(TEMAS_PERFIL[n]) return TEMAS_PERFIL[n];
+  return /\bnicolas\b/.test(n) && /\bmunoz\b/.test(n) ? 'rosa' : '';
+}
 function perfilGuardado(){ try{ return JSON.parse(localStorage.getItem(PERFIL_CLAVE) || 'null'); }catch(e){ return null; } }
 function perfilActual(){ return perfilGuardado() || {rol: '', nombre: ''}; }
 function normPerfil(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
@@ -16215,7 +16233,7 @@ function aplicarPerfil(cambio){
   const p = perfilActual();
   document.body.dataset.perfil = p.rol || '';
   /* Tema rosado con gatito blanco para el perfil de Nicolás Muñoz Mora. */
-  document.body.dataset.tema = TEMAS_PERFIL[normPerfil(p.nombre)] || '';
+  document.body.dataset.tema = temaDePerfil(p.nombre);
   const chip = q('perfilChip');
   if(chip) chip.textContent = p.nombre ? `${document.body.dataset.tema === 'rosa' ? '🐱' : '👤'} ${p.nombre.split(/\s+/).slice(0, 2).join(' ')} · ${p.rol === 'abogado' ? 'Abogado/a' : 'Postulante'}` : '👤 Elegir perfil';
   if(!p.rol) return;
