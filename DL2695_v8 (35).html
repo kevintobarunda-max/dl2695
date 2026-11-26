@@ -10309,14 +10309,27 @@ function parsearRumbos(t){
 /* Texto pegado → lista de sitios. Un sitio nuevo empieza con «Lote "a"», «Sitio 2», «Parcela B»…
    (con o sin «Superficie : 2.304,93 m²»). Sin encabezados es un único sitio. */
 /* Líneas «NOTA: …» / «OBSERVACIÓN: …» del recuadro: no son deslindes, van aparte. */
-const RE_NOTA_DESLINDE = /^\s*(?:NOTAS?|OBSERVACI[OÓ]N(?:ES)?|OBS\.?)\s*[:.\-–]\s*(.*)$/i;
+const RE_NOTA_DESLINDE = /^\s*(?:NOTAS?|OBSERVACI[OÓ]N(?:ES)?|OBS\.?)(?:\s*(?:N[°º.]?\s*)?\d+|\s+[a-z]\))?\s*[:.\-–]\s*(.*)$/i;
 function parsearDeslindes(texto){
-  const notas = [];
-  const t = String(texto || '').replace(/\r/g, '').split('\n').filter(l => {
-    const m = l.match(RE_NOTA_DESLINDE);
-    if(m){ if(m[1].trim()) notas.push(m[1].trim()); return false; }
-    return true;
-  }).join('\n');
+  /* Las notas se copian TEXTUALES: con su etiqueta tal como está («Nota:», «NOTA:»,
+     «Observación:»), en su orden y con todas sus líneas (hasta una línea en blanco,
+     un rumbo o un lote). No van mezcladas con los deslindes. */
+  const notas = [], restantes = [];
+  const reRumboLinea = /^\s*(?:al\s+|lado\s+)?(?:nor[\s-]?(?:este|oeste|oriente|poniente)|sur[\s-]?(?:este|oeste|oriente|poniente)|norte|sur|este|oriente|oeste|poniente)\b\s*(?:[:：.)\-–—]|\s{2,})/i;
+  const reSitioLinea = /^\s*(?:lote|sitio|parcela|retazo|predio|hijuela|fracci[oó]n)\s+(?:n[°º.]?\s*)?["“”']?[a-z0-9]{1,3}\b/i;
+  let actual = null;
+  String(texto || '').replace(/\r/g, '').split('\n').forEach(l => {
+    if(RE_NOTA_DESLINDE.test(l)){
+      if(actual) notas.push(actual.join(' ').replace(/[ \t]+/g, ' ').trim());
+      actual = [l.trim()];
+      return;
+    }
+    if(actual && l.trim() && !reRumboLinea.test(l) && !reSitioLinea.test(l)){ actual.push(l.trim()); return; }
+    if(actual){ notas.push(actual.join(' ').replace(/[ \t]+/g, ' ').trim()); actual = null; }
+    restantes.push(l);
+  });
+  if(actual) notas.push(actual.join(' ').replace(/[ \t]+/g, ' ').trim());
+  const t = restantes.join('\n');
   const reSitio = new RegExp('(^|[\\n;]|\\.\\s|\\s)(Lote|Sitio|Parcela|Retazo|Predio|Hijuela|Fracci[oó]n)\\s+(?:N[°º.]?\\s*)?([“”"\']?[A-Za-z0-9]{1,3}[“”"\']?)(?![' + LETRAS_ES + '0-9])\\s*(?:[:\\-–]\\s*)?(?:Superficie\\s*:?\\s*([\\d.,]+\\s*(?:mts2|mt2|m[²2?*³]|hect[áa]reas?|há|hás|ha)))?', 'gi');
   const cabeceras = []; let m;
   while((m = reSitio.exec(t))){
@@ -10364,7 +10377,7 @@ function textoDeslindesOrdenado(p){
     if(si.nombre) lineas.push(si.nombre + (si.superficie ? ' Superficie : ' + si.superficie : ''));
     RUMBOS_DESLINDE.filter(r => si.rumbos[r[0]]).forEach(r => lineas.push(r[1] + ': ' + si.rumbos[r[0]]));
   });
-  (p.notas || []).forEach(n => lineas.push('NOTA: ' + n));
+  (p.notas || []).forEach(n => lineas.push(n));
   return lineas.join('\n');
 }
 
@@ -10413,7 +10426,8 @@ function bloquesDeslindes(){
     });
   });
   if(!out.length) return [{id: 'deslinde-vacio', texto: '[Completa el recuadro de minuta de deslindes compartido por B y C.]'}];
-  (d.notas || []).forEach((n, i) => out.push({id: 'deslinde-nota-' + (i + 1), texto: 'NOTA: ' + n.replace(/\s+/g, ' ').trim().replace(/[;\s]*$/, '').replace(/([^.])$/, '$1.')}));
+  /* Notas al final, textuales y en su orden (sin cambiar etiqueta ni puntuación). */
+  (d.notas || []).forEach((n, i) => out.push({id: 'deslinde-nota-' + (i + 1), texto: n}));
   return out;
 }
 
@@ -17326,8 +17340,9 @@ function ordenarDeslindesOcr(){
   const ta = q('bDeslindes'); if(!ta) return;
   const p = parsearDeslindes(ta.value);
   if(!p.hallados){ flashStatus('No se reconocieron rumbos para ordenar.'); return; }
-  const yaNotas = new Set((p.notas || []).map(n => normTxt(n)));
-  textosNoDeslindeOcr(ta.value).forEach(o => { if(!yaNotas.has(normTxt(o))) (p.notas = p.notas || []).push(o); });
+  const sinEtiqueta = n => normTxt(String(n).replace(RE_NOTA_DESLINDE, '$1'));
+  const yaNotas = new Set((p.notas || []).map(sinEtiqueta));
+  textosNoDeslindeOcr(ta.value).forEach(o => { if(!yaNotas.has(normTxt(o)) && ![...yaNotas].some(y => y.startsWith(normTxt(o)))) (p.notas = p.notas || []).push('NOTA: ' + o); });
   ta.value = textoDeslindesOrdenado(p);
   generar();
   flashStatus('Deslindes ordenados por rumbo ✓');
