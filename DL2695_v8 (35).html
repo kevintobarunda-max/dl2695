@@ -39,6 +39,62 @@
     min-height:100vh;
   }
 
+
+  /* ---------- Tema rosado (perfil de Nicolás Muñoz Mora) ----------
+     Sólo cambia colores y decoración; los documentos exportados no se tocan. */
+  body[data-tema="rosa"]{
+    --azul-950:#f6dbe5;
+    --azul-900:#b9527c;
+    --azul-800:#d0688f;
+    --azul-700:#e087a9;
+    --azul-100:#fde9f1;
+    --rojo:#e98bb0;
+    --rojo-dark:#b04a74;
+    --papel:#fffafc;
+    --papel-borde:#f1d0dc;
+    --tinta:#4b2c39;
+    --tinta-suave:#8d6876;
+    background:
+      radial-gradient(900px 500px at 0% 0%, rgba(255,255,255,.75), transparent 60%),
+      radial-gradient(800px 600px at 100% 10%, rgba(214,190,255,.45), transparent 60%),
+      radial-gradient(700px 500px at 50% 110%, rgba(255,198,220,.7), transparent 60%),
+      radial-gradient(rgba(255,255,255,.55) 1.2px, transparent 1.3px) 0 0/22px 22px,
+      linear-gradient(160deg,#fbe3ec 0%,#f6d6e3 45%,#efd9f3 100%);
+    background-attachment:fixed;
+  }
+  body[data-tema="rosa"] header.app{
+    background:linear-gradient(120deg,#f2a7c3 0%,#e88fb3 45%,#c9a2e6 100%);
+    border-bottom:2px solid #fff0f6;
+    box-shadow:0 6px 18px rgba(185,82,124,.25);
+  }
+  body[data-tema="rosa"] nav.tabs .nav-etapa-toggle,body[data-tema="rosa"] nav.tabs>button[data-tab]{background:rgba(255,255,255,.32) !important;color:#fff !important;border-color:rgba(255,255,255,.65) !important;border-radius:999px;text-shadow:0 1px 2px rgba(150,60,100,.35);}
+  body[data-tema="rosa"] nav.tabs .nav-etapa-toggle:hover,body[data-tema="rosa"] nav.tabs>button[data-tab]:hover{background:rgba(255,255,255,.5) !important;}
+  body[data-tema="rosa"] nav.tabs .grupo-activo>.nav-etapa-toggle,body[data-tema="rosa"] nav.tabs>button[data-tab].active,
+  body[data-tema="rosa"] nav.tabs button.active{background:#fff !important;color:#b04a74 !important;border-color:#fff !important;text-shadow:none;box-shadow:0 2px 10px rgba(176,74,116,.3) !important;}
+  body[data-tema="rosa"] .panel{border-radius:18px;box-shadow:0 8px 24px rgba(185,82,124,.12);border-color:#f3d3df;}
+  body[data-tema="rosa"] .btn{border-radius:999px;}
+  body[data-tema="rosa"] .btn-primary{background:linear-gradient(135deg,#e27aa3,#c9619a);}
+  body[data-tema="rosa"] .btn-primary:hover{background:linear-gradient(135deg,#d0688f,#b04a74);}
+  body[data-tema="rosa"] .btn-outline{border-color:#e087a9;color:#b04a74;background:#fff;}
+  body[data-tema="rosa"] .btn-outline:hover{background:#fde9f1;}
+  body[data-tema="rosa"] input[type=text]:focus,body[data-tema="rosa"] input[type=date]:focus,
+  body[data-tema="rosa"] select:focus,body[data-tema="rosa"] textarea:focus{border-color:#e087a9;box-shadow:0 0 0 3px rgba(232,143,179,.22);}
+  body[data-tema="rosa"] ::selection{background:#f9c9dc;}
+  body[data-tema="rosa"] *{scrollbar-color:#eaa6c2 transparent;}
+  body[data-tema="rosa"] .c-seg button.activo[data-c="positiva"]{background:#e9f6ee;}
+  /* Gatito blanco */
+  #gatoRosa{display:none;}
+  body[data-tema="rosa"] #gatoRosa{display:block;position:fixed;right:14px;bottom:8px;width:92px;height:auto;z-index:40;
+    pointer-events:none;filter:drop-shadow(0 4px 8px rgba(185,82,124,.28));}
+  #gatoRosa .cola{transform-origin:72px 92px;animation:gatoCola 3.2s ease-in-out infinite;}
+  #gatoRosa .ojos{transform-origin:50px 44px;animation:gatoParpadeo 5s infinite;}
+  #gatoRosa .oreja-d{transform-origin:66px 26px;animation:gatoOreja 7s infinite;}
+  @keyframes gatoCola{0%,100%{transform:rotate(0)}50%{transform:rotate(-14deg)}}
+  @keyframes gatoParpadeo{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+  @keyframes gatoOreja{0%,88%,100%{transform:rotate(0)}91%{transform:rotate(-10deg)}94%{transform:rotate(4deg)}}
+  @media (prefers-reduced-motion:reduce){ #gatoRosa *{animation:none !important;} }
+  @media print{ #gatoRosa{display:none !important;} }
+
   /* ---------- Header ---------- */
   header.app{
     position:sticky; top:0; z-index:50;
@@ -911,6 +967,26 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
 </style>
 </head>
 <body>
+<!-- Gatito blanco del tema rosado (sólo se ve con ese tema; no recibe clics) -->
+<svg id="gatoRosa" viewBox="0 0 110 110" aria-hidden="true">
+  <g class="cola"><path d="M72 92 C 96 92, 104 74, 96 60 C 92 54, 86 58, 90 63 C 95 71, 90 84, 72 86 Z" fill="#fff" stroke="#e7c3d1" stroke-width="1.5"/></g>
+  <ellipse cx="50" cy="84" rx="30" ry="22" fill="#fff" stroke="#e7c3d1" stroke-width="1.5"/>
+  <ellipse cx="38" cy="102" rx="9" ry="5" fill="#fff" stroke="#e7c3d1" stroke-width="1.5"/>
+  <ellipse cx="60" cy="102" rx="9" ry="5" fill="#fff" stroke="#e7c3d1" stroke-width="1.5"/>
+  <path d="M28 30 L30 8 L44 22 Z" fill="#fff" stroke="#e7c3d1" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M31 26 L32 14 L40 22 Z" fill="#f7b6cc"/>
+  <g class="oreja-d"><path d="M72 30 L70 8 L56 22 Z" fill="#fff" stroke="#e7c3d1" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M69 26 L68 14 L60 22 Z" fill="#f7b6cc"/></g>
+  <ellipse cx="50" cy="44" rx="26" ry="22" fill="#fff" stroke="#e7c3d1" stroke-width="1.5"/>
+  <g class="ojos"><ellipse cx="40" cy="44" rx="3.2" ry="4.2" fill="#4b2c39"/><ellipse cx="60" cy="44" rx="3.2" ry="4.2" fill="#4b2c39"/>
+  <circle cx="41.2" cy="42.5" r="1.1" fill="#fff"/><circle cx="61.2" cy="42.5" r="1.1" fill="#fff"/></g>
+  <ellipse cx="33" cy="52" rx="5" ry="3" fill="#f9c2d6" opacity=".8"/><ellipse cx="67" cy="52" rx="5" ry="3" fill="#f9c2d6" opacity=".8"/>
+  <path d="M48 50 L52 50 L50 52.5 Z" fill="#f08db0"/>
+  <path d="M50 52.5 Q 47 56, 44.5 54.5 M50 52.5 Q 53 56, 55.5 54.5" fill="none" stroke="#c98aa3" stroke-width="1.2" stroke-linecap="round"/>
+  <path d="M24 48 L12 46 M24 52 L12 54 M76 48 L88 46 M76 52 L88 54" stroke="#e2bfcd" stroke-width="1" stroke-linecap="round"/>
+  <path d="M30 66 Q 50 74 70 66" fill="none" stroke="#f7b6cc" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="50" cy="71" r="3.2" fill="#f4d27a" stroke="#e0b65a" stroke-width="1"/>
+</svg>
 <!-- Sin librerías externas: el ZIP de los .docx se arma con la compresión que
      trae el propio navegador, así el archivo funciona sin conexión. -->
 
@@ -16054,6 +16130,7 @@ const CH = (()=>{
        habilita la pestaña «Reporte».
    ============================================================ */
 const PERFIL_CLAVE = 'dl2695_perfil';
+const TEMAS_PERFIL = {'nicolas munoz mora': 'rosa'};
 function perfilGuardado(){ try{ return JSON.parse(localStorage.getItem(PERFIL_CLAVE) || 'null'); }catch(e){ return null; } }
 function perfilActual(){ return perfilGuardado() || {rol: '', nombre: ''}; }
 function normPerfil(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
@@ -16137,8 +16214,10 @@ function fijarPerfilReloj(nombre, rol){
 function aplicarPerfil(cambio){
   const p = perfilActual();
   document.body.dataset.perfil = p.rol || '';
+  /* Tema rosado con gatito blanco para el perfil de Nicolás Muñoz Mora. */
+  document.body.dataset.tema = TEMAS_PERFIL[normPerfil(p.nombre)] || '';
   const chip = q('perfilChip');
-  if(chip) chip.textContent = p.nombre ? `👤 ${p.nombre.split(/\s+/).slice(0, 2).join(' ')} · ${p.rol === 'abogado' ? 'Abogado/a' : 'Postulante'}` : '👤 Elegir perfil';
+  if(chip) chip.textContent = p.nombre ? `${document.body.dataset.tema === 'rosa' ? '🐱' : '👤'} ${p.nombre.split(/\s+/).slice(0, 2).join(' ')} · ${p.rol === 'abogado' ? 'Abogado/a' : 'Postulante'}` : '👤 Elegir perfil';
   if(!p.rol) return;
   // el Reloj Control siempre queda en el perfil elegido (postulante 20 h, abogado/a 44 h)
   setTimeout(()=> fijarPerfilReloj(p.nombre, p.rol), 300);
