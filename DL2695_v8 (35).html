@@ -255,7 +255,42 @@
   .bit-checklist input[type="checkbox"]{margin:0;cursor:pointer;}
   .bit-checklist label.hecha{color:var(--gris-600);}
   .revc-abrir{margin:0 0 12px;}
-  .revc-abrir .revc-prog{font-weight:400;opacity:.9;}
+  /* Panel de la Etapa C: tarjetas numeradas, ayudas breves y lo opcional en desplegables */
+  .c-panel .c-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+  .c-panel .c-top .revc-abrir{margin:0 0 0 auto;}
+  .c-seg{display:inline-flex;border:1px solid #d7dbe2;border-radius:10px;overflow:hidden;background:#fbfcfe;}
+  .c-seg button{border:none;background:transparent;padding:8px 14px;font:600 13px var(--sans);color:var(--tinta-suave);cursor:pointer;}
+  .c-seg button + button{border-left:1px solid #d7dbe2;}
+  .c-seg button small{font-weight:400;font-size:11px;opacity:.8;margin-left:4px;}
+  .c-seg button.activo[data-c="positiva"]{background:#e8f3ec;color:#1f6b3a;}
+  .c-seg button.activo[data-c="negativa"]{background:#fbeaea;color:var(--rojo-dark);}
+  .c-panel .c-nota{font-size:11.5px;color:var(--tinta-suave);margin:4px 0 12px;line-height:1.45;}
+  .c-panel .c-ayuda{font-weight:400;color:var(--tinta-suave);font-size:11px;text-transform:none;letter-spacing:0;}
+  .c-card{border:1px solid #e3e6ec !important;border-radius:12px;padding:12px 14px 4px !important;background:#fff;margin-bottom:12px !important;}
+  .c-card > legend{float:left;width:100%;display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .c-card > legend + *{clear:both;}
+  .c-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--azul-900);color:#fff;font-size:11px;letter-spacing:0;}
+  .c-fila{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .c-fila3{grid-template-columns:1.3fr 1fr 1fr;}
+  .c-fila4{grid-template-columns:1fr 1fr 1fr 1.6fr;}
+  @media (max-width:900px){ .c-fila,.c-fila3,.c-fila4{grid-template-columns:1fr 1fr;} }
+  .c-pre{display:flex;align-items:stretch;}
+  .c-pre span{display:flex;align-items:center;padding:0 9px;border:1px solid #d7dbe2;border-right:none;border-radius:8px 0 0 8px;background:#f1f3f7;font-size:13px;color:var(--tinta-suave);font-weight:600;}
+  .c-pre input{border-radius:0 8px 8px 0 !important;}
+  .c-mas{margin:2px 0 10px;border-top:1px dashed #e3e6ec;padding-top:8px;}
+  .c-mas > summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--azul-700);list-style:none;}
+  .c-mas > summary::-webkit-details-marker{display:none;}
+  .c-mas > summary::before{content:'▸ ';}
+  .c-mas[open] > summary::before{content:'▾ ';}
+  .c-mas > summary span{font-weight:400;color:var(--tinta-suave);font-size:11px;margin-left:4px;}
+  .c-mas[open] > summary{margin-bottom:8px;}
+  .c-etiqueta{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-bottom:4px;}
+  .c-etiqueta label{margin:0;}
+  .c-plantilla{white-space:nowrap;}
+  .c-panel #cInscripcionAnteriorCampos{margin-top:10px;}
+  .c-panel #cTieneInscripcion{margin-bottom:2px;}
+  .c-panel #slotMinutaC .hint{font-size:11.5px;color:var(--tinta-suave);margin:4px 0 8px;}
+  .revc-abrir .revc-prog{font-weight:400;opacity:.9;color:#dfe6f3 !important;}
   .revc-box{max-width:720px;padding:16px 18px;}
   .revc-top{display:flex;align-items:center;gap:10px;margin:0 0 4px;}
   .revc-top h3{margin:0;flex:1;font-size:16px;color:var(--azul-900);}
@@ -1639,7 +1674,94 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
       </fieldset>
     </div>
 
-<div class="panel-body" id="tab-resolucionC" style="display:none"><button type="button" class="btn btn-primary btn-sm revc-abrir" onclick="abrirRevisionC()">✅ Checklist antes de la Resolución C <span class="revc-prog" id="revcProg"></span></button><fieldset><legend>Sentido de la resolución C</legend><select id="cSentido" onchange="generar()"><option value="positiva">Positiva · acepta y ordena inscripción</option><option value="negativa">Negativa · deniega la solicitud</option></select><p class="hint">La resolución y su notificación comparten este resultado.</p></fieldset><fieldset id="cBloqueNegativo"><legend>Fundamentos de C negativa</legend><p class="hint">Según los modelos de resolución y notificación C negativas del repositorio. Completa los antecedentes del expediente; no se copian los hechos ni las personas del ejemplo.</p><div class="field"><label for="cNegFundamentos">Fundamentos del considerando 3 · un párrafo por letra (a.-, b.-, c.-…)</label><textarea id="cNegFundamentos" rows="8" placeholder="Que, mediante Resolución Exenta N° E-…, de fecha …&#10;&#10;Que, posteriormente, mediante Ordinario N° …"></textarea><p class="hint">Separa cada letra con una línea en blanco; las letras se ponen solas. El considerando 3 empieza con «Que, del análisis efectuado a los antecedentes acompañados… en atención a los siguientes argumentos:».</p><button type="button" class="btn btn-sm" onclick="plantillaLoteoCNeg()">Insertar fundamentos tipo · loteo irregular (DOM)</button></div><div class="field"><label for="cNegArticulos">Artículos del D.L. 2.695 en el Resuelvo 1</label><input type="text" id="cNegArticulos" placeholder="1°, 10°, 11° y 12°" autocomplete="off"></div><textarea id="cNegCons3" hidden></textarea><textarea id="cNegCons4" hidden></textarea><div class="field"><label for="vTexto_resolucionCNegativa">Visto completo de C negativa (opcional)</label><textarea id="vTexto_resolucionCNegativa" rows="5"></textarea><p class="hint">En blanco usa la base normativa del modelo con los antecedentes variables de C; no cita el certificado de publicaciones de C positiva.</p></div></fieldset><input type="hidden" id="vCgrN" value="36"><input type="hidden" id="vCgrAnio" value="2024"><input type="hidden" id="vDelegacion" value="1917, 107 y 108"><input type="hidden" id="vDelegacionAnio" value="1996"><input type="hidden" id="vNomN" value="30"><input type="hidden" id="vNomFecha" value="2026-03-26"><input type="hidden" id="vSubrogancia" value="Decreto Exento RA N° 324/88/2024 de fecha 14 de marzo de 2024 de la Subsecretaría de Bienes Nacionales, que establece orden de subrogancia para el cargo Seremi Maule."><fieldset id="cDatosPositivos"><legend>Datos variables del inmueble · C</legend><p class="hint">Completa estos recuadros con los antecedentes de cada expediente. Dirección, Comuna y Provincia se toman del panel izquierdo; la identidad y domicilio de cada solicitante, de su ficha.</p><div class="grid2"><div class="field"><label for="cPlano">Número de plano</label><input type="text" id="cPlano" autocomplete="off"></div><div class="field"><label for="cRol">Rol de Avalúo</label><input type="text" id="cRol" autocomplete="off"></div><div class="field"><label for="cSuperficie">Superficie y unidad</label><input type="text" id="cSuperficie" autocomplete="off"></div><div class="field"><label for="cCbrMenu">Conservador de Bienes Raíces para la inscripción</label><select id="cCbrMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cCbr" oninput="generar()" autocomplete="off"></div><div class="field"><label for="cModoAdqMenu">Forma de adquisición de la posesión</label><select id="cModoAdqMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cModoAdq" oninput="generar()" autocomplete="off"></div></div></fieldset><fieldset id="cMinutaPositiva"><legend>Minuta de deslindes · B y C</legend><p class="hint">El mismo recuadro y contenido de la etapa B. Los cambios se aplican a ambos procedimientos.</p><div id="slotMinutaC"></div></fieldset><fieldset id="cInscripcionSelector"><legend>Inscripción conservatoria · C positiva</legend><select id="cTieneInscripcion" onchange="generar()"><option value="con">Con inscripción anterior · ordenar cancelación</option><option value="sin">Sin inscripción conservatoria · ordenar primera inscripción</option></select></fieldset><fieldset id="cInscripcionAnteriorCampos"><legend>Inscripción anterior y cancelación · C</legend><div class="grid2"><div class="field"><label for="cFojas">Fojas de la inscripción anterior</label><input type="text" id="cFojas" autocomplete="off"></div><div class="field"><label for="cNumeroInsc">Número de la inscripción anterior</label><input type="text" id="cNumeroInsc" autocomplete="off"></div><div class="field"><label for="cAnioInsc">Año de la inscripción anterior</label><input type="text" id="cAnioInsc" autocomplete="off"></div><div class="field"><label for="cCbrAnteriorMenu">Conservador de la inscripción anterior</label><select id="cCbrAnteriorMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cCbrAnterior" oninput="generar()" autocomplete="off"></div></div><p class="hint" style="margin:6px 0">Si dejas en blanco fojas, número y año, se usan la(s) inscripción(es) de «Inscripción conservatoria» del panel izquierdo (con varias: «… y …, ambas del Registro de Propiedad…»).</p><div class="field"><label for="cAlcanceTipo">Alcance de la cancelación</label><select id="cAlcanceTipo" onchange="generar()"><option value="parcial">Parcial · conforme a la cabida que se intenta regularizar</option><option value="derechos">Parcial conforme a la cabida y total respecto de los derechos del solicitante</option><option value="total">Total</option></select></div><div class="field"><label for="cAlcanceCancelacion">Alcance escrito a mano <span class="hint">· opcional: reemplaza el de la opción elegida</span></label><textarea id="cAlcanceCancelacion" rows="2"></textarea></div></fieldset><fieldset><legend>Resolución C · Datos del acto</legend><p class="hint">Basada en «Resolución C tipo Positiva.html.pdf». Completa los recuadros de esta pestaña con el plano, deslindes e inscripción anterior de cada expediente. La profesión, estado civil y domicilio de cada persona se completan en su ficha.</p><div class="field"><label for="resCN">Número de resolución C (después de E-)</label><input type="text" id="resCN" value=""></div><div class="field"><label for="resCFecha">Fecha de resolución C</label><input type="date" id="resCFecha" value=""></div></fieldset><fieldset id="cVistoPositivo"><legend>Visto C · antecedentes del expediente</legend><div class="field"><label for="cResPreviaN">Resolución previa que ordenó publicaciones · número (después de E-)</label><input type="text" id="cResPreviaN" value=""></div><div class="field"><label for="cResPreviaFecha">Fecha de la resolución previa</label><input type="date" id="cResPreviaFecha" value=""></div><div class="field"><label for="cCertN">Certificado de publicaciones, carteles y no oposición · número (si tiene)</label><input type="text" id="cCertN" value=""></div><div class="field"><label for="cCertFecha">Fecha del certificado (si consta)</label><input type="date" id="cCertFecha" value=""></div><div class="field"><label for="cCertTexto">Contenido del certificado citado en el Visto</label><textarea id="cCertTexto" rows="4"></textarea><p class="hint">Comprueba su correspondencia con el certificado del expediente.</p></div><div class="field"><label for="vTexto_resolucionC">Visto completo (opcional)</label><textarea id="vTexto_resolucionC" rows="4"></textarea><p class="hint">En blanco se construye con los antecedentes anteriores y los datos variables del panel izquierdo.</p></div></fieldset></div><div class="panel-body" id="tab-notificacionC" style="display:none"><fieldset><legend>Resultado que se notifica</legend><select id="cNotSentido" onchange="q('cSentido').value=this.value; generar();"><option value="positiva">C positiva</option><option value="negativa">C negativa</option></select></fieldset><fieldset><legend>Notificación C · Resultado de la solicitud</legend><p class="hint">Basada en los modelos C positivos y negativos del repositorio. Comparte el resultado y los solicitantes con la resolución C. Usa la fecha general del documento.</p><div class="field"><label for="ordCN">Número de ordinario (después de E-)</label><input type="text" id="ordCN" value=""></div><div class="field"><label for="cDestDireccion">Dirección de notificación (opcional; incluye Comuna, Provincia y Región)</label><input type="text" id="cDestDireccion" value=""></div></fieldset></div>
+<div class="panel-body c-panel" id="tab-resolucionC" style="display:none">
+<div class="c-top">
+  <div class="c-seg" role="group" aria-label="Sentido de la resolución C">
+    <button type="button" data-c="positiva" onclick="elegirSentidoC('positiva')">✓ Positiva <small>acepta y ordena inscripción</small></button>
+    <button type="button" data-c="negativa" onclick="elegirSentidoC('negativa')">✕ Negativa <small>deniega la solicitud</small></button>
+  </div>
+  <select id="cSentido" onchange="generar()" hidden><option value="positiva">Positiva</option><option value="negativa">Negativa</option></select>
+  <button type="button" class="btn btn-primary btn-sm revc-abrir" onclick="abrirRevisionC()">✅ Checklist <span class="revc-prog" id="revcProg"></span></button>
+</div>
+<p class="c-nota">La resolución y su notificación comparten este resultado. Solicitantes, dirección y comuna se toman del panel izquierdo.</p>
+<input type="hidden" id="vCgrN" value="36"><input type="hidden" id="vCgrAnio" value="2024"><input type="hidden" id="vDelegacion" value="1917, 107 y 108"><input type="hidden" id="vDelegacionAnio" value="1996"><input type="hidden" id="vNomN" value="30"><input type="hidden" id="vNomFecha" value="2026-03-26"><input type="hidden" id="vSubrogancia" value="Decreto Exento RA N° 324/88/2024 de fecha 14 de marzo de 2024 de la Subsecretaría de Bienes Nacionales, que establece orden de subrogancia para el cargo Seremi Maule.">
+<fieldset class="c-card"><legend><span class="c-num">1</span>Datos del acto</legend>
+  <div class="c-fila">
+    <div class="field"><label for="resCN">N° de resolución</label><div class="c-pre"><span>E-</span><input type="text" id="resCN" value="" autocomplete="off"></div></div>
+    <div class="field"><label for="resCFecha">Fecha de resolución</label><input type="date" id="resCFecha" value=""></div>
+  </div>
+  <div id="cVistoPositivo">
+    <div class="c-fila">
+      <div class="field"><label for="cResPreviaN">Res. que ordenó publicaciones (B)</label><div class="c-pre"><span>E-</span><input type="text" id="cResPreviaN" value="" autocomplete="off"></div></div>
+      <div class="field"><label for="cResPreviaFecha">Fecha de esa resolución</label><input type="date" id="cResPreviaFecha" value=""></div>
+    </div>
+    <details class="c-mas"><summary>Certificado de publicaciones y Visto a mano <span>opcional</span></summary>
+      <div class="c-fila">
+        <div class="field"><label for="cCertN">N° del certificado</label><input type="text" id="cCertN" value="" autocomplete="off"></div>
+        <div class="field"><label for="cCertFecha">Fecha del certificado</label><input type="date" id="cCertFecha" value=""></div>
+      </div>
+      <div class="field"><label for="cCertTexto">Contenido del certificado <span class="c-ayuda">· en blanco: «Certificado del cual consta que se efectuaron las publicaciones legales…»</span></label><textarea id="cCertTexto" rows="3"></textarea></div>
+      <div class="field"><label for="vTexto_resolucionC">Visto completo <span class="c-ayuda">· reemplaza todo el Visto generado</span></label><textarea id="vTexto_resolucionC" rows="3"></textarea></div>
+    </details>
+  </div>
+</fieldset>
+
+<fieldset class="c-card" id="cDatosPositivos"><legend><span class="c-num">2</span>Inmueble</legend>
+  <div class="c-fila c-fila3">
+    <div class="field"><label for="cPlano">N° de plano</label><input type="text" id="cPlano" autocomplete="off" placeholder="07408-22.770-S.R."></div>
+    <div class="field"><label for="cRol">Rol de Avalúo</label><input type="text" id="cRol" autocomplete="off" placeholder="165-900"></div>
+    <div class="field"><label for="cSuperficie">Superficie</label><input type="text" id="cSuperficie" autocomplete="off" placeholder="1.927,04 m²"></div>
+  </div>
+  <div class="c-fila">
+    <div class="field"><label for="cCbrMenu">Conservador para la inscripción</label><select id="cCbrMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cCbr" oninput="generar()" autocomplete="off"></div>
+    <div class="field"><label for="cModoAdqMenu">Forma de adquisición <span class="c-ayuda">· en blanco: la del Informe</span></label><select id="cModoAdqMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cModoAdq" oninput="generar()" autocomplete="off"></div>
+  </div>
+</fieldset>
+
+<fieldset class="c-card" id="cMinutaPositiva"><legend><span class="c-num">3</span>Deslindes <span class="c-ayuda">· compartidos con B</span></legend><div id="slotMinutaC"></div></fieldset>
+
+<fieldset class="c-card" id="cInscripcionSelector"><legend><span class="c-num">4</span>Inscripción conservatoria</legend>
+  <select id="cTieneInscripcion" onchange="generar()"><option value="con">Con inscripción anterior · se ordena su cancelación</option><option value="sin">Sin inscripción conservatoria · primera inscripción</option></select>
+  <div id="cInscripcionAnteriorCampos">
+    <div class="c-fila c-fila4">
+      <div class="field"><label for="cFojas">Fojas</label><input type="text" id="cFojas" autocomplete="off"></div>
+      <div class="field"><label for="cNumeroInsc">N°</label><input type="text" id="cNumeroInsc" autocomplete="off"></div>
+      <div class="field"><label for="cAnioInsc">Año</label><input type="text" id="cAnioInsc" autocomplete="off"></div>
+      <div class="field"><label for="cCbrAnteriorMenu">Conservador</label><select id="cCbrAnteriorMenu" data-temporal onchange="elegirTerrenoC(this)"></select><input type="text" aria-label="Otro valor" style="display:none" id="cCbrAnterior" oninput="generar()" autocomplete="off"></div>
+    </div>
+    <p class="c-nota">En blanco se usan las inscripciones del panel izquierdo (con varias: «… y …, ambas del Registro…»).</p>
+    <div class="field"><label for="cAlcanceTipo">Alcance de la cancelación</label><select id="cAlcanceTipo" onchange="generar()"><option value="parcial">Parcial · conforme a la cabida que se intenta regularizar</option><option value="derechos">Parcial conforme a la cabida y total respecto de los derechos del solicitante</option><option value="total">Total</option></select></div>
+    <details class="c-mas" id="cAlcanceManual"><summary>Redactar el alcance a mano <span>reemplaza la opción elegida</span></summary>
+      <textarea id="cAlcanceCancelacion" rows="2" aria-label="Alcance escrito a mano"></textarea>
+    </details>
+  </div>
+</fieldset>
+
+<fieldset class="c-card" id="cBloqueNegativo"><legend><span class="c-num">2</span>Fundamentos de la denegación</legend>
+  <div class="c-etiqueta"><label for="cNegFundamentos">Considerando 3 · un párrafo por letra <span class="c-ayuda">· separa con una línea en blanco; a.-, b.-, c.- se ponen solas</span></label><button type="button" class="btn btn-sm c-plantilla" onclick="plantillaLoteoCNeg()">＋ Loteo irregular (DOM)</button></div>
+  <textarea id="cNegFundamentos" rows="8" placeholder="Que, mediante Resolución Exenta N° E-…, de fecha …&#10;&#10;Que, posteriormente, mediante Ordinario N° …"></textarea>
+  <textarea id="cNegCons3" hidden></textarea><textarea id="cNegCons4" hidden></textarea>
+  <details class="c-mas"><summary>Artículos del Resuelvo y Visto a mano <span>opcional</span></summary>
+    <div class="field"><label for="cNegArticulos">Artículos del D.L. 2.695 en el Resuelvo 1</label><input type="text" id="cNegArticulos" placeholder="1°, 10°, 11° y 12°" autocomplete="off"></div>
+    <div class="field"><label for="vTexto_resolucionCNegativa">Visto completo <span class="c-ayuda">· reemplaza todo el Visto generado</span></label><textarea id="vTexto_resolucionCNegativa" rows="3"></textarea></div>
+  </details>
+</fieldset>
+</div><div class="panel-body c-panel" id="tab-notificacionC" style="display:none">
+<div class="c-top">
+  <div class="c-seg" role="group" aria-label="Resultado que se notifica">
+    <button type="button" data-c="positiva" onclick="elegirSentidoC('positiva')">✓ Positiva <small>ordena inscripción</small></button>
+    <button type="button" data-c="negativa" onclick="elegirSentidoC('negativa')">✕ Negativa <small>deniega</small></button>
+  </div>
+  <select id="cNotSentido" onchange="q('cSentido').value=this.value; generar();" hidden><option value="positiva">C positiva</option><option value="negativa">C negativa</option></select>
+</div>
+<p class="c-nota">Comparte el resultado y los solicitantes con la Resolución C. Usa la fecha general del documento.</p>
+<fieldset class="c-card"><legend><span class="c-num">1</span>Datos de la notificación</legend>
+  <div class="c-fila">
+    <div class="field"><label for="ordCN">N° de ordinario</label><div class="c-pre"><span>E-</span><input type="text" id="ordCN" value="" autocomplete="off"></div></div>
+    <div class="field"><label for="cDestDireccion">Dirección de notificación <span class="c-ayuda">· en blanco: la del solicitante</span></label><input type="text" id="cDestDireccion" value="" autocomplete="off"></div>
+  </div>
+</fieldset>
+</div>
 <div class="panel-body" id="tab-resolucionRectificatoria" style="display:none"><fieldset id="rectReferencia"><legend>Resolución que se rectifica</legend><div class="field"><label for="rectAnterior">Número de la resolución original (E-…)</label><input type="text" id="rectAnterior" value="" oninput="generar()"></div><div class="field"><label for="rectFechaAnterior">Fecha de la resolución original</label><input type="date" id="rectFechaAnterior" value="" oninput="generar()"></div></fieldset><fieldset><legend>Resolución rectificatoria</legend><div class="field"><label for="rectNumero">Número de la resolución rectificatoria</label><input type="text" id="rectNumero" value="" oninput="generar()"></div><div class="field"><label for="rectVistos">Vistos y antecedentes del nombramiento</label><textarea rows="4" id="rectVistos" oninput="generar()">Las normas contenidas en el D.L. N°2.695 de 1979 y su Reglamento contenido en el D.S. N° 541 del 20 de agosto del año 1996; la Resolución N°36 de 2024, de la Contraloría General de la República; el Decreto Supremo N°30 de fecha 26 de marzo de 2026 de nombramiento del Seremi.</textarea></div><div class="field"><label for="rectMotivo">Qué se debe corregir (p. ej., la denominación del inmueble)</label><input type="text" id="rectMotivo" value="" oninput="generar()"></div></fieldset><fieldset><legend>Partes de la resolución que se rectifican</legend><input id="rectListaDatos" type="hidden"><details open><summary>Seleccionar una o más partes</summary><p class="hint">Marca cada parte y escribe debajo su redacción corregida. Se incorporarán al resuelvo en el orden en que las marques.</p><div id="rectListaOpciones"></div><div class="field"><label for="rectOtraParte">Otro apartado o numeral</label><input id="rectOtraParte" data-temporal placeholder="Ej.: Considerando 12 o Anexo 2"><button type="button" onclick="agregarParteRect()">Agregar a la selección</button></div></details></fieldset></div><div class="panel-body" id="tab-notificacionRectificatoria" style="display:none"><fieldset><legend>Notificación de rectificatoria</legend><div class="field"><label for="rectOrd">Número de ordinario</label><input type="text" id="rectOrd" value="" oninput="generar()"></div><div class="field"><label for="rectDomicilio">Domicilio de notificación, si falta en los datos del solicitante</label><input type="text" id="rectDomicilio" value="" oninput="generar()"></div></fieldset></div>
 <div class="panel-body" id="tab-resolucionRevocacion" style="display:none"><fieldset id="revReferencia"><legend>Resolución que se revoca</legend>
   <p class="hint" style="margin:0 0 8px">Revocación conforme al artículo 61 de la Ley N° 19.880 (modelo Res. Ex. N° 620 de 2025).</p>
@@ -9700,8 +9822,10 @@ function actualizarModelosCRepo(){
   actualizarMotivoConsiderandoRep();
   const positiva = esCPositiva();
   q('cNotSentido').value = positiva ? 'positiva' : 'negativa';
+  marcarSentidoC();
   ['cDatosPositivos','cMinutaPositiva','cVistoPositivo','cInscripcionSelector'].forEach(id=>q(id).style.display = positiva ? '' : 'none');
   q('cInscripcionAnteriorCampos').style.display = positiva && !cSinInscripcion() ? '' : 'none';
+  if(q('cAlcanceManual') && String(val('cAlcanceCancelacion') || '').trim()) q('cAlcanceManual').open = true;
   q('cBloqueNegativo').style.display = positiva ? 'none' : '';
   document.querySelectorAll('.datos-inscripcion-c').forEach(el=>el.style.display = activeMainTab() === 'resolucionC' && positiva ? 'block' : 'none');
   q('repFormaAcogerBloque').style.display = esReposicionLoteo() ? '' : 'none';
@@ -9722,6 +9846,15 @@ function plantillaLoteoCNeg(){
   ta.value = ta.value.trim() ? ta.value.trim() + '\n\n' + texto : texto;
   ta.dispatchEvent(new Event('input', {bubbles: true}));
   generar();
+}
+function elegirSentidoC(sentido){
+  const sel = q('cSentido'); if(!sel) return;
+  sel.value = sentido; sel.dispatchEvent(new Event('change', {bubbles: true}));
+  marcarSentidoC();
+}
+function marcarSentidoC(){
+  const sentido = val('cSentido') === 'negativa' ? 'negativa' : 'positiva';
+  document.querySelectorAll('.c-seg button').forEach(b => b.classList.toggle('activo', b.dataset.c === sentido));
 }
 function partesC(tab){ return esCPositiva() ? partesCPositiva(tab) : partesCNegativa(tab); }
 function partesCNegativa(tab){
@@ -12327,7 +12460,7 @@ function moverOrigenPosesion(tab){
   if(!fs || !a || !v) return;
   const enVerif = (tab === 'posesion' || tab === 'resolucionC');
   fs.classList.toggle('solo-origen', enVerif);
-  (tab === 'resolucionC' ? q('tab-resolucionC') : enVerif ? v : a).appendChild(fs);
+  (enVerif ? v : a).appendChild(fs);
   if(anios && ab) (tab === 'posesion' ? v : ab).appendChild(anios);   // los años van también en la Verificación (punto 1)
 }
 
