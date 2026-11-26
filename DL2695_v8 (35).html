@@ -1279,7 +1279,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
         </div>
         <div data-lateral="seremi" class="field">
           <label>SEREMI de Bienes Nacionales</label>
-          <input type="text" id="seremi" value="Flavio Esteban Bazzi Pezoa">
+          <input type="text" id="seremi" value="Flavio Esteban Bazzi Pezoa" autocomplete="off">
         </div>
         <div data-lateral="subrogancia" class="check-row" id="rowSubrogancia">
           <input type="checkbox" id="subrogancia" onchange="toggleClass('rowSubrogancia','checked',this.checked); generar();">
@@ -1289,7 +1289,7 @@ body[data-documento$="Fallecimiento"] #solicitantesWrap .sol-card:not(:first-chi
         </div>
         <div data-lateral="subrogancia" class="field" id="fieldSeremiSubrogante">
           <label>SEREMI subrogante <span class="hint">· firma cuando está marcada la casilla (S)</span></label>
-          <input type="text" id="seremiSubrogante" value="Octavio Fredes Fuenzalida" oninput="generar()">
+          <input type="text" id="seremiSubrogante" value="Octavio Fredes Fuenzalida" autocomplete="off" oninput="generar()">
         </div>
       </fieldset>
 
@@ -6589,7 +6589,7 @@ function prepararImportacion(tabla){
              este campo no tendría efecto y se oculta en ese modo. -->
         <div class="field" id="ofFieldSeremi">
           <label>SEREMI de Bienes Nacionales (firma)</label>
-          <input type="text" id="ofSeremi" value="Flavio Esteban Bazzi Pezoa">
+          <input type="text" id="ofSeremi" value="Flavio Esteban Bazzi Pezoa" autocomplete="off">
         </div>
         <div class="field">
           <label>Iniciales de distribución</label>
@@ -9426,10 +9426,31 @@ function partesInforme(){
 
 
 /* Seremi que firma: el subrogante cuando está marcada la casilla (S). */
+/* Nombres del Seremi titular y subrogante. Si el campo trae algo que no es un nombre
+   (números, una sola palabra: p. ej. lo que mete el autocompletado del navegador),
+   se usa el nombre de siempre. */
+const SEREMI_TITULAR = 'Flavio Esteban Bazzi Pezoa', SEREMI_SUBROGANTE = 'Octavio Fredes Fuenzalida';
+function esNombrePersona(t){
+  const v = String(t || '').trim();
+  return !/\d/.test(v) && v.split(/\s+/).filter(p => /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.-]{2,}$/.test(p)).length >= 2;
+}
 function seremiFirmante(){
   return chk('subrogancia')
-    ? (val('seremiSubrogante') || 'Octavio Fredes Fuenzalida')
-    : (val('seremi') || 'Flavio Esteban Bazzi Pezoa');
+    ? (esNombrePersona(val('seremiSubrogante')) ? val('seremiSubrogante') : SEREMI_SUBROGANTE)
+    : (esNombrePersona(val('seremi')) ? val('seremi') : SEREMI_TITULAR);
+}
+/* Repara los campos si quedaron con datos ajenos y desactiva el autocompletado del
+   navegador en todo el generador (rellenaba campos con datos de direcciones). */
+function repararCamposSeremi(){
+  const t = q('seremi'), sb = q('seremiSubrogante');
+  if(t && !esNombrePersona(t.value)) t.value = SEREMI_TITULAR;
+  if(sb && !esNombrePersona(sb.value)) sb.value = SEREMI_SUBROGANTE;
+  const of = q('ofSeremi'); if(of && !esNombrePersona(of.value)) of.value = SEREMI_TITULAR;
+}
+function sinAutocompletarNavegador(){
+  document.querySelectorAll('input[type="text"], input:not([type]), textarea').forEach(el => {
+    if(!el.hasAttribute('autocomplete')) el.setAttribute('autocomplete', 'off');
+  });
 }
 
 /* Antecedente que inviste al Seremi en los VISTOS. Con subrogancia se cita
@@ -12613,6 +12634,7 @@ function initOficios(){
   const habia = aplicarCamposGuardadosEn('#oficiosView');
 
   if(!val('ofFecha')) q('ofFecha').value = new Date().toISOString().slice(0,10);
+  repararCamposSeremi(); sinAutocompletarNavegador();
   sincronizarCbrSelect('ofCbrSelect','ofCbr');
   onOfComunaChange();
   renderMasivoDestino();
@@ -13443,7 +13465,7 @@ function datosOficioActuales(){
     registro: blank(val('ofRegistro'),'Propiedad'),
     email_contacto: blank(val('ofEmailContacto'),'____________'),
     rol_avaluo: blank(val('ofRolAvaluo'),'____________'),
-    seremi_mayus: upper(chk('subrogancia') ? seremiFirmante() : blank(val('ofSeremi'),'____________________')),
+    seremi_mayus: upper(chk('subrogancia') ? seremiFirmante() : (esNombrePersona(val('ofSeremi')) ? val('ofSeremi') : seremiFirmante())),
     iniciales: val('ofIniciales') || inicialesDistribucion()
   };
 }
@@ -20730,6 +20752,8 @@ renderPresuntos(); renderInscripcionesExtra(); renderRolesExtra();
 /* Se recupera el borrador ANTES de generar, así el documento se arma con los
    datos que el usuario ya tenía escritos. */
 const habiaBorrador = restaurarTodo();
+repararCamposSeremi();
+sinAutocompletarNavegador();
 
 renderSolicitantes();
 aplicarResultadoUI();
